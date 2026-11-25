@@ -1,2 +1,0 @@
-# imed-manager
-Imed
