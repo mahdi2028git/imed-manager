@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>مدیریت IMED | نسخه ۰.۱۲</title>
+<style>
+:root{--bg:#f4f6f9;--panel:#fff;--ink:#182230;--muted:#667085;--line:#e5eaf0;--nav:#13243a;--nav2:#1c3552;--accent:#2672d8;--accent2:#eaf2ff;--good:#12805c;--goodbg:#e8f7f0;--warn:#a15c07;--warnbg:#fff4df;--bad:#b42318;--badbg:#fff0ee;--shadow:0 8px 28px rgba(16,24,40,.06);--r:16px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,"Segoe UI",sans-serif;font-size:14px}button,input,select{font:inherit}button{cursor:pointer}.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.sidebar{background:var(--nav);color:#e9f0f8;padding:22px 16px;display:flex;flex-direction:column;gap:20px}.brand{display:flex;align-items:center;gap:12px;padding:4px 8px 18px;border-bottom:1px solid #29405c}.brand-mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#69a8ff,#2367c9);display:grid;place-items:center;font-weight:800;color:white;font-size:18px}.brand b{display:block;font-size:16px}.brand small{color:#aebfd2}.nav{display:grid;gap:6px}.nav button{border:0;background:transparent;color:#c7d4e3;text-align:right;padding:12px 13px;border-radius:11px;display:flex;align-items:center;gap:11px}.nav button:hover,.nav button.active{background:var(--nav2);color:white}.nav .ico{width:22px;text-align:center;font-size:16px}.side-note{margin-top:auto;border:1px solid #29405c;background:#192d45;padding:13px;border-radius:12px;color:#bdcadd;font-size:12px;line-height:1.9}.main{padding:26px 30px;min-width:0}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}.eyebrow{color:var(--muted);font-size:12px;margin-bottom:6px}.topbar h1{margin:0;font-size:23px}.top-actions{display:flex;align-items:center;gap:9px}.local-pill{border:1px solid var(--line);background:white;padding:9px 12px;border-radius:999px;color:var(--muted);font-size:12px}.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;color:var(--ink);font-weight:600}.btn:hover{border-color:#b5c7da}.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.primary:hover{background:#155fc0}.btn.danger{color:var(--bad);border-color:#f1c6c1}.btn.small{padding:6px 9px;font-size:12px}.view{display:none}.view.active{display:block}.grid{display:grid;gap:16px}.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}.stat{display:flex;align-items:center;justify-content:space-between}.stat .label{color:var(--muted);font-size:12px}.stat .value{font-size:27px;font-weight:800;margin-top:8px;direction:ltr;text-align:right}.stat .bubble{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--accent2);color:var(--accent);font-size:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-head h2{font-size:16px;margin:0}.section-head p{color:var(--muted);margin:5px 0 0;font-size:12px}.muted{color:var(--muted)}.smalltext{font-size:12px;color:var(--muted);line-height:1.8}.two{grid-template-columns:1.1fr .9fr}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}table{border-collapse:collapse;width:100%;min-width:760px;background:#fff}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-size:12px}th{background:#f8fafc;color:#475467;font-weight:700;position:sticky;top:0}tr:last-child td{border-bottom:0}tbody tr:hover{background:#fbfdff}.tag{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700}.tag.good{background:var(--goodbg);color:var(--good)}.tag.warn{background:var(--warnbg);color:var(--warn)}.tag.bad{background:var(--badbg);color:var(--bad)}.tag.neutral{background:#eef2f6;color:#475467}.empty{padding:30px;text-align:center;color:var(--muted);line-height:2}.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.field{display:grid;gap:6px}.field label{font-size:12px;color:#475467;font-weight:700}option{background:#fff!important;color:#182230!important}select option{background-color:#fff;color:#182230} option{background:#fff!important;color:#182230!important}select option{background-color:#fff;color:#182230}.field input,.field select,.field textarea{width:100%;border:1px solid #d7dee8;border-radius:9px;background:white;padding:10px 11px;outline:none;color:var(--ink);min-width:0}.field input:focus,.field select:focus{border-color:#77a7e8;box-shadow:0 0 0 3px #eaf2ff}.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px}.notice{border-radius:12px;padding:12px 14px;line-height:1.9;font-size:12px;margin:12px 0}.notice.info{background:#eef5ff;color:#24528b;border:1px solid #d7e7ff}.notice.warn{background:var(--warnbg);color:#87500a;border:1px solid #f8e2b8}.notice.good{background:var(--goodbg);color:#16664e;border:1px solid #c6ebd8}.notice.bad{background:var(--badbg);color:#932018;border:1px solid #f3cbc6}.stepper{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.step{font-size:12px;padding:8px 11px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:#fff}.step.active{background:var(--accent2);color:var(--accent);border-color:#cfe0fb}.progress{height:8px;background:#edf1f5;border-radius:99px;overflow:hidden;margin-top:9px}.progress>span{display:block;height:100%;background:var(--accent);border-radius:99px}.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mono{font-family:Consolas,monospace;direction:ltr;display:inline-block}.hidden{display:none!important}.file-box{border:1.5px dashed #bdcada;padding:25px;border-radius:13px;text-align:center;background:#fbfdff}.file-box input{max-width:100%;margin-top:12px}.mapping{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.mapping .field{background:#fbfcfe;border:1px solid var(--line);border-radius:10px;padding:10px}.footer-note{color:var(--muted);font-size:11px;margin-top:18px;line-height:1.8}.checkrow{display:flex;align-items:center;gap:7px}.checkrow input{width:auto}.doc-summary{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.doc-summary .item{min-width:110px}.doc-summary b{display:block;font-size:16px;margin-top:5px}.candidate-tools{display:flex;gap:9px;flex-wrap:wrap;align-items:end}.candidate-tools .field{min-width:180px;flex:1}.amount{font-weight:800;direction:ltr}.toast{position:fixed;bottom:22px;left:22px;background:#172b43;color:white;padding:12px 16px;border-radius:11px;box-shadow:var(--shadow);z-index:10;opacity:0;transform:translateY(10px);transition:.2s;pointer-events:none}.toast.show{opacity:1;transform:translateY(0)}
+.codebox{width:100%;min-height:240px;direction:ltr;text-align:left;font:12px/1.6 Consolas,monospace;border:1px solid var(--line);border-radius:10px;padding:12px;background:#101828;color:#e6edf7;white-space:pre;overflow:auto}.kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.kpi{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcfe}.kpi small{display:block;color:var(--muted)}.kpi b{display:block;font-size:20px;margin-top:7px}.mono-input{direction:ltr;text-align:left;font-family:Consolas,monospace}.table-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.inventory-fresh{color:var(--good);font-weight:700}
+@media(max-width:760px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1050px){.stats{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.mapping{grid-template-columns:repeat(2,1fr)}}@media(max-width:760px){.shell{grid-template-columns:1fr}.sidebar{padding:12px;gap:10px}.brand{padding:4px 4px 12px}.nav{grid-template-columns:repeat(3,1fr)}.nav button{justify-content:center;text-align:center;padding:9px 5px;font-size:11px;flex-direction:column;gap:4px}.nav .ico{font-size:15px}.side-note{display:none}.main{padding:18px 13px}.topbar{align-items:flex-start;flex-direction:column}.form-grid,.mapping,.three,.split{grid-template-columns:1fr}.stats{gap:10px}.stat .value{font-size:23px}.card{padding:14px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">IM</div><div><b>مدیریت IMED</b><small>ابزار داخلی شرکت</small></div></div>
+  <nav class="nav">
+    <button class="active" data-view="dashboard"><span class="ico">▦</span>داشبورد</button>
+    <button data-view="import"><span class="ico">⇧</span>ورود اطلاعات</button>
+    <button data-view="distributions"><span class="ico">▤</span>اسناد توزیع</button>
+    <button data-view="sepidar"><span class="ico">▥</span>فاکتورهای سپیدار</button>
+    <button data-view="reconcile"><span class="ico">⇄</span>تطبیق و ردیابی</button>
+    <button data-view="inventory"><span class="ico">▦</span>انبار مجازی IMED</button>
+    <button data-view="xml"><span class="ico">⌘</span>تولید XML</button>
+    <button data-view="formscript"><span class="ico">JS</span>اسکریپت ثبت IMED</button>
+    <button data-view="settings"><span class="ico">⚙</span>تنظیمات</button>
+  </nav>
+  <div class="side-note">Snapshot انبار از IMED دریافت می‌شود. اطلاعات و تطبیق‌ها روی همین مرورگر ذخیره می‌شوند؛ مرتب SQLite پشتیبان بگیر.</div>
+</aside>
+<main class="main">
+  <header class="topbar"><div><div class="eyebrow">سامانه کنترل اسناد، موجودی و فاکتورها</div><h1 id="pageTitle">داشبورد</h1></div><div class="top-actions"><span class="local-pill">● پایگاه داده SQLite محلی</span><button class="btn" id="exportSqliteTop">دانلود SQLite</button></div></header>
+
+  <section class="view active" id="view-dashboard">
+    <div class="grid stats">
+      <div class="card stat"><div><div class="label">اسناد توزیع واردشده</div><div class="value" id="statDist">۰</div></div><div class="bubble">▤</div></div>
+      <div class="card stat"><div><div class="label">ردیف‌های سپیدار</div><div class="value" id="statSep">۰</div></div><div class="bubble">▥</div></div>
+      <div class="card stat"><div><div class="label">تطبیق کامل</div><div class="value" id="statFull">۰</div></div><div class="bubble">✓</div></div>
+      <div class="card stat"><div><div class="label">نیازمند بررسی</div><div class="value" id="statPending">۰</div></div><div class="bubble">!</div></div>
+    </div>
+    <div class="grid two">
+      <div class="card"><div class="section-head"><div><h2>آخرین اسناد توزیع</h2><p>نمای کلی از اسناد واردشده</p></div><button class="btn small" data-goto="distributions">مشاهده همه</button></div><div id="recentDistributions"></div></div>
+      <div class="card"><div class="section-head"><div><h2>وضعیت تطبیق</h2><p>تعداد اسنادی که سهم فاکتورهایشان با مقدار توزیع برابر شده است</p></div></div><div id="matchOverview"></div></div>
+    </div>
+    <div class="notice info">راهنما: برای شروع، فایل اکسل IMED و فایل جزئیات فاکتورهای سپیدار را از بخش «ورود اطلاعات» وارد کنید. سپس در «تطبیق و ردیابی» فاکتورهای تأمین‌کننده را به سند توزیع وصل کنید. مقدار یک سند می‌تواند از چند فاکتور با تاریخ و فی متفاوت تأمین شده باشد.</div>
+  </section>
+
+  <section class="view" id="view-import">
+    <div class="stepper"><span class="step active">۱. انتخاب فایل</span><span class="step">۲. تعیین ستون‌ها</span><span class="step">۳. بازبینی و ورود</span></div>
+    <div class="card">
+      <div class="section-head"><div><h2>ورود فایل اکسل یا CSV</h2><p>فایل‌ها در مرورگر پردازش می‌شوند و به سرور ارسال نمی‌شوند.</p></div></div>
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="field"><label>نوع اطلاعات</label><select id="importMode"><option value="imed">اسناد / ردیف‌های IMED</option><option value="sepidar">جزئیات فاکتورهای سپیدار</option></select></div>
+        <div class="field"><label>نام شیت (برای فایل اکسل)</label><select id="sheetSelect" disabled><option>ابتدا فایل را انتخاب کنید</option></select></div>
+        <div class="field"><label>ردیف عنوان ستون‌ها</label><input type="number" id="headerRow" min="1" value="1" /></div>
+      </div>
+      <div class="file-box"><b>فایل را انتخاب کنید</b><div class="smalltext">فرمت‌های XLSX، XLS و CSV پشتیبانی می‌شوند.</div><input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.xlsb,.csv" /></div>
+      <div id="mappingArea" class="hidden" style="margin-top:20px">
+        <div class="section-head"><div><h2>تطبیق ستون‌های فایل</h2><p>ستون «مقدار اصلی» سپیدار را برای مقدار کالا انتخاب کنید، نه مقدار فرعی.</p></div><span id="sourceRows" class="tag neutral"></span></div>
+        <div id="mappingGrid" class="mapping"></div>
+        <div class="actions"><button class="btn primary" id="previewImport">نمایش پیش‌نمایش</button><button class="btn" id="cancelImport">لغو</button></div>
+      </div>
+      <div id="previewArea" class="hidden" style="margin-top:18px">
+        <div class="section-head"><div><h2>پیش‌نمایش</h2><p>چند ردیف اول را بررسی کنید؛ سپس ورود را تأیید کنید.</p></div><span id="previewCount" class="tag neutral"></span></div>
+        <div class="table-wrap" id="previewTable"></div>
+        <div class="actions"><button class="btn primary" id="confirmImport">تأیید و ذخیره اطلاعات</button><button class="btn" id="backMapping">بازگشت به تعیین ستون‌ها</button></div>
+      </div>
+    </div>
+    <div class="footer-note">نکته: اگر فایل چند ردیف عنوان یا سرستون ادغام‌شده دارد، «ردیف عنوان ستون‌ها» را تغییر دهید. قبل از تأیید، حتماً ستون تعداد و تاریخ را در پیش‌نمایش کنترل کنید.</div>
+  </section>
+
+  <section class="view" id="view-distributions">
+    <div class="card">
+      <div class="section-head"><div><h2>اسناد توزیع IMED</h2><p>اطلاعات اصلی هر ردیف توزیع و مقدار هدف برای تطبیق</p></div><div class="actions" style="margin:0"><input id="distSearch" placeholder="جست‌وجو شماره سند، کالا، IRC یا دریافت‌کننده" style="border:1px solid var(--line);border-radius:9px;padding:9px 11px;min-width:240px"/><button class="btn small" id="exportDist">خروجی CSV</button></div></div>
+      <div id="distTable"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-sepidar">
+    <div class="card">
+      <div class="section-head"><div><h2>جزئیات فاکتورهای سپیدار</h2><p>هر ردیف کالا از فاکتور با تاریخ، تعداد و فی خودش ذخیره می‌شود.</p></div><div class="actions" style="margin:0"><input id="sepSearch" placeholder="جست‌وجو شماره فاکتور، کالا یا IRC" style="border:1px solid var(--line);border-radius:9px;padding:9px 11px;min-width:220px"/><button class="btn small" id="exportSep">خروجی CSV</button></div></div>
+      <div id="sepTable"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-reconcile">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-head"><div><h2>تطبیق چندفاکتوری با سند توزیع</h2><p>یک سند توزیع می‌تواند از چند فاکتور تأمین شده باشد. جمع مقدار تخصیص‌یافته باید دقیقاً با مقدار توزیع برابر شود.</p></div><span class="tag neutral">بدون فرض برابری قیمت‌ها</span></div>
+      <div class="actions" style="margin:10px 0 14px"><button class="btn primary" id="bulkAutoMatch">تطبیق و ثبت گروهی اسناد قطعی</button><span class="smalltext">فقط اسنادی ثبت می‌شوند که مقدارشان کامل و تطبیقشان با IRC دقیق یا نام کالای بسیار مشابه تأیید شود؛ موارد مبهم دست‌نخورده می‌مانند.</span></div>
+      <div id="bulkMatchReport"></div>
+      <div class="field" style="max-width:520px"><label>انتخاب سند توزیع</label><select id="reconcileDoc"><option value="">انتخاب کنید</option></select></div>
+      <div id="docPanel" class="hidden" style="margin-top:15px">
+        <div class="card" style="background:#f8fbff;box-shadow:none">
+          <div class="doc-summary" id="docSummary"></div>
+          <div class="progress"><span id="qtyProgress" style="width:0%"></span></div>
+          <div class="smalltext" id="qtyProgressText" style="margin-top:7px"></div>
+        </div>
+        <div class="notice info">در این بخش، ردیف‌های سپیدار را بر اساس IRC، نام کالا یا شماره فاکتور پیدا کنید. می‌توانید فقط بخشی از تعداد یک ردیف فاکتور را به این سند تخصیص دهید. تاریخ و فی هر فاکتور مستقل باقی می‌ماند.</div>
+        <div class="candidate-tools">
+          <div class="field"><label>شماره فاکتورهای مدنظر (اختیاری، با ویرگول جدا کنید)</label><input id="invoiceFilter" placeholder="مثلاً 451, 467, 529, 542" /></div>
+          <div class="field"><label>تطبیق کالا</label><select id="productMatch"><option value="auto">IRC یا نام کالا</option><option value="irc">IRC دقیق</option><option value="name">نام کالا</option><option value="all">همه ردیف‌ها</option></select></div>
+          <button class="btn primary" id="findCandidates">جست‌وجوی فاکتورها</button>
+          <button class="btn" id="autoMatchDoc">تطبیق خودکار پیشنهادی</button>
+        </div>
+        <div id="candidateResults" style="margin-top:14px"></div>
+        <div style="margin-top:20px"><div class="section-head"><div><h2>فاکتورهای تخصیص‌یافته به این سند</h2><p>تاریخ، شماره، مقدار تخصیص‌یافته و فی مستقل هر فاکتور</p></div><button class="btn small" id="exportAudit">خروجی گزارش این سند</button></div><div id="allocTable"></div></div>
+        <div id="reconcileStatus" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-inventory">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-head"><div><h2>همگام‌سازی انبار مجازی از خود IMED</h2><p>موجودی از صفحه‌ی ورودشده‌ی IMED گرفته می‌شود؛ فایل دستی سپیدار منبع موجودی نیست.</p></div><span class="tag warn" id="inventorySyncBadge">هنوز همگام‌سازی نشده</span></div>
+      <div class="notice info">۱) در یک تب دیگر وارد IMED شو و صفحه‌ی «انبار مجازی» یا فهرست موجودی مجازی را باز کن. ۲) فایل انبار مجازی را از IMED دانلود کن و با دکمهٔ «آپلود فایل انبار مجازی IMED» همین‌جا انتخاب کن. فایل‌های Excel، CSV و JSON پشتیبانی می‌شوند. هر بار برای دیدن موجودی تازه، این فرایند را تکرار کن. به‌دلیل محدودیت امنیتی مرورگر، صفحه‌ی محلی نمی‌تواند بی‌اجازه و مستقیم اطلاعات نشست IMED را بخواند.</div>
+      <div class="actions"><button class="btn primary" id="downloadInventoryBridge">دانلود اسکریپت دریافت موجودی IMED</button><button class="btn" id="copyInventoryBridge">کپی اسکریپت</button><label class="btn primary">آپلود فایل انبار مجازی IMED<input type="file" id="inventorySnapshotInput" accept=".xlsx,.xls,.xlsm,.csv,.json,application/json" hidden></label><label class="checkrow smalltext"><input type="checkbox" id="mergeInventorySnapshots"> ادغام صفحه با Snapshot قبلی</label><button class="btn" id="exportInventoryCSV">خروجی موجودی CSV</button></div>
+      <div class="field" style="margin-top:14px"><label>اسکریپت همگام‌سازی (در Console صفحه انبار مجازی IMED اجرا شود)</label><textarea class="codebox" id="inventoryBridgeCode" readonly></textarea></div>
+      <div class="smalltext" id="inventorySyncInfo" style="margin-top:10px">پس از دریافت Snapshot، زمان، آدرس صفحه‌ی منبع و تعداد ردیف‌ها در اینجا نشان داده می‌شود. اگر جدول چند صفحه دارد، ابتدا در IMED همه صفحات را نمایش بده یا از هر صفحه Snapshot جدا بگیر.</div>
+    </div>
+    <div class="card">
+      <div class="section-head"><div><h2>موجودی مجازی دریافت‌شده</h2><p>موجودی باقیمانده بر اساس آخرین اطلاعاتی که از IMED گرفته‌ای.</p></div><input id="inventorySearch" placeholder="جست‌وجو IRC، InventoryID یا کالا" style="border:1px solid var(--line);border-radius:9px;padding:9px 11px;min-width:240px"/></div>
+      <div class="kpi-row" style="margin-bottom:14px"><div class="kpi"><small>ردیف‌های موجودی</small><b id="invRows">۰</b></div><div class="kpi"><small>تعداد کل باقیمانده (جمع ردیف‌ها)</small><b id="invQty">۰</b></div><div class="kpi"><small>IRC یکتا</small><b id="invIRC">۰</b></div><div class="kpi"><small>آخرین دریافت</small><b id="invWhen" style="font-size:13px">—</b></div></div>
+      <div id="inventoryTable"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-xml">
+    <div class="card">
+      <div class="section-head"><div><h2>تولید فایل XML برای IMED</h2><p>ساختار خروجی بر اساس فایل‌های قبلی: QuotaList و رکوردهای Quota؛ مشتریان شخصی و نامشخص وارد خروجی نمی‌شوند</p></div><span class="tag neutral">خروجی فقط برای ردیف‌های کامل</span></div>
+      <div class="notice warn">قبل از ساخت XML، Snapshot تازه‌ی انبار مجازی را از IMED بگیر. ردیف‌هایی که InventoryID، کد دریافت‌کننده یا فیلدهای ضروری‌شان مشخص نیست، وارد XML نهایی نمی‌شوند و در گزارش خطا نمایش داده می‌شوند.</div>
+      <div class="form-grid">
+        <div class="field"><label>سند توزیع</label><select id="xmlDocSelect"><option value="">انتخاب سند</option></select></div>
+        <div class="field"><label>کد نوع توزیع (TypeID)</label><input id="xmlTypeId" type="number" min="1" placeholder="مثلاً 2 برای مرکز درمانی"/></div>
+        <div class="field"><label>کد دریافت‌کننده (ReceiverCode)</label><input id="xmlReceiverCode" class="mono-input" placeholder="کد دریافت‌کننده در IMED"/></div>
+      </div>
+      <div class="actions"><button class="btn" id="saveXmlHeader">ذخیره مشخصات گیرنده</button><button class="btn" id="resolveInventoryIds">پیشنهاد InventoryID از Snapshot</button><button class="btn primary" id="buildXml">اعتبارسنجی و دانلود XML همین سند</button><button class="btn" id="buildAllXml">ساخت XML کلی همه اسناد</button></div>
+      <div id="xmlHeaderHint" class="smalltext" style="margin-top:8px"></div>
+      <div id="xmlRecordsTable" style="margin-top:18px"></div>
+      <div id="xmlValidation" style="margin-top:12px"></div>
+      <div class="footer-note">برای هر تخصیص، InvoiceNo، InvoiceDate، Count و RialPrice از فاکتور فروش سپیدار می‌آید. InventoryID از موجودی زنده‌ی IMED انتخاب می‌شود؛ TypeID و ReceiverCode باید با مشخصات دریافت‌کننده در IMED تطبیق داده شوند.</div>
+    </div>
+  </section>
+
+  <section class="view" id="view-formscript">
+    <div class="card">
+      <div class="section-head"><div><h2>اسکریپت JavaScript برای تکمیل فرم IMED</h2><p>اسکریپت از رکوردهای XML معتبر ساخته می‌شود و در صفحه‌ی ثبت سند توزیع اجرا می‌شود.</p></div></div>
+      <div class="notice info">ابتدا XML را در بخش قبل اعتبارسنجی کن. دکمه «ارسال سند به فرم IMED» صفحه ثبت سند توزیع را در آدرس مستقیم باز می‌کند؛ سپس کد مخصوص همین سند را در Console همان صفحه اجرا کن. اسکریپت فیلدهای قابل‌شناسایی را پر می‌کند و برای بازبینی متوقف می‌شود؛ دکمه ثبت نهایی را خودش کلیک نمی‌کند.</div>
+      <div class="form-grid"><div class="field"><label>سند توزیع</label><select id="scriptDocSelect"><option value="">انتخاب سند</option></select></div><div class="field"><label>وضعیت داده آماده</label><div id="scriptReadyStatus" class="tag neutral">هنوز اعتبارسنجی نشده</div></div></div>
+      <div class="actions"><button class="btn primary" id="sendToImed">بازکردن فرم ثبت IMED و انتقال کد</button><a class="btn" href="https://register.imed.ir/SaleDistribution/Dist/Dist_QuotaDistribution.aspx" target="_blank" rel="noopener">بازکردن مستقیم صفحه ثبت سند</a><button class="btn" id="downloadFormScript">دانلود اسکریپت</button><button class="btn" id="copyFormScript">کپی کد اسکریپت</button></div>
+      <div class="notice info">با زدن «ارسال سند به فرم IMED»، صفحه ثبت سند توزیع (SaleDistribution/Dist/Dist_QuotaDistribution.aspx) در تب جدید باز و کد مخصوص همین سند کپی می‌شود. در همان صفحه ثبت سند، Console را باز و کد را Paste و اجرا کن؛ سپس از پنل کوچکی که روی صفحه ظاهر می‌شود، هر ردیف را پر کن. بعد از افزودن ردیف بعدی در فرم، دوباره «پرکردن ردیف جاری» را بزن.</div>
+      <div class="field" style="margin-top:14px"><label>پیش‌نمایش کد JavaScript</label><textarea class="codebox" id="formScriptCode" readonly placeholder="پس از انتخاب سند و آماده بودن رکوردهای XML، کد اینجا نمایش داده می‌شود."></textarea></div>
+      <div class="notice warn">به‌دلیل تفاوت احتمالی فرم‌ها و نام فیلدها در نسخه‌های مختلف IMED، ابتدا فقط روی یک ردیف آزمایش کن. بعد از پر شدن، مقادیر را کنترل و ثبت نهایی را دستی انجام بده. این اسکریپت رمز عبور یا نشست ورود را نمی‌خواند و درخواست ثبت خودکار به سرور نمی‌فرستد.</div>
+    </div>
+  </section>
+
+  <section class="view" id="view-settings">
+    <div class="card">
+      <div class="section-head"><div><h2>تنظیمات و پشتیبان‌گیری</h2><p>اطلاعات در پایگاه داده SQLite نگهداری می‌شود و برای انتقال یا پشتیبان‌گیری می‌توانید فایل .sqlite بگیرید.</p></div></div>
+      <div class="notice warn">برنامه برای خواندن انبار مجازی از اسکریپتی استفاده می‌کند که در صفحه‌ی ورودشده‌ی IMED اجرا می‌شود و Snapshot را به JSON تبدیل می‌کند. اسکریپت تکمیل فرم نیز فقط فیلدها را پر می‌کند و ثبت نهایی همچنان با تأیید دستی شماست.</div>
+      <div class="actions"><button class="btn primary" id="exportSqlite">دانلود پایگاه داده SQLite (.sqlite)</button><label class="btn">بازکردن / بازیابی فایل SQLite<input type="file" id="restoreSqliteInput" accept=".sqlite,.db,.sqlite3,application/vnd.sqlite3" hidden></label><button class="btn" id="exportBackup2">خروجی پشتیبان JSON</button><label class="btn">بازیابی پشتیبان JSON<input type="file" id="restoreInput" accept=".json,application/json" hidden></label><button class="btn danger" id="clearAll">پاک‌کردن همه داده‌ها</button></div>
+      <div class="notice info">ذخیره خودکار در پایگاه داده SQLite داخل حافظه مرورگر (IndexedDB) انجام می‌شود؛ برای داشتن فایل مستقل روی کامپیوتر، دکمه «دانلود پایگاه داده SQLite» را بزنید. در رایانه دیگر، فایل را از همین بخش بازیابی کنید.</div><div class="footer-note">نسخه ۰.۱۲ — همگام‌سازی انبار مجازی، تولید XML و انتقال اسکریپت به فرم IMED.</div>
+    </div>
+  </section>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
+<script>
+(()=>{
+const STORE='imedManager_v01';
+const IDB_NAME='imedManagerSqliteStorage';
+const IDB_STORE='databaseFiles';
+let SQL=null, sqliteDB=null, saveQueue=Promise.resolve();
+const state={imed:[],sepidar:[],allocations:{},virtualInventory:[],virtualInventoryMeta:{},currentDoc:'',importRows:[],importHeaders:[],importName:'',importMode:'imed',importRaw:[],preview:[]};
+const $=id=>document.getElementById(id);
+const faNum=n=>Number(n||0).toLocaleString('fa-IR');
+const latin=s=>String(s??'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+const num=v=>{let s=latin(v).replace(/[٬,\s]/g,'').replace(/[٫]/g,'.');let n=Number(s);return Number.isFinite(n)?n:0};
+const norm=s=>latin(String(s??'').toLowerCase()).replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/[\u200c\s\-_/،,().]/g,'').trim();
+const id=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>faNum(n);
+function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),3000)}
+function openIDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(IDB_NAME,1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE)};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('IndexedDB open failed'))})}
+async function idbGet(key){const db=await openIDB();return new Promise((resolve,reject)=>{const tx=db.transaction(IDB_STORE,'readonly'),req=tx.objectStore(IDB_STORE).get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error);tx.oncomplete=()=>db.close()})}
+async function idbPut(key,value){const db=await openIDB();return new Promise((resolve,reject)=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(value,key);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{const e=tx.error;db.close();reject(e)};tx.onabort=()=>{const e=tx.error;db.close();reject(e)}})}
+function createSchema(db){db.exec(`
+CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS imed_distributions (
+ id TEXT PRIMARY KEY, distribution_no TEXT, distribution_date TEXT, receiver TEXT,
+ product TEXT, irc TEXT, quantity REAL, supplier TEXT, distribution_type TEXT, raw_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_imed_distribution_no ON imed_distributions(distribution_no);
+CREATE INDEX IF NOT EXISTS idx_imed_irc ON imed_distributions(irc);
+CREATE TABLE IF NOT EXISTS sepidar_rows (
+ id TEXT PRIMARY KEY, invoice_no TEXT, invoice_date TEXT, customer TEXT,
+ product TEXT, irc TEXT, quantity REAL, unit_price REAL, raw_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sepidar_invoice_no ON sepidar_rows(invoice_no);
+CREATE INDEX IF NOT EXISTS idx_sepidar_irc ON sepidar_rows(irc);
+CREATE TABLE IF NOT EXISTS allocations (
+ id TEXT PRIMARY KEY, distribution_id TEXT NOT NULL, source_id TEXT, invoice_no TEXT,
+ invoice_date TEXT, allocated_qty REAL, unit_price REAL, raw_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_alloc_distribution ON allocations(distribution_id);
+CREATE TABLE IF NOT EXISTS virtual_inventory (id TEXT PRIMARY KEY, inventory_id TEXT, irc TEXT, product TEXT, initial_qty REAL, remaining_qty REAL, entry_date TEXT, raw_json TEXT NOT NULL, main_group TEXT, sub_group TEXT, persian_name TEXT, persian_distinction TEXT, legal_company TEXT, manufacturer_country TEXT, main_supplier TEXT, model TEXT, distributed_qty REAL, supplier_type TEXT, distribution_issuer TEXT, declaration TEXT, order_registration TEXT, batch_no TEXT, strategic_reserves TEXT, production_date TEXT, expiry_date TEXT);
+`);
+const invCols=['main_group TEXT','sub_group TEXT','persian_name TEXT','persian_distinction TEXT','legal_company TEXT','manufacturer_country TEXT','main_supplier TEXT','model TEXT','distributed_qty REAL','supplier_type TEXT','distribution_issuer TEXT','declaration TEXT','order_registration TEXT','batch_no TEXT','strategic_reserves TEXT','production_date TEXT','expiry_date TEXT'];
+const existingInvCols=new Set((db.exec('PRAGMA table_info(virtual_inventory)')[0]?.values||[]).map(r=>r[1]));
+for(const col of invCols){const name=col.split(' ')[0];if(!existingInvCols.has(name))db.exec('ALTER TABLE virtual_inventory ADD COLUMN '+col)}
+db.exec(`CREATE INDEX IF NOT EXISTS idx_virtual_inventory_irc ON virtual_inventory(irc);
+CREATE INDEX IF NOT EXISTS idx_virtual_inventory_id ON virtual_inventory(inventory_id);
+CREATE TABLE IF NOT EXISTS inventory_sync_log (id TEXT PRIMARY KEY, fetched_at TEXT, source_url TEXT, page_title TEXT, row_count INTEGER, raw_json TEXT NOT NULL);
+INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','3');
+`)}
+function runPrepared(db,sql,values){const st=db.prepare(sql);try{st.run(values)}finally{st.free()}}
+function jsonRows(db,table){const r=db.exec(`SELECT raw_json FROM ${table} ORDER BY rowid`);if(!r.length)return[];return r[0].values.map(row=>JSON.parse(row[0]))}
+function loadStateFromSQLite(db){createSchema(db);state.imed=jsonRows(db,'imed_distributions');state.sepidar=jsonRows(db,'sepidar_rows');state.virtualInventory=jsonRows(db,'virtual_inventory');state.allocations={};const r=db.exec('SELECT distribution_id, raw_json FROM allocations ORDER BY rowid');if(r.length){for(const row of r[0].values){const did=row[0];if(!state.allocations[did])state.allocations[did]=[];state.allocations[did].push(JSON.parse(row[1]))}}const m=db.exec("SELECT value FROM app_meta WHERE key='virtual_inventory_meta'");state.virtualInventoryMeta=m.length&&m[0].values.length?JSON.parse(m[0].values[0][0]):{} }
+function writeStateToSQLite(){if(!sqliteDB)throw new Error('SQLite database not initialized');const db=sqliteDB;db.exec('BEGIN');try{
+ db.exec('DELETE FROM allocations; DELETE FROM sepidar_rows; DELETE FROM imed_distributions;');
+ for(const d of state.imed){runPrepared(db,'INSERT INTO imed_distributions VALUES (?,?,?,?,?,?,?,?,?,?)',[String(d.id||id()),String(d.distributionNo||''),String(d.distributionDate||''),String(d.receiver||''),String(d.product||''),String(d.irc||''),num(d.quantity),String(d.supplier||''),String(d.distributionType||''),JSON.stringify(d)])}
+ for(const s of state.sepidar){runPrepared(db,'INSERT INTO sepidar_rows VALUES (?,?,?,?,?,?,?,?,?)',[String(s.id||id()),String(s.invoiceNo||''),String(s.invoiceDate||''),String(s.customer||''),String(s.product||''),String(s.irc||''),num(s.quantity),num(s.unitPrice),JSON.stringify(s)])}
+ for(const [did,list] of Object.entries(state.allocations||{})){for(const a of list||[]){runPrepared(db,'INSERT INTO allocations VALUES (?,?,?,?,?,?,?,?)',[String(a.id||id()),String(did),String(a.sourceId||''),String(a.invoiceNo||''),String(a.invoiceDate||''),num(a.allocatedQty),num(a.unitPrice),JSON.stringify(a)])}}
+ db.exec('DELETE FROM virtual_inventory;');
+ for(const v of (state.virtualInventory||[])){runPrepared(db,`INSERT INTO virtual_inventory (id,inventory_id,irc,product,initial_qty,remaining_qty,entry_date,raw_json,main_group,sub_group,persian_name,persian_distinction,legal_company,manufacturer_country,main_supplier,model,distributed_qty,supplier_type,distribution_issuer,declaration,order_registration,batch_no,strategic_reserves,production_date,expiry_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[String(v.id||id()),String(v.inventoryId||''),String(v.irc||''),String(v.product||v.persianName||''),num(v.initialQty),num(v.remainingQty),String(v.entryDate||''),JSON.stringify(v),String(v.mainGroup||''),String(v.subGroup||''),String(v.persianName||v.product||''),String(v.persianDistinction||''),String(v.legalCompany||''),String(v.manufacturerCountry||''),String(v.mainSupplier||''),String(v.model||''),num(v.distributedQty),String(v.supplierType||''),String(v.distributionIssuer||''),String(v.declaration||''),String(v.orderRegistration||''),String(v.batchNo||''),String(v.strategicReserves||''),String(v.productionDate||''),String(v.expiryDate||'')])}
+ runPrepared(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('virtual_inventory_meta',?)",[JSON.stringify(state.virtualInventoryMeta||{})]);
+ db.exec('COMMIT');
+ }catch(e){try{db.exec('ROLLBACK')}catch(_){}throw e}}
+async function persistSQLiteToBrowser(){if(!sqliteDB)return;const bytes=sqliteDB.export();const copy=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);await idbPut('main',copy)}
+function save(){refresh();saveQueue=saveQueue.then(async()=>{writeStateToSQLite();await persistSQLiteToBrowser()}).catch(err=>{console.error(err);toast('ذخیره SQLite ناموفق بود: '+err.message)});return saveQueue}
+async function exportSQLiteFile(){await saveQueue;writeStateToSQLite();await persistSQLiteToBrowser();const bytes=sqliteDB.export();const blob=new Blob([bytes],{type:'application/vnd.sqlite3'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='imed_manager.sqlite';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('فایل SQLite دانلود شد')}
+async function initApp(){try{if(!window.initSqlJs)throw new Error('کتابخانه SQLite بارگذاری نشد؛ اتصال اینترنت را بررسی کنید');SQL=await initSqlJs({locateFile:f=>`https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}`});const saved=await idbGet('main');if(saved){sqliteDB=new SQL.Database(new Uint8Array(saved));createSchema(sqliteDB);loadStateFromSQLite(sqliteDB)}else{sqliteDB=new SQL.Database();createSchema(sqliteDB);let migrated=false;try{const old=JSON.parse(localStorage.getItem(STORE)||'null');if(old&&Array.isArray(old.imed)&&Array.isArray(old.sepidar)){state.imed=old.imed;state.sepidar=old.sepidar;state.allocations=old.allocations||{};migrated=true}}catch(e){console.warn('Legacy localStorage migration skipped',e)}writeStateToSQLite();await persistSQLiteToBrowser();if(migrated)toast('اطلاعات قبلی به SQLite منتقل شد')}if(state.imed.length&&!state.currentDoc)state.currentDoc=state.imed[0].id;refresh()}catch(e){console.error(e);toast('راه‌اندازی پایگاه داده ناموفق بود: '+e.message)}}
+const titleMap={dashboard:'داشبورد',import:'ورود اطلاعات',distributions:'اسناد توزیع',sepidar:'فاکتورهای فروش سپیدار',reconcile:'تطبیق و ردیابی',inventory:'انبار مجازی IMED',xml:'تولید XML',formscript:'اسکریپت ثبت IMED',settings:'تنظیمات'};
+function goto(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));$('view-'+v).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));$('pageTitle').textContent=titleMap[v]||'';if(v==='reconcile')refreshDocOptions();if(v==='inventory')renderInventory();if(v==='xml')refreshXmlDocs();if(v==='formscript')refreshScriptDocs()}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>goto(b.dataset.view)));
+document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>goto(b.dataset.goto)));
+function allocationsFor(docId){return state.allocations[docId]||[]}
+function target(doc){return num(doc?.quantity)}
+function totalAllocated(docId){return allocationsFor(docId).reduce((s,a)=>s+num(a.allocatedQty),0)}
+function docStatus(d){let t=target(d),s=totalAllocated(d.id);if(t>0&&Math.abs(s-t)<.00001&&allocationsFor(d.id).length)return'exact';if(s>t&&t>0)return'over';if(s>0)return'partial';return'none'}
+function statusTag(status){if(status==='exact')return'<span class="tag good">تطبیق کامل</span>';if(status==='over')return'<span class="tag bad">بیش از مقدار توزیع</span>';if(status==='partial')return'<span class="tag warn">ناقص</span>';return'<span class="tag neutral">بدون تطبیق</span>'}
+function refresh(){
+ $('statDist').textContent=faNum(state.imed.length);$('statSep').textContent=faNum(state.sepidar.length);
+ const full=state.imed.filter(d=>docStatus(d)==='exact').length,pending=state.imed.length-full;
+ $('statFull').textContent=faNum(full);$('statPending').textContent=faNum(pending);
+ $('recentDistributions').innerHTML=state.imed.length?`<div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>تعداد</th><th>وضعیت</th></tr></thead><tbody>${state.imed.slice(-6).reverse().map(d=>`<tr><td>${esc(d.distributionNo||'—')}</td><td>${esc(d.product||'—')}</td><td>${faNum(d.quantity)}</td><td>${statusTag(docStatus(d))}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">هنوز سندی وارد نشده است.</div>';
+ const counts={exact:full,partial:state.imed.filter(d=>docStatus(d)==='partial').length,over:state.imed.filter(d=>docStatus(d)==='over').length,none:state.imed.filter(d=>docStatus(d)==='none').length};
+ const denominator=Math.max(1,state.imed.length);
+ $('matchOverview').innerHTML=state.imed.length?Object.entries({exact:'کامل',partial:'ناقص',over:'بیش از مقدار',none:'بدون تطبیق'}).map(([k,v])=>`<div style="margin:13px 0"><div style="display:flex;justify-content:space-between"><span>${v}</span><b>${faNum(counts[k])}</b></div><div class="progress"><span style="width:${counts[k]/denominator*100}%;background:${k==='exact'?'#15966c':k==='over'?'#c53b32':k==='partial'?'#d28a1e':'#9aa7b5'}"></span></div></div>`).join(''):'<div class="empty">پس از ورود داده‌ها، وضعیت اینجا نمایش داده می‌شود.</div>';
+ renderDist();renderSep();refreshDocOptions();renderInventory();refreshXmlDocs();refreshScriptDocs();
+}
+function renderDist(){let q=norm($('distSearch')?.value||'');let rows=state.imed.filter(d=>!q||norm([d.distributionNo,d.product,d.irc,d.receiver,d.distributionDate].join(' ')).includes(q));$('distTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>شماره سند توزیع</th><th>تاریخ</th><th>دریافت‌کننده</th><th>کالا</th><th>IRC</th><th>تعداد توزیع</th><th>وضعیت تطبیق</th><th></th></tr></thead><tbody>${rows.map(d=>`<tr><td><b>${esc(d.distributionNo||'—')}</b></td><td>${esc(d.distributionDate||'—')}</td><td>${esc(d.receiver||'—')}</td><td>${esc(d.product||'—')}</td><td class="mono">${esc(d.irc||'—')}</td><td>${faNum(d.quantity)}</td><td>${statusTag(docStatus(d))}</td><td><button class="btn small" data-match="${d.id}">تطبیق</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">موردی پیدا نشد یا هنوز سندی وارد نکرده‌اید.</div>';$('distTable').querySelectorAll('[data-match]').forEach(b=>b.onclick=()=>{goto('reconcile');$('reconcileDoc').value=b.dataset.match;openDoc(b.dataset.match)})}
+function renderSep(){let q=norm($('sepSearch')?.value||'');let rows=state.sepidar.filter(s=>!q||norm([s.invoiceNo,s.product,s.irc,s.customer,s.invoiceDate].join(' ')).includes(q)).slice(0,500);$('sepTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>شماره فاکتور</th><th>تاریخ</th><th>مشتری</th><th>کالا</th><th>IRC</th><th>مقدار اصلی</th><th>فی</th></tr></thead><tbody>${rows.map(s=>`<tr><td>${esc(s.invoiceNo||'—')}</td><td>${esc(s.invoiceDate||'—')}</td><td>${esc(s.customer||'—')}</td><td>${esc(s.product||'—')}</td><td class="mono">${esc(s.irc||'—')}</td><td>${faNum(s.quantity)}</td><td>${money(s.unitPrice)}</td></tr>`).join('')}</tbody></table></div><div class="smalltext" style="margin-top:8px">نمایش ${faNum(rows.length)} ردیف از ${faNum(state.sepidar.length)} ردیف (حداکثر ۵۰۰ ردیف در این نما).</div>`:'<div class="empty">هنوز ردیفی از سپیدار وارد نشده است.</div>'}
+$('distSearch').addEventListener('input',renderDist);$('sepSearch').addEventListener('input',renderSep);
+function refreshDocOptions(){let el=$('reconcileDoc');if(!el)return;let prev=el.value||state.currentDoc;el.innerHTML='<option value="">انتخاب کنید</option>'+state.imed.map(d=>`<option value="${d.id}">${esc(d.distributionNo||'بدون شماره')} — ${esc(d.product||'بدون نام')} — ${faNum(d.quantity)}</option>`).join('');if(state.imed.some(d=>d.id===prev))el.value=prev;}
+$('reconcileDoc').addEventListener('change',e=>openDoc(e.target.value));
+function openDoc(docId){state.currentDoc=docId;let d=state.imed.find(x=>x.id===docId);if(!d){$('docPanel').classList.add('hidden');return}$('docPanel').classList.remove('hidden');$('docSummary').innerHTML=`<div class="item"><span class="smalltext">شماره سند توزیع</span><b>${esc(d.distributionNo||'—')}</b></div><div class="item"><span class="smalltext">تاریخ سند</span><b>${esc(d.distributionDate||'—')}</b></div><div class="item"><span class="smalltext">کالا</span><b>${esc(d.product||'—')}</b></div><div class="item"><span class="smalltext">IRC</span><b class="mono">${esc(d.irc||'—')}</b></div><div class="item"><span class="smalltext">تعداد هدف</span><b>${faNum(d.quantity)}</b></div>`;renderAlloc();renderProgress()}
+function renderProgress(){let d=state.imed.find(x=>x.id===state.currentDoc);if(!d)return;let t=target(d),s=totalAllocated(d.id),p=t?Math.min(100,s/t*100):0;$('qtyProgress').style.width=p+'%';$('qtyProgressText').innerHTML=`تخصیص داده‌شده: <b>${faNum(s)}</b> از <b>${faNum(t)}</b> — ${statusTag(docStatus(d))}`;$('reconcileStatus').innerHTML=statusMessage(d)}
+function statusMessage(d){let t=target(d),s=totalAllocated(d.id);if(!t)return'<div class="notice bad">مقدار هدف این سند خالی یا صفر است. ستون «تعداد توزیع» را در فایل IMED بررسی کنید.</div>';if(Math.abs(s-t)<.00001&&allocationsFor(d.id).length)return`<div class="notice good">جمع تخصیص‌ها دقیقاً با مقدار توزیع برابر است: ${faNum(t)} واحد. تاریخ و فی هر منبع در ردیف مستقل نگهداری شده است.</div>`;if(s>t)return`<div class="notice bad">مقدار تخصیص‌یافته ${faNum(s-t)} واحد بیشتر از مقدار توزیع است. تخصیص‌ها را اصلاح کنید.</div>`;return`<div class="notice warn">هنوز ${faNum(t-s)} واحد تا تکمیل مقدار توزیع باقی مانده است. ردیف‌های فاکتور بیشتری اضافه کنید یا مقدار تخصیص‌ها را اصلاح کنید.</div>`}
+function dateOrderValue(v){const a=(latin(String(v||'')).match(/\d+/g)||[]).map(Number);return a.length>=3?a[0]*10000+a[1]*100+a[2]:a.length===1?a[0]:0}
+function renderAlloc(){
+ let d=state.imed.find(x=>x.id===state.currentDoc),a=allocationsFor(state.currentDoc);
+ const nd=norm(d?.product||''),irc=norm(d?.irc||'');
+ const candidates=state.sepidar.filter(s=>{
+   const ircOk=irc&&norm(s.irc)===irc;
+   const sn=norm(s.product||'');
+   const nameOk=nd&&sn&&(sn.includes(nd)||nd.includes(sn));
+   return ircOk||nameOk;
+ });
+ $('allocTable').innerHTML=a.length?`<div class="notice info">اگر فاکتور اشتباه تطبیق داده شده، از ستون «تعویض فاکتور» فاکتور صحیح را انتخاب کن. تاریخ، مشتری، کالا و فی به‌صورت خودکار از ردیف جدید جایگزین می‌شوند.</div><div class="table-wrap"><table><thead><tr><th>شماره فاکتور</th><th>تعویض فاکتور</th><th>تاریخ فاکتور</th><th>مشتری</th><th>کالا</th><th>مقدار تخصیص</th><th>فی</th><th>جمع مبلغ</th><th></th></tr></thead><tbody>${a.map(x=>`<tr><td><b>${esc(x.invoiceNo)}</b></td><td><select data-replacealloc="${x.id}" style="min-width:260px;max-width:340px;padding:7px;border:1px solid var(--line);border-radius:7px"><option value="">انتخاب فاکتور جایگزین…</option>${candidates.slice().sort((a,b)=>dateOrderValue(b.invoiceDate)-dateOrderValue(a.invoiceDate)).map(s=>`<option value="${esc(s.id)}" ${String(x.sourceId)===String(s.id)?'selected':''}>${esc('فاکتور '+(s.invoiceNo||'—')+' | '+(s.invoiceDate||'—')+' | تعداد '+s.quantity+' | فی '+s.unitPrice+' | '+(s.customer||''))}</option>`).join('')}</select></td><td>${esc(x.invoiceDate||'—')}</td><td>${esc(x.customer||'—')}</td><td>${esc(x.product||'—')}</td><td><input type="number" min="0" step="0.01" value="${num(x.allocatedQty)}" data-allocqty="${x.id}" style="width:90px;padding:6px;border:1px solid var(--line);border-radius:7px"/></td><td>${money(x.unitPrice)}</td><td>${money(num(x.allocatedQty)*num(x.unitPrice))}</td><td><button class="btn danger small" data-removealloc="${x.id}">حذف</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">هنوز فاکتوری به این سند تخصیص داده نشده است.</div>';
+ $('allocTable').querySelectorAll('[data-replacealloc]').forEach(sel=>sel.addEventListener('change',()=>{
+   const item=a.find(x=>x.id===sel.dataset.replacealloc),src=state.sepidar.find(x=>String(x.id)===String(sel.value));
+   if(!item||!src)return;
+   if(num(item.allocatedQty)>num(src.quantity)){toast('مقدار تخصیص از مقدار اصلی فاکتور جدید بیشتر است؛ ابتدا مقدار را اصلاح کن');sel.value=String(item.sourceId);return}
+   Object.assign(item,{sourceId:src.id,invoiceNo:src.invoiceNo,invoiceDate:src.invoiceDate,customer:src.customer,product:src.product,irc:src.irc,unitPrice:src.unitPrice,sourceQty:src.quantity,inventoryId:''});
+   save();renderAlloc();renderProgress();toast('فاکتور جایگزین شد؛ InventoryID برای بررسی مجدد پاک شد');
+ }));
+ $('allocTable').querySelectorAll('[data-allocqty]').forEach(inp=>inp.addEventListener('change',()=>{
+   let item=a.find(x=>x.id===inp.dataset.allocqty);
+   if(item){let v=Math.max(0,num(inp.value));if(v>num(item.sourceQty)){toast('مقدار تخصیص نمی‌تواند از مقدار اصلی فاکتور بیشتر باشد');v=num(item.sourceQty)}item.allocatedQty=v;item.inventoryId='';save();renderAlloc();renderProgress()}
+ }));
+ $('allocTable').querySelectorAll('[data-removealloc]').forEach(b=>b.onclick=()=>{state.allocations[state.currentDoc]=a.filter(x=>x.id!==b.dataset.removealloc);save();renderAlloc();renderProgress()});
+ renderProgress()
+}
+function invoiceNums(){return latin($('invoiceFilter').value||'').split(/[^0-9]+/).filter(Boolean)}
+
+function jalaliDateKey(v){
+ const x=latin(String(v||'')).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+ if(!x)return null;
+ const y=Number(x[1]),m=Number(x[2]),d=Number(x[3]);
+ if(y<1||m<1||m>12||d<1||d>31)return null;
+ return y*10000+m*100+d;
+}
+function jalaliMonthKey(v){const k=jalaliDateKey(v);return k===null?null:Math.floor(k/100);}
+function productSimilarity(a,b){
+ const x=norm(a),y=norm(b);
+ if(!x||!y)return 0;
+ if(x===y)return 1;
+ if(x.includes(y)||y.includes(x))return .92;
+ const stop=new Set(['عدد','سایز','مدل','کالا','محصول','دستگاه','سیستم','بسته','عدد']);
+ const A=new Set((String(a||'').toLowerCase().replace(/[يى]/g,'ی').replace(/ك/g,'ک').match(/[آ-یa-z0-9]+/g)||[]).filter(t=>t.length>1&&!stop.has(t)));
+ const B=new Set((String(b||'').toLowerCase().replace(/[يى]/g,'ی').replace(/ك/g,'ک').match(/[آ-یa-z0-9]+/g)||[]).filter(t=>t.length>1&&!stop.has(t)));
+ if(!A.size||!B.size)return 0;
+ let common=0;A.forEach(t=>{if(B.has(t))common++});
+ return common/Math.max(A.size,B.size);
+}
+function buildBulkAutoPlan(d,usedBySource){
+ const needed=Math.max(0,num(d.quantity)-totalAllocated(d.id));
+ if(needed<=0)return {status:'already',planned:[],left:0};
+ const docDate=jalaliDateKey(d.distributionDate),docYear=docDate===null?null:Math.floor(docDate/10000),docIrc=norm(d.irc),docProductNorm=norm(d.product);
+ const hasAnyExactIrc=!!docIrc&&state.sepidar.some(s=>norm(s.irc)===docIrc);
+ const pool=state.sepidar.map(s=>{
+   const sIrc=norm(s.irc),sameIrc=!!docIrc&&!!sIrc&&sIrc===docIrc;
+   const sim=productSimilarity(d.product,s.product),invDate=jalaliDateKey(s.invoiceDate),invYear=invDate===null?null:Math.floor(invDate/10000);
+   // A sale is eligible only on/after the distribution date. This also excludes
+   // every earlier year; later years are considered only after nearer years.
+   const dateOk=docDate!==null&&invDate!==null&&invDate>=docDate;
+   const yearGap=docYear===null||invYear===null?999999:invYear-docYear;
+   const free=Math.max(0,num(s.quantity)-(usedBySource.get(String(s.id))||0));
+   return {s,sameIrc,sim,invDate,invYear,yearGap,dateOk,free,exactName:docProductNorm===norm(s.product)};
+ }).filter(x=>((x.sameIrc)||(!hasAnyExactIrc&&x.sim>=.92))&&x.dateOk&&x.yearGap>=0&&x.free>0);
+ // Consume same-year invoices chronologically first. If their combined free
+ // quantity is insufficient, the loop naturally continues into next year(s).
+ // Imported 403 and 403-2 rows are treated by their actual invoice dates.
+ pool.sort((a,b)=>a.yearGap-b.yearGap||a.invDate-b.invDate||((b.sameIrc?100:0)+(b.exactName?30:0)+b.sim*20)-((a.sameIrc?100:0)+(a.exactName?30:0)+a.sim*20));
+ let planned=[],left=needed;
+ for(const c of pool){if(left<=0)break;const q=Math.min(left,c.free);if(q>0){planned.push({c,q});left-=q}}
+ return {status:left<=0?'complete':'partial',planned,left};
+}
+$('bulkAutoMatch').addEventListener('click',async()=>{
+ const btn=$('bulkAutoMatch');btn.disabled=true;btn.textContent='در حال بررسی و ثبت…';
+ try{
+   const usedBySource=new Map();
+   Object.values(state.allocations||{}).forEach(list=>(list||[]).forEach(a=>{const k=String(a.sourceId);usedBySource.set(k,(usedBySource.get(k)||0)+num(a.allocatedQty))}));
+   let savedDocs=0,savedRows=0,savedQty=0,already=0,partial=0,none=0;
+   const report=[];
+   for(const d of state.imed){
+     const plan=buildBulkAutoPlan(d,usedBySource);
+     if(plan.status==='already'){already++;continue}
+     if(plan.status!=='complete'){
+       if(plan.status==='partial')partial++;else none++;
+       if(plan.planned.length)report.push(`<tr><td>${esc(d.distributionNo||'—')}</td><td>${esc(d.product||'—')}</td><td>${faNum(num(d.quantity)-totalAllocated(d.id)-plan.left)} از ${faNum(num(d.quantity)-totalAllocated(d.id))}</td><td>ناقص؛ ثبت نشد</td></tr>`);
+       continue;
+     }
+     const arr=allocationsFor(d.id).slice();let added=0;
+     for(const {c,q} of plan.planned){
+       const allocation={id:id(),sourceId:c.s.id,invoiceNo:c.s.invoiceNo,invoiceDate:c.s.invoiceDate,customer:c.s.customer,product:c.s.product,irc:c.s.irc,allocatedQty:q,unitPrice:c.s.unitPrice,sourceQty:c.s.quantity,inventoryId:''};
+       arr.push(allocation);added+=q;const k=String(c.s.id);usedBySource.set(k,(usedBySource.get(k)||0)+q);
+     }
+     state.allocations[d.id]=arr;savedDocs++;savedRows+=plan.planned.length;savedQty+=added;
+     report.push(`<tr><td>${esc(d.distributionNo||'—')}</td><td>${esc(d.product||'—')}</td><td>${faNum(added)}</td><td><span class="tag good">ثبت شد</span></td></tr>`);
+   }
+   await save();
+   $('bulkMatchReport').innerHTML=`<div class="notice ${savedDocs?'good':'warn'}">ثبت گروهی تمام شد: ${faNum(savedDocs)} سند کامل، ${faNum(savedRows)} ردیف فاکتور، مجموع ${faNum(savedQty)} واحد ذخیره شد. قبلاً کامل: ${faNum(already)}؛ ناقص/مبهم: ${faNum(partial+none)} (ثبت نشد).</div>`+(report.length?`<div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>مقدار</th><th>نتیجه</th></tr></thead><tbody>${report.map(x=>x).join('')}</tbody></table></div>`:'');
+   refresh();toast('تطبیق‌های قطعی در SQLite ذخیره شدند');
+ }catch(err){console.error(err);toast('ثبت گروهی ناموفق بود: '+err.message)}
+ finally{btn.disabled=false;btn.textContent='تطبیق و ثبت گروهی اسناد قطعی'}
+});
+
+function remainingSepidarQty(sourceId,sourceQty){
+ let used=0;
+ Object.values(state.allocations||{}).forEach(list=>(list||[]).forEach(a=>{
+   if(String(a.sourceId)===String(sourceId))used+=num(a.allocatedQty);
+ }));
+ return Math.max(0,num(sourceQty)-used);
+}
+$('autoMatchDoc').addEventListener('click',()=>{
+ try {
+ const d=state.imed.find(x=>x.id===state.currentDoc);
+ if(!d)return toast('ابتدا سند توزیع را انتخاب کن');
+ let needed=Math.max(0,num(d.quantity)-totalAllocated(d.id));
+ if(needed<=0)return toast('مقدار این سند قبلاً کامل تخصیص داده شده است');
+ const docDate=jalaliDateKey(d.distributionDate),docYear=docDate===null?null:Math.floor(docDate/10000);
+ const docIrc=norm(d.irc);
+ // محاسبه مصرف فاکتورها فقط یک‌بار؛ جلوگیری از پیمایش تودرتوی هزاران رکورد
+ const usedBySource=new Map();
+ Object.values(state.allocations||{}).forEach(list=>(list||[]).forEach(a=>{
+   const k=String(a.sourceId);
+   usedBySource.set(k,(usedBySource.get(k)||0)+num(a.allocatedQty));
+ }));
+ const hasAnyExactIrc=!!docIrc&&state.sepidar.some(s=>norm(s.irc)===docIrc);
+ const docProductNorm=norm(d.product);
+ const pool=state.sepidar.map(s=>{
+   const sIrc=norm(s.irc);
+   const sameIrc=!!docIrc&&!!sIrc&&sIrc===docIrc;
+   const sim=productSimilarity(d.product,s.product);
+   const nameOk=sim>=.55;
+   const invDate=jalaliDateKey(s.invoiceDate),invYear=invDate===null?null:Math.floor(invDate/10000);
+   const dateOk=docDate!==null&&invDate!==null&&invDate>=docDate;
+   const free=Math.max(0,num(s.quantity)-(usedBySource.get(String(s.id))||0));
+   const exactName=docProductNorm===norm(s.product);
+   return {s,sameIrc,sim,nameOk,invDate,invYear,yearGap:docYear===null||invYear===null?999999:invYear-docYear,dateOk,free,exactName};
+ }).filter(x=>(x.sameIrc||(!docIrc&&x.nameOk)||(docIrc&&!hasAnyExactIrc&&x.nameOk))&&x.dateOk&&x.free>0);
+ pool.sort((a,b)=>{
+   const rank=x=>(x.sameIrc?100:0)+(x.exactName?30:0)+x.sim*20;
+   return a.yearGap-b.yearGap || rank(b)-rank(a) || a.invDate-b.invDate;
+ });
+ if(!pool.length){
+   $('candidateResults').innerHTML='<div class="notice warn">تطبیق خودکار مورد مطمئنی پیدا نکرد. IRC، نام کالا یا تاریخ فاکتورها را بررسی کن؛ می‌توانی از جست‌وجوی دستی استفاده کنی.</div>';
+   return toast('فاکتور واجد شرایط پیدا نشد');
+ }
+ let planned=[],left=needed;
+ for(const c of pool){
+   if(left<=0)break;
+   const q=Math.min(left,c.free);
+   if(q<=0)continue;
+   planned.push({c,q});
+   left-=q;
+ }
+ if(!planned.length)return toast('مقدار قابل تخصیص در فاکتورهای فروش پیدا نشد');
+ const exactIrc=planned.every(x=>x.c.sameIrc);
+ const sum=planned.reduce((n,x)=>n+x.q,0);
+ $('candidateResults').innerHTML=`<div class="notice ${left===0?'good':'warn'}">پیشنهاد خودکار بر اساس ${exactIrc?'IRC دقیق':'نام کالا'} و تاریخ فاکتور (از تاریخ توزیع به بعد؛ ابتدا سال توزیع و سپس سال‌های بعد): ${planned.length} ردیف، مجموع ${faNum(sum)} از ${faNum(needed)} واحد. این پیشنهاد را بررسی و سپس تأیید کن.</div><div class="table-wrap"><table><thead><tr><th>فاکتور</th><th>تاریخ</th><th>مشتری</th><th>کالا</th><th>IRC</th><th>مقدار اصلی</th><th>مانده قابل تخصیص</th><th>مقدار پیشنهادی</th><th>فی</th></tr></thead><tbody>${planned.map(({c,q})=>`<tr><td>${esc(c.s.invoiceNo||'—')}</td><td>${esc(c.s.invoiceDate||'—')}</td><td>${esc(c.s.customer||'—')}</td><td>${esc(c.s.product||'—')}</td><td>${esc(c.s.irc||'—')}</td><td>${faNum(c.s.quantity)}</td><td>${faNum(c.free)}</td><td><input type="number" min="0" max="${c.free}" step="0.01" value="${q}" data-autoq="${esc(c.s.id)}" style="width:90px;padding:6px;border:1px solid var(--line);border-radius:7px"></td><td>${money(c.s.unitPrice)}</td></tr>`).join('')}</tbody></table></div><div class="actions"><button class="btn primary" id="confirmAutoMatch">تأیید و ثبت این تطبیق‌ها</button><span class="smalltext">${left>0?'توجه: هنوز '+faNum(left)+' واحد بدون فاکتور مانده است.':''}</span></div>`;
+ $('confirmAutoMatch').onclick=()=>{
+   const arr=allocationsFor(d.id).slice();
+   let sumAdded=0;
+   planned.forEach(({c})=>{
+     const q=Math.max(0,Math.min(c.free,num($('candidateResults').querySelector(`[data-autoq="${CSS.escape(String(c.s.id))}"]`)?.value)));
+     if(!q)return;
+     arr.push({id:id(),sourceId:c.s.id,invoiceNo:c.s.invoiceNo,invoiceDate:c.s.invoiceDate,customer:c.s.customer,product:c.s.product,irc:c.s.irc,allocatedQty:q,unitPrice:c.s.unitPrice,sourceQty:c.s.quantity,inventoryId:''});
+     sumAdded+=q;
+   });
+   if(!sumAdded)return toast('مقدار پیشنهادی صفر است');
+   state.allocations[d.id]=arr;save();renderAlloc();renderProgress();
+   toast('تطبیق‌های تأییدشده ثبت شدند: '+faNum(sumAdded)+' واحد');
+ };
+ } catch(err) {
+   console.error('Auto-match error:', err);
+   const message = err && err.message ? err.message : String(err || 'خطای نامشخص');
+   $('candidateResults').innerHTML = `<div class="notice bad"><b>خطا در تطبیق خودکار</b><br>عملیات انجام نشد. اطلاعات ثبت‌شده قبلی حفظ شده‌اند.<br><span dir="ltr">${esc(message)}</span><br>اگر خطا تکرار شد، همین پیام را برای پشتیبانی ارسال کن.</div>`;
+   toast('تطبیق خودکار با خطا متوقف شد؛ جزئیات در بخش نتایج نمایش داده شد.');
+ }
+});
+
+$('findCandidates').addEventListener('click',()=>{
+ let d=state.imed.find(x=>x.id===state.currentDoc);if(!d)return toast('ابتدا سند توزیع را انتخاب کنید');let nums=invoiceNums(),mode=$('productMatch').value;let nd=norm(d.product),irc=norm(d.irc);
+ let results=state.sepidar.filter(s=>{
+  let invoiceOk=!nums.length||nums.includes(latin(s.invoiceNo).replace(/\D/g,''));
+  let ircOk=irc&&norm(s.irc)===irc;let nameOk=nd&&norm(s.product).includes(nd)||nd&&norm(d.product).includes(norm(s.product));
+  let productOk=mode==='all'?true:mode==='irc'?ircOk:mode==='name'?nameOk:(ircOk||nameOk);
+  return invoiceOk&&productOk;
+ });
+ if(!results.length){$('candidateResults').innerHTML='<div class="empty">فاکتوری مطابق این فیلتر پیدا نشد. شماره‌ها و ستون‌های ورودی را بررسی کنید.</div>';return}
+ $('candidateResults').innerHTML=`<div class="section-head"><div><h2>ردیف‌های پیشنهادی سپیدار</h2><p>${faNum(results.length)} ردیف پیدا شد. تیک ردیف‌های مربوط را بزنید و مقدار قابل تخصیص را بررسی کنید.</p></div><button class="btn small" id="addChecked">افزودن ردیف‌های انتخاب‌شده</button></div><div class="table-wrap"><table><thead><tr><th></th><th>فاکتور</th><th>تاریخ</th><th>مشتری</th><th>کالا</th><th>IRC</th><th>مقدار اصلی</th><th>فی</th><th>مقدار تخصیص به این سند</th></tr></thead><tbody>${results.map(s=>{let duplicate=allocationsFor(d.id).some(a=>a.sourceId===s.id);return `<tr><td><input type="checkbox" data-cand="${s.id}" ${duplicate?'disabled':''}/></td><td>${esc(s.invoiceNo)}</td><td>${esc(s.invoiceDate||'—')}</td><td>${esc(s.customer||'—')}</td><td>${esc(s.product||'—')}</td><td class="mono">${esc(s.irc||'—')}</td><td>${faNum(s.quantity)}</td><td>${money(s.unitPrice)}</td><td><input type="number" min="0" max="${num(s.quantity)}" step="0.01" value="${num(s.quantity)}" data-candqty="${s.id}" style="width:95px;padding:6px;border:1px solid var(--line);border-radius:7px" ${duplicate?'disabled':''}/></td></tr>`}).join('')}</tbody></table></div>`;
+ $('addChecked').onclick=()=>{let chosen=[...$('candidateResults').querySelectorAll('[data-cand]:checked')];if(!chosen.length)return toast('هیچ ردیفی انتخاب نشده است');let arr=allocationsFor(d.id).slice();chosen.forEach(cb=>{let s=state.sepidar.find(x=>x.id===cb.dataset.cand);if(!s)return;let q=num($('candidateResults').querySelector(`[data-candqty="${s.id}"]`)?.value);if(q<=0)return;arr.push({id:id(),sourceId:s.id,invoiceNo:s.invoiceNo,invoiceDate:s.invoiceDate,customer:s.customer,product:s.product,irc:s.irc,allocatedQty:q,unitPrice:s.unitPrice,sourceQty:s.quantity})});state.allocations[d.id]=arr;save();renderAlloc();toast('ردیف‌های انتخابی اضافه شدند')};
+});
+$('exportAudit').addEventListener('click',()=>{let d=state.imed.find(x=>x.id===state.currentDoc);if(!d)return;let rows=[['شماره سند توزیع','تاریخ سند','IRC','کالا','تعداد هدف','شماره فاکتور','تاریخ فاکتور','مشتری','مقدار تخصیص','فی','مبلغ']];allocationsFor(d.id).forEach(a=>rows.push([d.distributionNo,d.distributionDate,d.irc,d.product,d.quantity,a.invoiceNo,a.invoiceDate,a.customer,a.allocatedQty,a.unitPrice,num(a.allocatedQty)*num(a.unitPrice)]));downloadCSV(rows,`audit_${d.distributionNo||'distribution'}.csv`)});
+
+// ------------------------------------------------------------------
+// IMED live virtual inventory bridge, XML export and form autofill
+// ------------------------------------------------------------------
+function buildInventoryBridgeSource(){return String.raw`(()=>{
+  const digits=s=>String(s??'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  const norm=s=>digits(s).toLowerCase().replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/[\u200c\s\-_/،,().:]/g,'');
+  const num=s=>{const x=digits(s).replace(/[٬,\s]/g,'').replace(/[^0-9.-]/g,'');const n=Number(x);return Number.isFinite(n)?n:null};
+  const aliases={inventoryId:['inventoryid','کدانبارمجازی','شناسهانبارمجازی','شناسهانبار','کدموجودی','شمارهانبارمجازی','کدانبار'],irc:['irc','کدirc','شناسهirc'],remainingQty:['تعدادباقیمانده','مقدارباقیمانده','ماندهتعداد','مانده','موجودیباقیمانده','remainingqty','remainingquantity'],initialQty:['تعداداولیه','مقداراولیه','تعدادورود','مقدارورود','initialqty','quantity'],product:['نامکالا','ناممحصول','شرحکالا','کالا','محصول','productname'],entryDate:['تاریخورود','تاریخثبت','تاریخایجاد','تاریخ','entrydate']};
+  const pick=(h,a)=>h.findIndex(x=>a.some(y=>x===norm(y)||x.includes(norm(y))));
+  const tables=[...document.querySelectorAll('table')];let found=[];
+  for(const t of tables){const trs=[...t.querySelectorAll('tr')];for(let hr=0;hr<Math.min(trs.length,8);hr++){const hs=[...trs[hr].children].map(c=>norm(c.innerText));if(!hs.length)continue;const ix={};for(const k of Object.keys(aliases))ix[k]=pick(hs,aliases[k]);if(ix.inventoryId>=0&&ix.irc>=0&&ix.remainingQty>=0){let rows=[];for(const tr of trs.slice(hr+1)){const cells=[...tr.children].map(c=>c.innerText.trim());if(cells.length<=Math.max(ix.inventoryId,ix.irc,ix.remainingQty))continue;const inventoryId=digits(cells[ix.inventoryId]).trim(),irc=digits(cells[ix.irc]).replace(/\D/g,'');const remainingQty=num(cells[ix.remainingQty]);if(!inventoryId||!irc||remainingQty===null)continue;rows.push({inventoryId,irc,product:ix.product>=0?cells[ix.product]:'',initialQty:ix.initialQty>=0?num(cells[ix.initialQty]):null,remainingQty,entryDate:ix.entryDate>=0?cells[ix.entryDate]:'',rawCells:cells})}if(rows.length)found.push({table:t,headerRow:hr,rows,headers:hs,score:rows.length+10});}}
+  }
+  if(!found.length){console.error('IMED Inventory Sync: جدول مناسب پیدا نشد. باید جدول صفحه شامل ستون‌های InventoryID، IRC و مقدار باقیمانده باشد.');console.table(tables.map((t,i)=>({table:i,headers:[...t.querySelectorAll('tr:first-child th, tr:first-child td')].map(c=>c.innerText).join(' | ')})));return}
+  found.sort((a,b)=>b.score-a.score);const best=found[0];
+  const payload={schema:'imed-virtual-inventory/v1',fetchedAt:new Date().toISOString(),sourceUrl:location.href,pageTitle:document.title,tableCount:found.length,rows:best.rows};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='imed_virtual_inventory_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+  console.log('IMED virtual inventory exported:',best.rows.length,'rows. Source:',location.href);
+  const bodyText=document.body.innerText||'';if(/صفحه\s*\d+\s*(از|\/)\s*\d+|page\s*\d+\s*(of|\/)\s*\d+/i.test(bodyText))console.warn('احتمالاً جدول صفحه‌بندی دارد. اگر همه صفحات نمایش داده نشده‌اند، هر صفحه را جداگانه خروجی بگیر و Snapshotها را ادغام کن.');
+  console.table(best.rows.slice(0,10));
+})();`}
+function downloadText(text,name,type='text/plain;charset=utf-8'){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+async function copyText(text){try{await navigator.clipboard.writeText(text);toast('کد در کلیپ‌بورد کپی شد')}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('کد کپی شد')}}
+function renderInventory(){const q=norm($('inventorySearch')?.value||'');const rows=(state.virtualInventory||[]).filter(v=>!q||norm(Object.values(v).join(' ')).includes(q));const meta=state.virtualInventoryMeta||{};if($('invRows'))$('invRows').textContent=faNum(state.virtualInventory.length);if($('invQty'))$('invQty').textContent=faNum(state.virtualInventory.reduce((s,v)=>s+num(v.remainingQty),0));if($('invIRC'))$('invIRC').textContent=faNum(new Set(state.virtualInventory.map(v=>v.irc).filter(Boolean)).size);if($('invWhen'))$('invWhen').textContent=meta.fetchedAt?new Date(meta.fetchedAt).toLocaleString('fa-IR'):'—';if($('inventorySyncInfo'))$('inventorySyncInfo').textContent=meta.fetchedAt?`آخرین Snapshot: ${new Date(meta.fetchedAt).toLocaleString('fa-IR')} | ${meta.pageTitle||''} | ${meta.sourceUrl||''}`:'هنوز Snapshot از IMED وارد نشده است.';if($('inventorySyncBadge')){$('inventorySyncBadge').textContent=meta.fetchedAt?'دریافت‌شده از IMED':'هنوز همگام‌سازی نشده';$('inventorySyncBadge').className='tag '+(meta.fetchedAt?'good':'warn')};if(!$('inventoryTable'))return;const cols=[['inventoryId','کد انبار مجازی'],['entryDate','تاریخ ورود به انبار مجازی'],['irc','IRC'],['mainGroup','گروه اصلی'],['subGroup','گروه فرعی'],['persianName','نام فارسی کالا'],['persianDistinction','وجه افتراق فارسی'],['legalCompany','کمپانی قانونی'],['manufacturerCountry','کشور سازنده اصلی'],['mainSupplier','شرکت تامین کننده اصلی'],['model','مدل'],['distributedQty','تعداد توزیع'],['initialQty','تعداد کل موجودی اولیه'],['remainingQty','تعداد باقیمانده در انبار مجازی'],['supplierType','نوع تامین کننده'],['distributionIssuer','صادر کننده سند توزیع'],['declaration','اظهار'],['orderRegistration','ثبت سفارش'],['batchNo','شماره سری ساخت / بچ'],['strategicReserves','ذخایر استراتژیک'],['productionDate','تاریخ تولید'],['expiryDate','تاریخ انقضاء']];$('inventoryTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${rows.slice(0,1000).map(v=>`<tr>${cols.map(([k])=>`<td>${esc((v[k]??(k==='persianName'?v.product:''))||'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="smalltext" style="margin-top:8px">نمایش ${faNum(Math.min(rows.length,1000))} ردیف از ${faNum(rows.length)} ردیف فیلترشده؛ جدول شامل تمام ۲۲ ستون فایل IMED است.</div>`:'<div class="empty">هنوز موجودی مجازی از IMED وارد نشده یا نتیجه‌ای با این جست‌وجو وجود ندارد.</div>'}
+$('inventoryBridgeCode').value=buildInventoryBridgeSource();
+$('downloadInventoryBridge').onclick=()=>downloadText(buildInventoryBridgeSource(),'IMED_Virtual_Inventory_Sync.js','text/javascript;charset=utf-8');
+$('copyInventoryBridge').onclick=()=>copyText(buildInventoryBridgeSource());
+$('inventorySearch').addEventListener('input',renderInventory);
+$('inventorySnapshotInput').onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{
+   let rows=[],meta={};
+   const ext=(f.name.split('.').pop()||'').toLowerCase();
+   if(ext==='json'){
+     const obj=JSON.parse(await f.text());rows=Array.isArray(obj)?obj:obj.rows;meta=obj;
+     if(!Array.isArray(rows))throw Error('فایل JSON باید آرایه یا فیلد rows داشته باشد');
+   }else{
+     const aliases={
+       inventoryId:['کد انبار مجازی','InventoryID','Inventory Id','شناسه انبار','شناسه موجودی','کد موجودی'],entryDate:['تاریخ ورود به انبار مجازی','تاریخ ورود','تاریخ ثبت','تاریخ رسید','EntryDate','Date'],irc:['IRC','کد IRC','شناسه IRC'],mainGroup:['گروه اصلی'],subGroup:['گروه فرعی'],persianName:['نام فارسی کالا','نام کالا','کالا','نام محصول','شرح کالا','Product','ProductName'],persianDistinction:['وجه افتراق فارسی','وجه افتراق'],legalCompany:['کمپانی قانونی'],manufacturerCountry:['کشور سازنده اصلی','کشور سازنده'],mainSupplier:['شرکت تامین کننده اصلی','تامین کننده اصلی'],model:['مدل'],distributedQty:['تعداد توزیع'],initialQty:['تعداد کل موجودی اولیه','تعداد اولیه','مقدار اولیه','موجودی اولیه','InitialQty','Initial Quantity'],remainingQty:['تعداد باقیمانده در انبار مجازی','موجودی باقیمانده','تعداد باقیمانده','باقیمانده','مانده','مقدار باقیمانده','RemainingQty','Remaining Quantity','موجودی قابل توزیع'],supplierType:['نوع تامین کننده','نوع تأمین کننده'],distributionIssuer:['صادر کننده سند توزیع','صادرکننده سند توزیع'],declaration:['اظهار'],orderRegistration:['ثبت سفارش'],batchNo:['شماره سری ساخت / بچ','شماره سری ساخت','سری ساخت','بچ'],strategicReserves:['ذخایر استراتژیک','ذخایر راهبردی'],productionDate:['تاریخ تولید'],expiryDate:['تاریخ انقضاء','تاریخ انقضا']
+     };
+     const hn=v=>norm(v).replace(/تعداد|مقدار/g,'');
+     const ab=await f.arrayBuffer(),sig=new Uint8Array(ab,0,Math.min(4,ab.byteLength));
+     const htmlFile=(sig[0]===0xFF&&sig[1]===0xFE)||(sig[0]===0xFE&&sig[1]===0xFF)||sig[0]===0x3C||sig[0]===0xEF;
+     if(htmlFile){
+       let html;
+       if(sig[0]===0xFF&&sig[1]===0xFE)html=new TextDecoder('utf-16le').decode(ab);
+       else if(sig[0]===0xFE&&sig[1]===0xFF)html=new TextDecoder('utf-16be').decode(ab);
+       else html=new TextDecoder('utf-8').decode(ab);
+       const doc=new DOMParser().parseFromString(html,'text/html'),table=doc.querySelector('table');
+       if(!table)throw Error('در فایل خروجی IMED جدول پیدا نشد');
+       const trs=[...table.querySelectorAll('tr')].filter(tr=>tr.closest('table')===table);
+       const cellText=tr=>[...tr.children].filter(el=>el.matches('td,th')).map(td=>(td.textContent||'').replace(/\\u00a0/g,' ').trim());
+       if(!trs.length)throw Error('ردیف عنوان ستون‌ها در فایل پیدا نشد');
+       const header=cellText(trs[0]),idx={};
+       for(const [key,alts] of Object.entries(aliases)){const pos=header.findIndex(h=>alts.some(a=>hn(h)===hn(a)||hn(h).includes(hn(a))));if(pos>=0)idx[key]=pos}
+       if(idx.inventoryId===undefined||idx.irc===undefined||idx.remainingQty===undefined)throw Error('ستون‌های کد انبار مجازی، IRC و تعداد باقیمانده در فایل پیدا نشد');
+       rows=trs.slice(1).map(tr=>cellText(tr)).filter(r=>r.some(x=>x!=='')).map(r=>{const o={};for(const k of Object.keys(aliases))o[k]=idx[k]===undefined?'':(r[idx[k]]??'');o.product=o.persianName;return o});
+       meta={pageTitle:'فایل انبار مجازی IMED',sourceUrl:'فایل آپلودشده: '+f.name,fetchedAt:new Date().toISOString()};
+     }else{
+       if(!window.XLSX)throw Error('کتابخانه Excel بارگذاری نشده؛ اتصال اینترنت را بررسی کن');
+       const wb=XLSX.read(ab,{type:'array',cellDates:false});let best={score:0};
+       for(const sn of wb.SheetNames){const mat=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:false});for(let ri=0;ri<Math.min(mat.length,15);ri++){const h=(mat[ri]||[]).map(x=>String(x??'').trim()),found={};for(const [key,alts] of Object.entries(aliases)){const pos=h.findIndex(cell=>alts.some(a=>hn(cell)===hn(a)||hn(cell).includes(hn(a))));if(pos>=0)found[key]=pos}const score=Object.keys(found).length+(found.inventoryId!==undefined?3:0)+(found.irc!==undefined?3:0)+(found.remainingQty!==undefined?3:0);if(score>best.score)best={score,sn,mat,ri,found}}}
+       if(!best.sn||best.found.inventoryId===undefined||best.found.irc===undefined||best.found.remainingQty===undefined)throw Error('ستون‌های کد انبار مجازی، IRC و موجودی باقیمانده پیدا نشد');
+       rows=best.mat.slice(best.ri+1).filter(r=>r&&r.some(v=>String(v??'').trim())).map(r=>{const o={};for(const k of Object.keys(aliases))o[k]=best.found[k]===undefined?'':r[best.found[k]]??'';o.product=o.persianName;return o});
+       meta={pageTitle:'فایل انبار مجازی IMED - '+best.sn,sourceUrl:'فایل آپلودشده: '+f.name,fetchedAt:new Date().toISOString()};
+     }
+   }
+   const cleaned=rows.map(r=>{
+     const rv=r.remainingQty??r.remaining_qty??r.remainQty??r.RemainingQty??r['تعداد باقیمانده در انبار مجازی']??r['موجودی باقیمانده'];
+     return{id:id(),inventoryId:String(r.inventoryId??r.InventoryID??r.inventory_id??r['کد انبار مجازی']??'').trim(),entryDate:String(r.entryDate??r.date??r['تاریخ ورود به انبار مجازی']??r['تاریخ ورود']??''),irc:latin(r.irc??r.IRC??'').replace(/\D/g,''),mainGroup:String(r.mainGroup??r['گروه اصلی']??''),subGroup:String(r.subGroup??r['گروه فرعی']??''),persianName:String(r.persianName??r.product??r.productName??r.name??r['نام فارسی کالا']??r['نام کالا']??''),product:String(r.persianName??r.product??r.productName??r.name??r['نام فارسی کالا']??r['نام کالا']??''),persianDistinction:String(r.persianDistinction??r['وجه افتراق فارسی']??''),legalCompany:String(r.legalCompany??r['کمپانی قانونی']??''),manufacturerCountry:String(r.manufacturerCountry??r['کشور سازنده اصلی']??''),mainSupplier:String(r.mainSupplier??r['شرکت تامین کننده اصلی']??''),model:String(r.model??r['مدل']??''),distributedQty:r.distributedQty==null?num(r['تعداد توزیع']):num(r.distributedQty),initialQty:r.initialQty==null?num(r['تعداد کل موجودی اولیه']):num(r.initialQty),remainingQty:rv==null||String(rv).trim()===''?NaN:num(rv),supplierType:String(r.supplierType??r['نوع تامین کننده']??''),distributionIssuer:String(r.distributionIssuer??r['صادر کننده سند توزیع']??''),declaration:String(r.declaration??r['اظهار']??''),orderRegistration:String(r.orderRegistration??r['ثبت سفارش']??''),batchNo:String(r.batchNo??r['شماره سری ساخت / بچ']??r['شماره سری ساخت']??''),strategicReserves:String(r.strategicReserves??r['ذخایر استراتژیک']??''),productionDate:String(r.productionDate??r['تاریخ تولید']??''),expiryDate:String(r.expiryDate??r['تاریخ انقضاء']??r['تاریخ انقضا']??'')};
+   }).filter(r=>r.inventoryId&&r.irc&&Number.isFinite(r.remainingQty));
+   if(!cleaned.length)throw Error('ردیف معتبری با InventoryID، IRC و موجودی باقیمانده پیدا نشد؛ عنوان ستون‌ها و فایل را بررسی کن');
+   if($('mergeInventorySnapshots').checked){
+     const m=new Map(state.virtualInventory.map(v=>[String(v.inventoryId),v]));
+     cleaned.forEach(v=>m.set(String(v.inventoryId),v));state.virtualInventory=[...m.values()];
+   }else state.virtualInventory=cleaned;
+   state.virtualInventoryMeta={fetchedAt:meta.fetchedAt||new Date().toISOString(),sourceUrl:meta.sourceUrl||'',pageTitle:meta.pageTitle||f.name,rowCount:state.virtualInventory.length,mergedPages:$('mergeInventorySnapshots').checked?(num(state.virtualInventoryMeta?.mergedPages)||1)+1:1};
+   await save();renderInventory();toast(`${faNum(cleaned.length)} ردیف انبار مجازی IMED از فایل وارد شد`);
+ }catch(err){console.error(err);toast('آپلود انبار مجازی ناموفق: '+err.message)}
+ e.target.value='';
+};
+$('exportInventoryCSV').onclick=()=>{const cols=[['inventoryId','کد انبار مجازی'],['entryDate','تاریخ ورود به انبار مجازی'],['irc','IRC'],['mainGroup','گروه اصلی'],['subGroup','گروه فرعی'],['persianName','نام فارسی کالا'],['persianDistinction','وجه افتراق فارسی'],['legalCompany','کمپانی قانونی'],['manufacturerCountry','کشور سازنده اصلی'],['mainSupplier','شرکت تامین کننده اصلی'],['model','مدل'],['distributedQty','تعداد توزیع'],['initialQty','تعداد کل موجودی اولیه'],['remainingQty','تعداد باقیمانده در انبار مجازی'],['supplierType','نوع تامین کننده'],['distributionIssuer','صادر کننده سند توزیع'],['declaration','اظهار'],['orderRegistration','ثبت سفارش'],['batchNo','شماره سری ساخت / بچ'],['strategicReserves','ذخایر استراتژیک'],['productionDate','تاریخ تولید'],['expiryDate','تاریخ انقضاء']];downloadCSV([cols.map(c=>c[1]),...state.virtualInventory.map(v=>cols.map(([k])=>v[k]??''))],'imed_virtual_inventory.csv')};
+function refreshXmlDocs(){const el=$('xmlDocSelect');if(!el)return;const prev=el.value||state.currentDoc;el.innerHTML='<option value="">انتخاب سند</option>'+state.imed.map(d=>`<option value="${esc(d.id)}">${esc(d.distributionNo)} — ${esc(d.product)} — ${faNum(d.quantity)}</option>`).join('');if(state.imed.some(d=>d.id===prev))el.value=prev;if(el.value)loadXmlDoc(el.value);}
+const CUSTOMER_TYPE_MAP={"داروخانه بيمارستان بوعلي":6,"خدمات درماني آواي شفاياب (بيمارستان لقمان)":2,"شركت فياض درمان مركز جراحي آلفا":2,"صبا داروي ميلاد (بيمارستان عرفان نيايش)":2,"شركت احياء درمان دارو (بيمارستان پاستور نو)":2,"صبا داروي ميلاد(بيمارستان عرفان)":2,"بيمارستان عرفان نيايش":2,"بيمارستان عرفان":2,"صبا داروي ميلاد (بيمارستان محب مهر)":2,"صبا داروي ميلاد(بيمارستان كيان)":2,"بيمارستان حضرت فاطمه الزهرا (س)":2,"بيمارستان مصطفي خميني":2,"بيمارستان سوم شعبان-انجمن محبان الحسين(ع)":2,"شركت دارو تجهيز افلاك(بيمارستان پارسا)":2,"كاروفيدار تجهيز سلامت":15,"خدمات درماني آواي شفاياب (بيمارستان شهيد مفتح ورامين)":2,"بيمارستان تخصصي و فوق تخصصي چشم پزشكي بينا":2,"بيمارستان فوق تخصصي نور افشار":2,"مركز جراحي محدود بهار(آتيه نگر اعتماد)":2,"بيمارستان بعثت نهاجا":2,"بيمارستان سوم شعبان دماوند":2,"بيمارستان فوق تخصصي ساسان":2,"داروخانه بيمارستان هاجر":6,"داروخانه روزانه داخلي بيمارستان تنديس":6,"داروخانه روزانه دكتر وهاب آقائي":6,"بيمارستان گلستان":2,"بيمارستان خيريه حضرت صديقه زهرا(س)":2,"داروخانه روزانه ارم":6,"بيمارستان شهيد چمران":2,"بيمارستان كسري":2,"داروخانه روزانه دكتر عليرضا كرمي":6,"شركت بهستان پخش (بيمارستان محب مهر)":2,"شركت احياء درمان دارو":15,"داروخانه بيمارستان فرمانيه":6,"داروخانه  روزانه دكتر پناهي":6,"داروخانه شبانه روزي باهر":6,"درمانگاه صاحب كوثر":2,"گروه پزشكي فوق تخصصي اقبال مبنا (بيمارستان اقبال)":2,"شركت اميد بخشان حيات(بيمارستان امام حسين(ع))":2};
+function normCustomer(s){return norm(String(s||'')).replace(/[\u200c\s_\-،,().\/\\]/g,'')}
+const CUSTOMER_TYPE_LOOKUP=(()=>{const o={};for(const [name,tid] of Object.entries(CUSTOMER_TYPE_MAP)){const k=normCustomer(name);if(tid!==null&&tid!==undefined)o[k]=String(tid)}return o})();
+function typeForAllocation(a){return CUSTOMER_TYPE_LOOKUP[normCustomer(a.customer)]||''}
+function inferTypeId(d){const a=allocationsFor(d.id).find(x=>typeForAllocation(x));return a?typeForAllocation(a):''}
+function loadXmlDoc(docId){const d=state.imed.find(x=>x.id===docId);if(!d)return;$('xmlTypeId').value=inferTypeId(d)||d.typeId||'';$('xmlReceiverCode').value=d.receiverCode||'';$('xmlHeaderHint').textContent=`گیرنده: ${d.receiver||'—'} | TypeID هر ردیف از نام مشتری فاکتور سپیدار و جدول ۲۲۵ ردیفی تعیین می‌شود؛ مشتریان شخصی/نامشخص حذف می‌شوند.`;renderXmlRows();}
+$('xmlDocSelect').addEventListener('change',e=>loadXmlDoc(e.target.value));
+$('saveXmlHeader').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند توزیع را انتخاب کن');d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save();renderXmlRows();toast('مشخصات گیرنده ذخیره شد')};
+function autoSaveXmlHeader(){const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return;d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save()}$('xmlTypeId').addEventListener('change',autoSaveXmlHeader);$('xmlReceiverCode').addEventListener('change',autoSaveXmlHeader);
+function stockCandidates(d,a){const irc=norm(d.irc||a.irc||'');return state.virtualInventory.filter(v=>norm(v.irc)===irc&&num(v.remainingQty)>0)}
+function resolveStock(d,a,used={}){const c=stockCandidates(d,a);const ok=v=>num(v.remainingQty)-num(used[v.inventoryId]||0)>=num(a.allocatedQty);if(a.inventoryId){const v=c.find(x=>String(x.inventoryId)===String(a.inventoryId));if(v&&ok(v))return{row:v,reason:'انتخاب‌شده'};return{row:null,reason:'InventoryID انتخاب‌شده موجودی کافی ندارد یا در Snapshot نیست'}}const eligible=c.filter(ok);const exact=eligible.filter(v=>Math.abs(num(v.remainingQty)-num(used[v.inventoryId]||0)-num(a.allocatedQty))<.00001);if(exact.length===1)return{row:exact[0],reason:'تطبیق یکتای مقدار با باقیمانده'};if(exact.length>1)return{row:null,reason:'چند InventoryID با باقیمانده برابر پیدا شد؛ انتخاب دستی لازم است'};if(eligible.length===1)return{row:eligible[0],reason:'تنها InventoryID دارای موجودی کافی'};if(!eligible.length)return{row:null,reason:c.length?'موجودی باقیمانده کافی نیست':'IRC در Snapshot انبار پیدا نشد'};return{row:null,reason:'چند InventoryID موجودی کافی دارند؛ انتخاب دستی لازم است'}}
+function renderXmlRows(){const did=$('xmlDocSelect')?.value,d=state.imed.find(x=>x.id===did);if(!d||!$('xmlRecordsTable'))return;const alloc=allocationsFor(d.id);if(!alloc.length){$('xmlRecordsTable').innerHTML='<div class="empty">برای این سند هنوز فاکتور فروش سپیدار تخصیص داده نشده است.</div>';$('xmlValidation').innerHTML='';return}let used={},rows=[];for(const a of alloc){const r=resolveStock(d,a,used);const stock=r.row;if(stock)used[stock.inventoryId]=(used[stock.inventoryId]||0)+num(a.allocatedQty);rows.push({a,stock,reason:r.reason,candidates:stockCandidates(d,a),typeId:typeForAllocation(a)})} $('xmlRecordsTable').innerHTML=`<div class="section-head"><div><h2>تخصیص‌ها و انتخاب موجودی مجازی</h2><p>TypeID از مشتری فاکتور سپیدار خوانده می‌شود؛ مشتریان شخصی یا نامشخص در XML نمی‌آیند.</p></div><span class="tag neutral">${faNum(alloc.length)} ردیف</span></div><div class="table-wrap"><table><thead><tr><th>فاکتور فروش</th><th>مشتری سپیدار</th><th>TypeID</th><th>تاریخ</th><th>تعداد XML</th><th>فی</th><th>InventoryID از IMED</th><th>وضعیت</th></tr></thead><tbody>${rows.map(({a,stock,reason,candidates,typeId})=>`<tr><td>${esc(a.invoiceNo)}</td><td>${esc(a.customer||'—')}</td><td>${typeId?`<span class="tag good">${esc(typeId)}</span>`:'<span class="tag warn">شخصی/نامشخص — حذف از XML</span>'}</td><td>${esc(a.invoiceDate||'—')}</td><td>${faNum(a.allocatedQty)}</td><td>${money(a.unitPrice)}</td><td><select data-stockalloc="${a.id}" style="min-width:230px;padding:7px;border:1px solid var(--line);border-radius:7px"><option value="">انتخاب دستی / نامشخص</option>${candidates.map(v=>`<option value="${esc(v.inventoryId)}" ${String(a.inventoryId||stock?.inventoryId||'')===String(v.inventoryId)?'selected':''}>${esc(v.inventoryId)} — مانده ${faNum(v.remainingQty)} — ${esc(v.product||'')}</option>`).join('')}</select></td><td>${stock?'<span class="tag good">قابل استفاده</span>':`<span class="tag warn">${esc(reason)}</span>`}</td></tr>`).join('')}</tbody></table></div>`;$('xmlRecordsTable').querySelectorAll('[data-stockalloc]').forEach(sel=>sel.onchange=()=>{const a=alloc.find(x=>x.id===sel.dataset.stockalloc);if(a){a.inventoryId=sel.value;save();renderXmlRows()}});validateXmlDoc(d,false)}
+function makeQuotaRows(d){let used={},rows=[],errors=[];if(!d)return{rows,errors:['سندی انتخاب نشده است']};const receiverCode=String(d.receiverCode||'').trim();let excluded=0;for(const a of allocationsFor(d.id)){const typeId=typeForAllocation(a);if(!typeId){excluded++;continue}const r=resolveStock(d,a,used);const inv=r.row;const row={TypeID:typeId,IRC:String(d.irc||a.irc||''),Count:num(a.allocatedQty),RialPrice:num(a.unitPrice),InvoiceNo:String(a.invoiceNo||''),InvoiceDate:String(a.invoiceDate||''),InventoryID:inv?String(inv.inventoryId):String(a.inventoryId||''),ReceiverCode:receiverCode,ReceiverName:String(d.receiver||'')};let miss=[];for(const k of ['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate','InventoryID','ReceiverCode','ReceiverName']){if(row[k]===''||row[k]===0||row[k]==null)miss.push(k)}if(!inv)miss.push('InventoryID/موجودی قابل تأیید');if(inv)used[inv.inventoryId]=(used[inv.inventoryId]||0)+row.Count;if(miss.length)errors.push(`فاکتور ${row.InvoiceNo||'؟'}: فیلدهای ناقص یا نامعتبر: ${[...new Set(miss)].join('، ')} (${r.reason})`);else rows.push(row)}const total=rows.reduce((s,x)=>s+x.Count,0);if(Math.abs(total-num(d.quantity))>0.00001)errors.push(`جمع تعداد ردیف‌های واجد شرایط XML برابر ${faNum(total)} است، اما مقدار سند IMED برابر ${faNum(d.quantity)} است. ردیف‌های مشتری شخصی/نامشخص حذف شده‌اند (تعداد ردیف حذف‌شده: ${excluded}).`);if(!allocationsFor(d.id).length)errors.push('هیچ فاکتور فروشی به این سند تخصیص داده نشده است.');return{rows,errors,total,excluded}}
+function xmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
+function quotaXml(rows){return `<?xml version="1.0" encoding="UTF-8"?>\n<QuotaList>\n${rows.map(r=>'  <Quota>\n'+Object.entries(r).map(([k,v])=>`    <${k}>${xmlEsc(v)}</${k}>`).join('\n')+'\n  </Quota>').join('\n')}\n</QuotaList>\n`}
+function validateXmlDoc(d,show=true){const v=makeQuotaRows(d);if(show&&$('xmlValidation'))$('xmlValidation').innerHTML=v.errors.length?`<div class="notice warn"><b>${faNum(v.rows.length)} ردیف آماده، ${faNum(v.errors.length)} مورد نیازمند اصلاح، ${faNum(v.excluded||0)} ردیف مشتری شخصی/نامشخص حذف‌شده</b><ul>${v.errors.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:`<div class="notice good">اعتبارسنجی موفق: ${faNum(v.rows.length)} ردیف XML؛ ${faNum(v.excluded||0)} ردیف شخصی/نامشخص حذف شد.</div>`;return v}
+$('resolveInventoryIds').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند انتخاب نشده');let used={};for(const a of allocationsFor(d.id)){const r=resolveStock(d,a,used);if(r.row){if(!a.inventoryId)a.inventoryId=r.row.inventoryId;used[r.row.inventoryId]=(used[r.row.inventoryId]||0)+num(a.allocatedQty)}}save();renderXmlRows();toast('پیشنهادهای یکتای InventoryID اعمال شدند؛ موارد مبهم را دستی انتخاب کن')};
+$('buildXml').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند انتخاب نشده');d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();const v=validateXmlDoc(d,true);if(v.errors.length){toast('XML ساخته نشد؛ ابتدا موارد گزارش‌شده را اصلاح کن');return}const xml=quotaXml(v.rows);const parsed=new DOMParser().parseFromString(xml,'application/xml');if(parsed.querySelector('parsererror'))return toast('خطای ساختار XML');downloadText(xml,`IMED_Quota_${d.distributionNo||'export'}.xml`,'application/xml;charset=utf-8');state.lastXml={distributionId:d.id,rows:v.rows,createdAt:new Date().toISOString()};save();refreshScriptDocs();toast('فایل XML آماده شد')};
+$('buildAllXml').onclick=()=>{let allRows=[],issues=[],included=0,excluded=0;for(const d of state.imed){const alloc=allocationsFor(d.id);if(!alloc.length)continue;const v=makeQuotaRows(d);excluded+=v.excluded||0;if(v.errors.length){issues.push(`سند ${d.distributionNo||d.id}: ${v.errors.join(' | ')}`);continue}allRows.push(...v.rows);included++}if(!allRows.length){$('xmlValidation').innerHTML=`<div class="notice warn">هیچ سند کاملی برای XML کلی پیدا نشد. مشتریان شخصی/نامشخص حذف می‌شوند و هر سند باید از نظر تعداد و موجودی معتبر باشد.<ul>${issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;return toast('XML کلی ساخته نشد؛ سند معتبر وجود ندارد')}const xml=quotaXml(allRows);const parsed=new DOMParser().parseFromString(xml,'application/xml');if(parsed.querySelector('parsererror'))return toast('خطای ساختار XML کلی');downloadText(xml,`IMED_Quota_ALL_${new Date().toISOString().slice(0,10)}.xml`,'application/xml;charset=utf-8');$('xmlValidation').innerHTML=`<div class="notice good">XML کلی ساخته شد: ${faNum(included)} سند کامل، ${faNum(allRows.length)} ردیف؛ ${faNum(excluded)} ردیف مشتری شخصی/نامشخص حذف شد.</div>${issues.length?`<div class="notice warn"><b>${faNum(issues.length)} سند به علت نقص وارد خروجی نشد:</b><ul>${issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}`;toast('XML کلی دانلود شد')};
+function refreshScriptDocs(){const el=$('scriptDocSelect');if(!el)return;const prev=el.value||$('xmlDocSelect')?.value||state.currentDoc;el.innerHTML='<option value="">انتخاب سند</option>'+state.imed.map(d=>`<option value="${esc(d.id)}">${esc(d.distributionNo)} — ${esc(d.product)}</option>`).join('');if(state.imed.some(d=>d.id===prev))el.value=prev;if(el.value)renderScriptReady()}
+$('scriptDocSelect').addEventListener('change',renderScriptReady);
+function buildFormAutofillSource(d,rows){const data=JSON.stringify(rows);return `/* IMED form helper — auto fills all quota rows; final submit remains manual. */
+(()=>{
+const ROWS=${data};
+const ALIASES={TypeID:['TypeID','کد نوع توزیع','نوع توزیع'],IRC:['IRC','کد IRC'],Count:['Count','تعداد','مقدار توزیع'],RialPrice:['RialPrice','فی واحد','فی'],InvoiceNo:['InvoiceNo','شماره فاکتور'],InvoiceDate:['InvoiceDate','تاریخ فاکتور'],InventoryID:['InventoryID','کد انبار مجازی','شناسه موجودی'],ReceiverCode:['ReceiverCode','کد دریافت کننده','کد مشتری'],ReceiverName:['ReceiverName','نام دریافت کننده','مشتری']};
+const norm=s=>String(s??'').toLowerCase().replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/[\u200c\s_\-،,().]/g,'');
+const visible=e=>!!(e&&(e.offsetWidth||e.offsetHeight||e.getClientRects().length));
+function labelText(e){let a=[];if(e.id){const l=document.querySelector('label[for="'+CSS.escape(e.id)+'"]');if(l)a.push(l.innerText)}const cell=e.closest('td');if(cell){const prev=cell.previousElementSibling;if(prev)a.push(prev.innerText);a.push(cell.getAttribute('data-label'))}const p=e.closest('.form-group, .field, .control-group, .form-item')||e.parentElement;if(p&&p.querySelectorAll('input,select,textarea').length<=1)a.push(p.innerText);a.push(e.id,e.name,e.getAttribute('placeholder'),e.getAttribute('aria-label'),e.title);return a.filter(Boolean).join(' ')}
+function setValue(el,value){if(!el)return false;const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:el.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype;const setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;if(setter)setter.call(el,String(value??''));else el.value=String(value??'');el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));return true}
+function findFields(){const controls='input,select,textarea';const candidateRows=[...document.querySelectorAll('tr')].filter(tr=>visible(tr)&&tr.querySelectorAll(controls).length>=3);const scope=candidateRows.length?candidateRows[candidateRows.length-1]:document;const els=[...scope.querySelectorAll(controls)].filter(e=>visible(e)&&!e.disabled&&e.type!=='hidden'&&e.type!=='submit'&&e.type!=='button'&&e.type!=='file');const map={};for(const key of Object.keys(ALIASES)){const wants=ALIASES[key].map(norm);const scored=els.map(e=>{const h=norm(labelText(e));let score=0;for(const w of wants){if(w&&(h===w||h.includes(w)))score=Math.max(score,h===w?100:50+w.length)}return{e,score}}).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);if(scored.length&&scored[0].score>0){const top=scored.filter(x=>x.score===scored[0].score);if(top.length===1)map[key]=top[0].e}}return map}
+function fillCurrent(row){const fields=findFields(),missing=[];for(const key of Object.keys(ALIASES)){const el=fields[key];if(!el){missing.push(key);continue}if(el.tagName==='SELECT'){const opt=[...el.options].find(o=>norm(o.value)===norm(row[key])||norm(o.text)===norm(row[key]));if(opt)setValue(el,opt.value);else missing.push(key+' (option not found)')}else setValue(el,row[key])}return missing}
+function addRowButton(){const els=[...document.querySelectorAll('button,input[type=button],input[type=submit],a')].filter(visible);const rx=/افزودن.*ردیف|ردیف.*جدید|اضافه.*ردیف|افزودن کالا|سطر جدید|add.*row|new row/i;return els.find(e=>rx.test((e.innerText||e.value||e.title||'').trim()))||null}
+function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+let running=false,filled=0;
+async function fillAll(){if(running)return;running=true;const status=document.getElementById('imedHelperStatus');const btn=document.getElementById('imedHelperFillAll');try{for(let i=filled;i<ROWS.length;i++){if(status)status.textContent='در حال تکمیل ردیف '+(i+1)+' از '+ROWS.length+'…';let missing=fillCurrent(ROWS[i]);if(missing.length){if(status)status.textContent='ردیف '+(i+1)+' متوقف شد؛ فیلدها پیدا نشدند: '+missing.join('، ');console.warn('IMED row '+(i+1)+' missing fields',missing);break}filled=i+1;if(status)status.textContent='ردیف '+filled+' از '+ROWS.length+' پر شد';if(i<ROWS.length-1){const add=addRowButton();if(!add){if(status)status.textContent='ردیف '+filled+' پر شد؛ دکمه افزودن ردیف پیدا نشد. ردیف بعدی را دستی اضافه کن و دوباره «ادامه» بزن.';break}add.click();await wait(450);}}if(filled===ROWS.length&&status)status.textContent='تمام '+ROWS.length+' ردیف پر شد؛ اطلاعات را بازبینی و ثبت نهایی را دستی انجام بده.';}catch(e){console.error(e);if(status)status.textContent='خطا: '+e.message}finally{running=false;if(btn)btn.textContent=filled>=ROWS.length?'تکمیل شد':'ادامه تکمیل خودکار'}}
+window.IMED_FILL_ALL=fillAll;window.IMED_FILL_NEXT=async()=>{await fillAll()};window.IMED_FILL_RESET=()=>{filled=0;const st=document.getElementById('imedHelperStatus');if(st)st.textContent='از ردیف اول آماده است.'};window.IMED_QUOTA_ROWS=ROWS;
+if(!document.getElementById('imedHelperPanel')){const panel=document.createElement('div');panel.id='imedHelperPanel';panel.dir='rtl';panel.style.cssText='position:fixed;z-index:2147483647;top:16px;right:16px;width:310px;background:#fff;color:#172b43;border:1px solid #8ca6c4;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.22);padding:12px;font:13px Tahoma,sans-serif;line-height:1.8';panel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><b>IMED Assistant</b><button id="imedHelperClose" style="border:0;background:#eef2f7;border-radius:6px;padding:2px 8px">×</button></div><div style="font-size:12px;margin-bottom:6px">سند '+String(${JSON.stringify(d.distributionNo||'')}).replace(/[&<>"']/g,'')+' — '+ROWS.length+' ردیف</div><div id="imedHelperStatus" style="font-size:12px;color:#42566f;margin-bottom:10px">آماده برای تکمیل خودکار همه ردیف‌ها.</div><button id="imedHelperFillAll" style="width:100%;border:0;background:#1769c2;color:white;padding:9px;border-radius:8px;font-weight:bold">شروع / ادامه تکمیل خودکار</button><button id="imedHelperReset" style="width:100%;margin-top:7px;border:1px solid #cbd5e1;background:white;padding:7px;border-radius:8px">شروع مجدد از ردیف اول</button><div style="font-size:11px;color:#68778a;margin-top:8px">اسکریپت ردیف بعدی را خودش اضافه می‌کند؛ اگر دکمه افزودن ردیف را تشخیص ندهد متوقف می‌شود. ثبت نهایی با خودت است.</div>';document.body.appendChild(panel);document.getElementById('imedHelperFillAll').onclick=fillAll;document.getElementById('imedHelperReset').onclick=()=>{filled=0;document.getElementById('imedHelperStatus').textContent='از ردیف اول آماده است.'};document.getElementById('imedHelperClose').onclick=()=>panel.remove();}
+console.info('IMED helper ready. Click شروع / ادامه تکمیل خودکار. It never submits the form.');
+})();`}
+
+function renderScriptReady(){const d=state.imed.find(x=>x.id===$('scriptDocSelect')?.value);if(!d)return;const v=validateXmlDoc(d,false);$('scriptReadyStatus').textContent=v.errors.length?`${faNum(v.rows.length)} ردیف آماده — نیازمند اصلاح`:`${faNum(v.rows.length)} ردیف آماده`;$('scriptReadyStatus').className='tag '+(v.errors.length?'warn':'good');$('formScriptCode').value=v.errors.length?'ابتدا در بخش تولید XML تمام خطاها را برطرف کن.\n'+v.errors.join('\n'):buildFormAutofillSource(d,v.rows)}
+$('downloadFormScript').onclick=()=>{renderScriptReady();const code=$('formScriptCode').value;if(!code||code.startsWith('ابتدا'))return toast('ابتدا XML این سند را کامل و معتبر کن');downloadText(code,`IMED_Form_Autofill_${$('scriptDocSelect').value}.js`,'text/javascript;charset=utf-8');toast('اسکریپت فرم دانلود شد')};
+$('copyFormScript').onclick=()=>{renderScriptReady();const code=$('formScriptCode').value;if(!code||code.startsWith('ابتدا'))return toast('ابتدا XML این سند را کامل و معتبر کن');copyText(code)};
+const IMED_DISTRIBUTION_FORM_URL='https://register.imed.ir/SaleDistribution/Dist/Dist_QuotaDistribution.aspx';
+$('sendToImed').onclick=()=>{renderScriptReady();const code=$('formScriptCode').value;if(!code||code.startsWith('ابتدا'))return toast('ابتدا XML این سند را کامل و معتبر کن');const tab=window.open(IMED_DISTRIBUTION_FORM_URL,'_blank');copyText(code);if(!tab)toast('پنجره صفحه ثبت سند IMED باز نشد؛ Popup را مجاز کن. کد کپی شده است.');else toast('صفحه ثبت سند IMED باز شد؛ کد سند کپی شده است. در همان صفحه Console را باز و اجرا کن.');};
+
+// Import workbook and map columns
+let workbook=null,activeMatrix=[];
+const fields={imed:[['distributionNo','شماره سند توزیع',['شماره سند','شماره سند توزیع','شماره سند2','شماره']],['distributionDate','تاریخ سند',['تاریخ صدور','تاریخ سند','تاریخ']],['receiver','دریافت‌کننده',['دریافت کننده','نام دریافت کننده','مشتری']],['product','نام کالا',['نام کالا','کالا','کالا خدمت']],['irc','IRC',['irc']],['quantity','تعداد توزیع',['تعداد توزیع','تعداد','مقدار']],['supplier','صادرکننده / تأمین‌کننده',['صادرکننده سند','تامین کننده','کمپانی قانونی']],['distributionType','نوع توزیع',['نوع توزیع']],['typeId','TypeID / کد نوع توزیع',['typeid','کد نوع توزیع']],['receiverCode','کد دریافت‌کننده',['receivercode','کد دریافت کننده','کد مشتری']]],sepidar:[['invoiceNo','شماره فاکتور',['شماره فاکتور','شماره','شماره سند']],['invoiceDate','تاریخ فاکتور',['تاریخ فاکتور','تاریخ']],['customer','مشتری',['نام مشتری','مشتری']],['product','کالا / خدمت',['کالا خدمت','کالا/خدمت','نام کالا','کالا']],['irc','IRC',['irc']],['quantity','مقدار اصلی',['مقدار اصلی','مقداراصلی','مقدار']],['unitPrice','فی واحد',['فی','فی واحد','فی قیمت','في','قیمت واحد']]]};
+function columnOptions(){return activeMatrix[0].map((h,i)=>({i,label:`${String.fromCharCode(65+i)} — ${String(h??'').trim()||'بدون عنوان'}`}))}
+function autoColumn(headers,alts){let nh=headers.map(h=>norm(h));for(let a of alts){let n=norm(a),idx=nh.findIndex(h=>h===n||h.includes(n));if(idx>=0)return idx}return -1}
+function buildMapping(){let mode=$('importMode').value,defs=fields[mode],headers=activeMatrix[0]||[];let opts='<option value="">— انتخاب نشده —</option>'+columnOptions().map(o=>`<option value="${o.i}">${esc(o.label)}</option>`).join('');$('mappingGrid').innerHTML=defs.map(([key,label,alts])=>{let v=autoColumn(headers,alts);return `<div class="field"><label>${label}</label><select data-map="${key}">${opts}</select></div>`}).join('');$('mappingGrid').querySelectorAll('[data-map]').forEach(sel=>{let def=defs.find(x=>x[0]===sel.dataset.map);let v=autoColumn(headers,def[2]);sel.value=v>=0?String(v):''});$('mappingArea').classList.remove('hidden');$('previewArea').classList.add('hidden');$('sourceRows').textContent=faNum(Math.max(0,activeMatrix.length-1))+' ردیف'}
+$('importMode').addEventListener('change',()=>{if(activeMatrix.length)buildMapping()});
+$('fileInput').addEventListener('change',async e=>{let file=e.target.files[0];if(!file)return;if(!window.XLSX){toast('کتابخانه Excel بارگذاری نشده؛ اتصال اینترنت را بررسی کنید.');return}try{let buf=await file.arrayBuffer();workbook=XLSX.read(buf,{type:'array',cellDates:false});$('sheetSelect').disabled=false;$('sheetSelect').innerHTML=workbook.SheetNames.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');state.importName=file.name;loadSheet();}catch(err){toast('خواندن فایل ناموفق بود: '+err.message)}});
+$('sheetSelect').addEventListener('change',loadSheet);$('headerRow').addEventListener('change',loadSheet);
+function loadSheet(){if(!workbook)return;let sh=workbook.Sheets[$('sheetSelect').value],matrix=XLSX.utils.sheet_to_json(sh,{header:1,defval:'',raw:false});let hr=Math.max(1,num($('headerRow').value))-1;activeMatrix=matrix.slice(hr);if(!activeMatrix.length){toast('ردیف عنوان پیدا نشد');return}buildMapping()}
+$('previewImport').addEventListener('click',()=>{let mode=$('importMode').value,maps={};$('mappingGrid').querySelectorAll('[data-map]').forEach(s=>maps[s.dataset.map]=s.value===''?-1:Number(s.value));let required=mode==='imed'?['distributionNo','quantity']:['invoiceNo','quantity'];if(required.some(k=>maps[k]<0)){toast('حداقل شماره سند/فاکتور و ستون تعداد را مشخص کنید');return}let keys=fields[mode].map(x=>x[0]);let raw=activeMatrix.slice(1).filter(r=>r.some(v=>String(v).trim()!==''));let records=raw.map((r,idx)=>{let o={_row:idx+2};keys.forEach(k=>{let col=maps[k];o[k]=col>=0?r[col]:''});o.quantity=num(o.quantity);if(mode==='sepidar')o.unitPrice=num(o.unitPrice);return o}).filter(o=>mode==='imed'?o.distributionNo||o.product:o.invoiceNo||o.product);state.preview=records;state.importMode=mode;state.importMap=maps;$('previewCount').textContent=faNum(records.length)+' ردیف';$('previewTable').innerHTML=`<div class="table-wrap"><table><thead><tr>${fields[mode].map(f=>`<th>${f[1]}</th>`).join('')}</tr></thead><tbody>${records.slice(0,8).map(o=>`<tr>${keys.map(k=>`<td>${esc(o[k]??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;$('previewArea').classList.remove('hidden')});
+$('cancelImport').onclick=()=>{$('mappingArea').classList.add('hidden');$('previewArea').classList.add('hidden');$('fileInput').value='';workbook=null;activeMatrix=[]};$('backMapping').onclick=()=>$('previewArea').classList.add('hidden');
+$('confirmImport').onclick=()=>{let mode=state.importMode,records=state.preview;if(!records.length)return;let added=0;if(mode==='imed'){records.forEach(o=>{let d={id:id(),distributionNo:String(o.distributionNo||'').trim(),distributionDate:String(o.distributionDate||'').trim(),receiver:String(o.receiver||'').trim(),product:String(o.product||'').trim(),irc:String(o.irc||'').trim(),quantity:num(o.quantity),supplier:String(o.supplier||'').trim(),distributionType:String(o.distributionType||'').trim(),typeId:String(o.typeId||'').trim(),receiverCode:String(o.receiverCode||'').trim()};let dup=state.imed.some(x=>x.distributionNo===d.distributionNo&&x.product===d.product&&x.irc===d.irc);if(!dup){state.imed.push(d);added++}})}else{records.forEach(o=>{let s={id:id(),invoiceNo:String(o.invoiceNo||'').trim(),invoiceDate:String(o.invoiceDate||'').trim(),customer:String(o.customer||'').trim(),product:String(o.product||'').trim(),irc:String(o.irc||'').trim(),quantity:num(o.quantity),unitPrice:num(o.unitPrice)};state.sepidar.push(s);added++})}save();toast(`${faNum(added)} ردیف وارد شد`);$('cancelImport').click();goto(mode==='imed'?'distributions':'sepidar')};
+
+function toCSV(rows){return '\ufeff'+rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\r\n')}
+function downloadCSV(rows,name){let blob=new Blob([toCSV(rows)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
+$('exportDist').onclick=()=>downloadCSV([['شماره سند','تاریخ','دریافت‌کننده','کالا','IRC','تعداد','تأمین‌کننده','نوع توزیع','وضعیت'],...state.imed.map(d=>[d.distributionNo,d.distributionDate,d.receiver,d.product,d.irc,d.quantity,d.supplier,d.distributionType,docStatus(d)])],'imed_distributions.csv');
+$('exportSep').onclick=()=>downloadCSV([['شماره فاکتور','تاریخ','مشتری','کالا','IRC','مقدار اصلی','فی'],...state.sepidar.map(s=>[s.invoiceNo,s.invoiceDate,s.customer,s.product,s.irc,s.quantity,s.unitPrice])],'sepidar_rows.csv');
+function backup(){let data={app:'IMED Manager',version:2,exportedAt:new Date().toISOString(),imed:state.imed,sepidar:state.sepidar,allocations:state.allocations,virtualInventory:state.virtualInventory,virtualInventoryMeta:state.virtualInventoryMeta};let b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='imed_manager_backup.json';a.click();URL.revokeObjectURL(u);toast('فایل پشتیبان آماده شد')}
+if($('exportBackup'))$('exportBackup').onclick=backup;$('exportBackup2').onclick=backup;
+$('exportSqlite').onclick=exportSQLiteFile;$('exportSqliteTop').onclick=exportSQLiteFile;
+$('restoreSqliteInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(!SQL)throw Error('موتور SQLite هنوز آماده نیست');if(!confirm('پایگاه داده فعلی با فایل SQLite انتخاب‌شده جایگزین شود؟'))return;const bytes=new Uint8Array(await f.arrayBuffer());const nextDB=new SQL.Database(bytes);createSchema(nextDB);loadStateFromSQLite(nextDB);sqliteDB.close();sqliteDB=nextDB;await persistSQLiteToBrowser();refresh();toast('پایگاه داده SQLite بازیابی شد')}catch(err){console.error(err);toast('بازکردن SQLite ناموفق بود: '+err.message)}e.target.value=''};
+$('restoreInput').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!Array.isArray(x.imed)||!Array.isArray(x.sepidar))throw Error('ساختار فایل معتبر نیست');if(!confirm('اطلاعات فعلی با اطلاعات پشتیبان جایگزین شود؟'))return;state.imed=x.imed;state.sepidar=x.sepidar;state.allocations=x.allocations||{};state.virtualInventory=x.virtualInventory||[];state.virtualInventoryMeta=x.virtualInventoryMeta||{};await save();toast('پشتیبان بازیابی شد')}catch(err){toast('بازیابی ناموفق: '+err.message)}e.target.value=''};
+$('clearAll').onclick=()=>{if(confirm('تمام اسناد، ردیف‌های سپیدار و تخصیص‌های ذخیره‌شده در این مرورگر پاک شوند؟')){state.imed=[];state.sepidar=[];state.allocations={};state.virtualInventory=[];state.virtualInventoryMeta={};save();$('docPanel').classList.add('hidden');toast('اطلاعات پایگاه داده پاک شد')}};
+initApp();
+})();
+</script>
+</body>
+</html>
