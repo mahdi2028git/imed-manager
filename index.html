@@ -336,7 +336,14 @@ $('bulkAutoMatch').addEventListener('click',async()=>{
    Object.values(state.allocations||{}).forEach(list=>(list||[]).forEach(a=>{const k=String(a.sourceId);usedBySource.set(k,(usedBySource.get(k)||0)+num(a.allocatedQty))}));
    let savedDocs=0,savedRows=0,savedQty=0,already=0,partial=0,none=0;
    const report=[];
+   let processed=0;
    for(const d of state.imed){
+     processed++;
+     // Yield periodically so the browser can repaint and remain responsive on large imports.
+     if(processed===1 || processed%5===0){
+       btn.textContent='در حال بررسی… '+faNum(processed)+' از '+faNum(state.imed.length);
+       await new Promise(resolve=>setTimeout(resolve,0));
+     }
      const plan=buildBulkAutoPlan(d,usedBySource);
      if(plan.status==='already'){already++;continue}
      if(plan.status!=='complete'){
@@ -352,6 +359,7 @@ $('bulkAutoMatch').addEventListener('click',async()=>{
      state.allocations[d.id]=arr;savedDocs++;savedRows+=plan.planned.length;savedQty+=added;
      report.push(`<tr><td>${esc(d.distributionNo||'—')}</td><td>${esc(d.product||'—')}</td><td>${faNum(added)}</td><td><span class="tag good">ثبت شد</span></td></tr>`);
    }
+   btn.textContent='در حال ذخیره نتایج…';
    await save();
    $('bulkMatchReport').innerHTML=`<div class="notice ${savedDocs?'good':'warn'}">ثبت گروهی تمام شد: ${faNum(savedDocs)} سند کامل، ${faNum(savedRows)} ردیف فاکتور، مجموع ${faNum(savedQty)} واحد ذخیره شد. قبلاً کامل: ${faNum(already)}؛ ناقص/مبهم: ${faNum(partial+none)} (ثبت نشد).</div>`+(report.length?`<div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>مقدار</th><th>نتیجه</th></tr></thead><tbody>${report.map(x=>x).join('')}</tbody></table></div>`:'');
    refresh();toast('تطبیق‌های قطعی در SQLite ذخیره شدند');
