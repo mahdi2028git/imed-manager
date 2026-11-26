@@ -379,9 +379,10 @@ async function calculateAllAutoMatches(){
      // differences that token-only indexing misses (e.g. alternate Persian spellings).
      const gramSet=grams([d.product,...(descriptors.values||[])].join(' '));
      gramSet.forEach(g=>(byGram.get(g)||[]).forEach(x=>candidateMap.set(x.i,x)));
-     // If indexed retrieval is too narrow, broaden to the full source pool. Scoring
-     // and technical-conflict checks still decide whether any candidate is eligible.
-     if(candidateMap.size===0)sepidarIndex.forEach(x=>candidateMap.set(x.i,x));
+     // A full Sepidar scan is only useful when the IMED row has no searchable
+     // product/descriptor terms at all. With terms present, zero indexed overlap
+     // also means the token/gram similarity scorer cannot produce a meaningful hit.
+     if(candidateMap.size===0&&terms.size===0)sepidarIndex.forEach(x=>candidateMap.set(x.i,x));
      // Include Sepidar invoice lines explicitly recorded in the 214-row reference table.
      (refsByDoc.get(norm(d.distributionNo))||[]).forEach(r=>{
        (byInvoice.get(norm(r.invoiceNo))||[]).forEach(x=>candidateMap.set(x.i,x));
