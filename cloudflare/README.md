@@ -1,58 +1,37 @@
-# IMED Manager — Cloudflare D1 setup
+# IMED Manager — Cloudflare D1
 
-This folder contains the D1 schema and a small Cloudflare Worker API for the IMED Manager project.
+The Cloudflare resources for this project have been created in the connected account.
 
-## Database design (six tables)
+## Deployed resources
 
-1. `products` — product master data (IRC, GTIN, name, model, manufacturer).
-2. `customers` — hospitals, clinics, pharmacies and other customers.
-3. `imed_distributions` — IMED distribution documents and virtual-warehouse quantities.
-4. `sepidar_invoices` — Sepidar invoice headers.
-5. `sepidar_invoice_items` — Sepidar invoice lines.
-6. `match_allocations` — allocations connecting sold invoice lines to IMED distribution rows.
+- D1 database: `imed-manager-db`
+- Worker: `imed-manager-api`
+- Worker URL: https://imed-manager-api.mahdigithub28.workers.dev
+- Public health endpoint: https://imed-manager-api.mahdigithub28.workers.dev/api/health
+- D1 binding: `DB`
+- GitHub Pages origin allowlist: `https://mahdi2028git.github.io`
 
-Remaining virtual stock is represented by `imed_distributions.remaining_quantity`; allocations are recorded separately in `match_allocations`.
-
-## Create the real D1 database
-
-A Cloudflare account owner must do this step in their own account. No credentials are stored in this repository.
-
-1. Sign in to Cloudflare and open **Workers & Pages → D1 SQL Database**.
-2. Create a database named `imed-manager-db`.
-3. Copy its database ID into `wrangler.jsonc`, replacing `REPLACE_WITH_DATABASE_ID`.
-4. From this folder, apply the schema using Wrangler:
-
-```bash
-npx wrangler d1 execute imed-manager-db --remote --file=./schema.sql
-```
-
-5. Set up a Cloudflare Access application protecting the Worker hostname. Copy its team domain and application audience.
-6. Add Worker variables/secrets:
-   - `ACCESS_TEAM_DOMAIN`: your Cloudflare Access team domain, e.g. `your-team.cloudflareaccess.com`
-   - `ACCESS_AUD`: the Access application's AUD tag
-   - `APP_ORIGIN`: the exact GitHub Pages origin (origin only, no path)
-7. Deploy:
-
-```bash
-npx wrangler deploy --config wrangler.jsonc
-```
+The D1 schema has six core tables: `products`, `customers`, `imed_distributions`, `sepidar_invoices`, `sepidar_invoice_items`, and `match_allocations`.
 
 ## API routes
 
-All data routes require a valid Cloudflare Access JWT. The Access application must protect the Worker hostname before using this API.
+All data routes require a valid Cloudflare Access JWT:
 
-- `GET /api/health` — public health check (no database data).
 - `GET /api/{table}?limit=100&offset=0`
 - `GET /api/{table}/{id}`
 - `POST /api/{table}`
 - `PATCH /api/{table}/{id}`
 - `DELETE /api/{table}/{id}`
 
-Allowed table names: `products`, `customers`, `imed_distributions`, `sepidar_invoices`, `sepidar_invoice_items`, `match_allocations`.
+Allowed tables: `products`, `customers`, `imed_distributions`, `sepidar_invoices`, `sepidar_invoice_items`, `match_allocations`.
 
-## Important
+## Remaining setup
 
-- The Worker is not deployed and the D1 database is not created until the account owner completes the Cloudflare steps above.
-- The API deliberately denies data requests unless Cloudflare Access JWT verification is configured.
-- Do not put Cloudflare API tokens, database credentials, or Access secrets in GitHub source files.
-- Test Cloudflare availability and account eligibility from the intended network before importing company data.
+1. Configure a Cloudflare Access application and policy for the Worker hostname.
+2. Add Worker variables `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` using the values from that Access application.
+3. Configure the browser app to authenticate through Access and call this API.
+4. Migrate the existing browser-local SQLite data only after verifying the mapping and taking a backup.
+
+Until Access is configured, the health endpoint is public but data endpoints intentionally return HTTP 401. The current frontend still uses its existing browser-local SQLite storage; it has not yet been migrated to this API.
+
+Never commit API tokens, passwords, or Access secrets to this repository.
