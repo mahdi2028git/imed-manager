@@ -478,7 +478,9 @@ function matchSignals(d,s,freeQty,preparedDescriptors=null){
  if(distinctive.mismatch)signals.push('⚠ سایز وجه افتراق مغایر');
  const hasProductEvidence=nameScore>=.52||distinctive.score>=.35;
  const technicalMismatch=!!distinctive.mismatch;
- return {score,signals,ircMatch,ircConflict,nameScore,distinctiveScore:distinctive.score,distinctiveMatched:distinctive.matched,distinctiveSizeMatch:distinctive.sizeMatch,technicalMismatch,exactName,dateValid,dateKnown,dateGap,qtyExact,qtyCanCover,free,eligible:!!free&&dateValid&&!technicalMismatch&&(ircMatch||hasProductEvidence)};
+ // Keep plausible low-confidence candidates ranked; a size mismatch is a warning, not an automatic exclusion.
+ const plausible=ircMatch||hasProductEvidence||nameScore>=.25||distinctive.score>=.15;
+ return {score,signals,ircMatch,ircConflict,nameScore,distinctiveScore:distinctive.score,distinctiveMatched:distinctive.matched,distinctiveSizeMatch:distinctive.sizeMatch,technicalMismatch,exactName,dateValid,dateKnown,dateGap,qtyExact,qtyCanCover,free,eligible:!!free&&dateValid&&plausible};
 }
 function remainingSepidarQty(sourceId,sourceQty){
  let used=0;
