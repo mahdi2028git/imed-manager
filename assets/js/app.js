@@ -170,6 +170,25 @@ function inventoryDescriptors(d){
  rows.forEach(v=>fields.forEach(k=>{const value=String(v[k]||'').trim();if(value&&!values.includes(value))values.push(value)}));
  return {rows,values,text:values.join(' ')};
 }
+function fullProductDetails(d){
+ const refs=(MATCH_REFERENCE_ROWS||[]).filter(r=>norm(r.distributionNo)===norm(d?.distributionNo));
+ let rows=inventoryDescriptors(d).rows||[];
+ if(!rows.length&&refs.length)rows=refs.map(r=>({persianName:r.imedProduct||d.product,persianDistinction:r.distinction||'',irc:r.imedIrc||''}));
+ const seen=new Set(),items=[];
+ for(const v of rows){
+   const group=String(v.persianName||v.product||v.mainGroup||d?.product||'').trim();
+   const detail=String(v.persianDistinction||v.subGroup||v.model||'').trim();
+   const name=[group,detail].filter((x,i,a)=>x&&a.indexOf(x)===i).join(' — ')||String(d?.product||'').trim();
+   const irc=String(v.irc||'').trim(),key=norm(name)+'|'+norm(irc);
+   if((!name&&!irc)||seen.has(key))continue;
+   seen.add(key);items.push({name,irc});
+ }
+ if(!items.length)items.push({name:String(d?.product||'').trim(),irc:String(d?.irc||'').trim()});
+ return items;
+}
+function fullProductDetailsHtml(d){
+ return fullProductDetails(d).map(x=>'<div><b>'+esc(x.name||'نام کامل ثبت نشده')+'</b>'+(x.irc?'<div class="smalltext mono">IRC: '+esc(x.irc)+'</div>':'<div class="smalltext">IRC در Snapshot موجود نیست</div>')+'</div>').join('<hr style="border:0;border-top:1px solid var(--line);margin:5px 0">');
+}
 function compileDescriptors(descriptors){
  const terms=[...new Set((descriptors?.values||[]).flatMap(productTokens))];
  return {...(descriptors||{values:[]}),allTerms:terms,termSet:new Set(terms)};
@@ -418,7 +437,7 @@ async function renderAllAutoMatches(){
  const complete=allAutoRows.filter(x=>x.status==='کامل').length,partial=allAutoRows.filter(x=>x.status==='ناقص').length,none=allAutoRows.filter(x=>x.status==='بدون تطبیق').length;
  $('allMatchStats').innerHTML=`تعداد اسناد: <b>${faNum(allAutoRows.length)}</b> | کامل با احتساب تخصیص‌های قبلی: <b>${faNum(complete)}</b> | ناقص: <b>${faNum(partial)}</b> | بدون تطبیق: <b>${faNum(none)}</b> | پیشنهاد جدید: <b>${faNum(allAutoRows.reduce((n,x)=>n+x.planned.length,0))}</b> ردیف فاکتور | مرجع: <b>${faNum(MATCH_REFERENCE_ROWS.length)}</b> ردیف جدول تطبیق (موارد وجه افتراق نامنطبق حذف می‌شوند)`;
  const visibleRows=allAutoRows.slice(0,180);
- $('allMatchTable').innerHTML=allAutoRows.length?`${allAutoRows.length>visibleRows.length?`<div class="notice info">برای جلوگیری از هنگ مرورگر، فقط ۱۸۰ سند اول در صفحه نمایش داده می‌شود؛ خروجی CSV شامل همه ${faNum(allAutoRows.length)} سند است.</div>`:''}<div class="table-wrap"><table><thead><tr><th>شماره سند IMED</th><th>تاریخ</th><th>دریافت‌کننده</th><th>کالا</th><th>IRC</th><th>تعداد هدف</th><th>تخصیص قبلی</th><th>پیشنهاد جدید</th><th>باقیمانده</th><th>وضعیت</th><th>فاکتورهای سپیدار پیشنهادی و دلایل</th></tr></thead><tbody>${visibleRows.map(x=>`<tr><td>${esc(x.d.distributionNo||'—')}</td><td>${esc(x.d.distributionDate||'—')}</td><td>${esc(x.d.receiver||'—')}</td><td>${esc(x.d.product||'—')}</td><td>${esc(x.d.irc||'—')}</td><td>${faNum(x.target)}</td><td>${faNum(x.already)}</td><td>${faNum(x.got)}</td><td>${faNum(x.left)}</td><td><span class="tag ${x.status==='کامل'?'good':x.status==='بدون تطبیق'?'bad':'warn'}">${x.status}</span></td><td>${x.planned.length?x.planned.map(p=>`${esc(p.s.invoiceNo||'—')} (${esc(p.s.invoiceDate||'—')}) × ${faNum(p.q)}؛ ${faNum(p.score)} امتیاز؛ ${esc(p.signals.join('، '))}${p.ircConflict?' ⚠️ IRC متفاوت':''}`).join('<hr style="border:0;border-top:1px solid var(--line);margin:5px 0">'):'—'}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">سندی برای تطبیق وجود ندارد.</div>';
+ $('allMatchTable').innerHTML=allAutoRows.length?`${allAutoRows.length>visibleRows.length?`<div class="notice info">برای جلوگیری از هنگ مرورگر، فقط ۱۸۰ سند اول در صفحه نمایش داده می‌شود؛ خروجی CSV شامل همه ${faNum(allAutoRows.length)} سند است.</div>`:''}<div class="table-wrap"><table><thead><tr><th>شماره سند IMED</th><th>تاریخ</th><th>دریافت‌کننده</th><th>گروه کالا</th><th>نام کامل کالا و وجه افتراق IMED / IRC</th><th>تعداد هدف</th><th>تخصیص قبلی</th><th>پیشنهاد جدید</th><th>باقیمانده</th><th>وضعیت</th><th>فاکتورهای سپیدار پیشنهادی و دلایل</th></tr></thead><tbody>${visibleRows.map(x=>`<tr><td>${esc(x.d.distributionNo||'—')}</td><td>${esc(x.d.distributionDate||'—')}</td><td>${esc(x.d.receiver||'—')}</td><td>${esc(x.d.product||'—')}</td><td>${fullProductDetailsHtml(x.d)}</td><td>${faNum(x.target)}</td><td>${faNum(x.already)}</td><td>${faNum(x.got)}</td><td>${faNum(x.left)}</td><td><span class="tag ${x.status==='کامل'?'good':x.status==='بدون تطبیق'?'bad':'warn'}">${x.status}</span></td><td>${x.planned.length?x.planned.map(p=>`${esc(p.s.invoiceNo||'—')} (${esc(p.s.invoiceDate||'—')}) × ${faNum(p.q)}؛ ${faNum(p.score)} امتیاز؛ ${esc(p.signals.join('، '))}${p.ircConflict?' ⚠️ IRC متفاوت':''}`).join('<hr style="border:0;border-top:1px solid var(--line);margin:5px 0">'):'—'}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">سندی برای تطبیق وجود ندارد.</div>';
  $('exportAllAutoMatches').disabled=!allAutoRows.length;
  renderUnmatchedMatches();
 }
@@ -431,10 +450,10 @@ function renderUnmatchedMatches(){
  if($('unmatchedTable'))$('unmatchedTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>تاریخ</th><th>دریافت‌کننده</th><th>کالا</th><th>IRC</th><th>تعداد هدف</th><th>تخصیص قبلی</th><th>پیشنهاد جدید</th><th>باقیمانده</th><th>فاکتورهای پیشنهادی</th><th>وضعیت</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.d.distributionNo||'—')}</td><td>${esc(x.d.distributionDate||'—')}</td><td>${esc(x.d.receiver||'—')}</td><td>${esc(x.d.product||'—')}</td><td>${esc(x.d.irc||'—')}</td><td>${faNum(x.target)}</td><td>${faNum(x.already)}</td><td>${faNum(x.got)}</td><td><b>${faNum(x.left)}</b></td><td>${x.planned.length?x.planned.map(p=>`${esc(p.s.invoiceNo||'—')} × ${faNum(p.q)} (${faNum(p.score)})`).join('<br>'):'پیشنهاد قابل اتکا پیدا نشد'}</td><td><span class="tag ${x.status==='ناقص'?'warn':'bad'}">${x.status}</span></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">موردی با این جست‌وجو پیدا نشد.</div>';
  if($('exportUnmatched'))$('exportUnmatched').disabled=!all.length;
 }
-function exportUnmatched(){const rows=[['شماره سند','تاریخ','دریافت‌کننده','کالا','IRC','تعداد هدف','تخصیص قبلی','پیشنهاد جدید','باقیمانده','وضعیت','فاکتورهای پیشنهادی']];getUnmatchedRows().forEach(x=>rows.push([x.d.distributionNo,x.d.distributionDate,x.d.receiver,x.d.product,x.d.irc,x.target,x.already,x.got,x.left,x.status,x.planned.map(p=>`${p.s.invoiceNo} × ${p.q} (${p.score})`).join('؛ ')]));downloadCSV(rows,'IMED_Unmatched_Review.csv')}
+function exportUnmatched(){const rows=[['شماره سند','تاریخ','دریافت‌کننده','گروه کالا','نام کامل کالا و وجه افتراق IMED','IRCهای کالا','تعداد هدف','تخصیص قبلی','پیشنهاد جدید','باقیمانده','وضعیت','فاکتورهای پیشنهادی']];getUnmatchedRows().forEach(x=>rows.push([x.d.distributionNo,x.d.distributionDate,x.d.receiver,x.d.product,fullProductDetails(x.d).map(v=>v.name).join(' | '),fullProductDetails(x.d).map(v=>v.irc).filter(Boolean).join(' | '),x.target,x.already,x.got,x.left,x.status,x.planned.map(p=>`${p.s.invoiceNo} × ${p.q} (${p.score})`).join('؛ ')]));downloadCSV(rows,'IMED_Unmatched_Review.csv')}
 function exportAllAutoMatches(){
- const rows=[['شماره سند IMED','تاریخ','دریافت‌کننده','کالا','IRC','تعداد هدف','تخصیص قبلی','شماره فاکتور سپیدار','تاریخ فاکتور','مشتری','کالای سپیدار','مقدار پیشنهادی','فی','امتیاز','دلایل','وضعیت','باقیمانده']];
- allAutoRows.forEach(x=>{if(x.planned.length)x.planned.forEach(p=>rows.push([x.d.distributionNo,x.d.distributionDate,x.d.receiver,x.d.product,x.d.irc,x.target,x.already,p.s.invoiceNo,p.s.invoiceDate,p.s.customer,p.s.product,p.q,p.s.unitPrice,p.score,p.signals.join('؛ '),x.status,x.left]));else rows.push([x.d.distributionNo,x.d.distributionDate,x.d.receiver,x.d.product,x.d.irc,x.target,x.already,'','','', '',0,'','','',x.status,x.left])});
+ const rows=[['شماره سند IMED','تاریخ','دریافت‌کننده','گروه کالا','نام کامل کالا و وجه افتراق IMED','IRCهای کالا','تعداد هدف','تخصیص قبلی','شماره فاکتور سپیدار','تاریخ فاکتور','مشتری','کالای سپیدار','مقدار پیشنهادی','فی','امتیاز','دلایل','وضعیت','باقیمانده']];
+ allAutoRows.forEach(x=>{if(x.planned.length)x.planned.forEach(p=>rows.push([x.d.distributionNo,x.d.distributionDate,x.d.receiver,x.d.product,fullProductDetails(x.d).map(v=>v.name).join(' | '),fullProductDetails(x.d).map(v=>v.irc).filter(Boolean).join(' | '),x.target,x.already,p.s.invoiceNo,p.s.invoiceDate,p.s.customer,p.s.product,p.q,p.s.unitPrice,p.score,p.signals.join('؛ '),x.status,x.left]));else rows.push([x.d.distributionNo,x.d.distributionDate,x.d.receiver,x.d.product,fullProductDetails(x.d).map(v=>v.name).join(' | '),fullProductDetails(x.d).map(v=>v.irc).filter(Boolean).join(' | '),x.target,x.already,'','','', '',0,'','','',x.status,x.left])});
  downloadCSV(rows,'IMED_All_Documents_Auto_Match.csv');
 }
 let allMatchBusy=false;
