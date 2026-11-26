@@ -736,7 +736,8 @@ $('inventorySnapshotInput').onchange=async e=>{
        rows=trs.slice(1).map(tr=>cellText(tr)).filter(r=>r.some(x=>x!=='')).map(r=>{const o={};for(const k of Object.keys(aliases))o[k]=idx[k]===undefined?'':(r[idx[k]]??'');o.product=o.persianName;return o});
        meta={pageTitle:'فایل انبار مجازی IMED',sourceUrl:'فایل آپلودشده: '+f.name,fetchedAt:new Date().toISOString()};
      }else{
-       if(!window.XLSX)throw Error('کتابخانه Excel بارگذاری نشده؛ اتصال اینترنت را بررسی کن');
+        if(!window.XLSX)await loadExternalScript(XLSX_JS_URL,'XLSX');
+        if(!window.XLSX)throw Error('کتابخانه Excel بارگذاری نشد؛ منابع جایگزین در دسترس نیستند. اتصال اینترنت را بررسی کن');
        const wb=XLSX.read(ab,{type:'array',cellDates:false});let best={score:0};
        for(const sn of wb.SheetNames){const mat=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:false});for(let ri=0;ri<Math.min(mat.length,15);ri++){const h=(mat[ri]||[]).map(x=>String(x??'').trim()),found={};for(const [key,alts] of Object.entries(aliases)){const pos=h.findIndex(cell=>alts.some(a=>hn(cell)===hn(a)||hn(cell).includes(hn(a))));if(pos>=0)found[key]=pos}const score=Object.keys(found).length+(found.inventoryId!==undefined?3:0)+(found.irc!==undefined?3:0)+(found.remainingQty!==undefined?3:0);if(score>best.score)best={score,sn,mat,ri,found}}}
        if(!best.sn||best.found.inventoryId===undefined||best.found.irc===undefined||best.found.remainingQty===undefined)throw Error('ستون‌های کد انبار مجازی، IRC و موجودی باقیمانده پیدا نشد');
