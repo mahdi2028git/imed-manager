@@ -77,7 +77,8 @@ CREATE TABLE IF NOT EXISTS sepidar_invoice_items (
   quantity REAL NOT NULL DEFAULT 0,
   unit_price REAL,
   raw_json TEXT,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_sepidar_items_invoice ON sepidar_invoice_items(invoice_id);
