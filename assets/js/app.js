@@ -327,20 +327,31 @@ async function calculateAllAutoMatches(){
  const rows=[];
  // Pre-index virtual-inventory descriptors by IRC, so documents sharing an IRC
  // do not each rescan the entire inventory snapshot.
- const inventoryByIrc=new Map();
+ const inventoryByIrc=new Map(),inventoryByToken=new Map();
  for(const v of (state.virtualInventory||[])){
-   const k=norm(v.irc);if(!k)continue;let a=inventoryByIrc.get(k);if(!a)inventoryByIrc.set(k,a=[]);a.push(v);
+   const k=norm(v.irc);if(k){let a=inventoryByIrc.get(k);if(!a)inventoryByIrc.set(k,a=[]);a.push(v)}
+   // Index inventory descriptors once; avoid rescanning the full virtual inventory
+   // for every IMED document that has no IRC.
+   const text=[v.persianName,v.product,v.persianDistinction,v.model,v.mainGroup,v.subGroup].filter(Boolean).join(' ');
+   for(const token of productTokens(text)){let a=inventoryByToken.get(token);if(!a)inventoryByToken.set(token,a=[]);a.push(v)}
  }
  const descriptorCache=new Map();
  const getPreparedDescriptors=d=>{
-   const k=norm(d.irc)||('doc:'+String(d.id));if(descriptorCache.has(k))return descriptorCache.get(k);
-   let invRows=norm(d.irc)?(inventoryByIrc.get(norm(d.irc))||[]):[];
+   const irc=norm(d.irc),productKey=norm(d.product);
+   const k=irc||('product:'+productKey);if(descriptorCache.has(k))return descriptorCache.get(k);
+   let invRows=irc?(inventoryByIrc.get(irc)||[]):[];
+   if(!invRows.length&&productKey){
+     const tokens=productTokens(d.product),counts=new Map();
+     for(const token of tokens)for(const v of (inventoryByToken.get(token)||[]))counts.set(v,(counts.get(v)||0)+1);
+     const minHits=tokens.length>2?2:1;
+     invRows=[...counts].filter(([,hits])=>hits>=minHits).map(([v])=>v);
+   }
    let desc;
    if(invRows.length){
      const fields=['persianDistinction','persianName','product','model','mainGroup','subGroup','legalCompany','manufacturerCountry','mainSupplier'];
      const values=new Set();for(const v of invRows)for(const f of fields){const value=String(v[f]||'').trim();if(value)values.add(value)}
      desc={rows:invRows,values:[...values],text:[...values].join(' ')};
-   }else desc=inventoryDescriptors(d);
+   }else desc={rows:[],values:[],text:''};
    const prepared=compileDescriptors(desc);descriptorCache.set(k,prepared);return prepared;
  };
  const refsByDoc=new Map();
