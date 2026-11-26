@@ -51,7 +51,7 @@
         <div class="field"><label>نام شیت (برای فایل اکسل)</label><select id="sheetSelect" disabled><option>ابتدا فایل را انتخاب کنید</option></select></div>
         <div class="field"><label>ردیف عنوان ستون‌ها</label><input type="number" id="headerRow" min="1" value="1" /></div>
       </div>
-      <div class="file-box"><b>فایل را انتخاب کنید</b><div class="smalltext">فرمت‌های XLSX، XLS و CSV پشتیبانی می‌شوند.</div><input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.xlsb,.csv" /></div>
+      <div class="notice info" style="margin-bottom:12px"><b>ویرایش مپ قبلی</b><p>اگر فایل را قبلاً وارد کرده‌ای، می‌توانی ستون‌هایش را دوباره تنظیم کنی؛ فایل اصلی در پایگاه داده مرورگر نگهداری می‌شود و نیازی به آپلود مجدد نیست.</p><div class="actions"><select id="savedMappingMode"><option value="sepidar">فاکتورهای سپیدار</option><option value="imed">اسناد IMED</option></select><button class="btn" id="editSavedMapping">ویرایش ستون‌های ذخیره‌شده</button></div></div><div class="file-box"><b>فایل را انتخاب کنید</b><div class="smalltext">فرمت‌های XLSX، XLS و CSV پشتیبانی می‌شوند.</div><input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.xlsb,.csv" /></div>
       <div id="mappingArea" class="hidden" style="margin-top:20px">
         <div class="section-head"><div><h2>تطبیق ستون‌های فایل</h2><p>ستون «مقدار اصلی» سپیدار را برای مقدار کالا انتخاب کنید، نه مقدار فرعی.</p></div><span id="sourceRows" class="tag neutral"></span></div>
         <div id="mappingGrid" class="mapping"></div>
