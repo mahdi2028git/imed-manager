@@ -11,6 +11,17 @@ const num=v=>{let s=latin(v).replace(/[٬,\s]/g,'').replace(/[٫]/g,'.');let n=N
 const norm=s=>latin(String(s??'').toLowerCase()).replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/[\u200c\s\-_/،,().]/g,'').trim();
 const id=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+window.addEventListener('error',e=>{
+ console.error('IMED Manager runtime error:',e.error||e.message);
+ const t=document.getElementById('toast');
+ if(t){t.textContent='خطای اجرای برنامه: '+(e.message||'خطای JavaScript');t.classList.add('show')}
+});
+window.addEventListener('unhandledrejection',e=>{
+ console.error('IMED Manager async error:',e.reason);
+ const t=document.getElementById('toast');
+ if(t){t.textContent='خطای عملیات: '+(e.reason?.message||String(e.reason||'خطای نامشخص'));t.classList.add('show')}
+});
+
 const money=n=>faNum(n);
 function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),3000)}
 const externalScriptLoads=new Map();
