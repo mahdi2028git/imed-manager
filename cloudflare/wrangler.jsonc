@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "imed-manager-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-27",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "imed-manager-db",
+      "database_id": "REPLACE_WITH_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "APP_ORIGIN": "https://mahdi2028git.github.io"
+  }
+}
