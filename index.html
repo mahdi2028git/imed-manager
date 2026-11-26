@@ -450,9 +450,9 @@ function referenceMatch(d,s,refsByDoc){
    if(rc&&cust&&rc!==cust)continue;
    const rd=dateOrderValue(r.actualDate);if(day&&rd&&day!==rd)continue;
    const qOk=num(r.actualQty)<=0||Math.abs(num(s.quantity)-num(r.actualQty))<0.00001;
-   const pOk=num(r.actualPrice)<=0||Math.abs(num(s.unitPrice)-num(r.actualPrice))<=Math.max(1,Math.abs(num(r.actualPrice))*0.00001);
+    // قیمت خرید/فروش معیار تطبیق نیست؛ فقط مقدار، مشتری و تاریخ بررسی می‌شوند.
    if(MATCH_REFERENCE_POSITIVE.has(r.status)){
-     return {kind:'positive',status:r.status,exact:r.status==='تطبیق دقیق'&&qOk&&pOk&&cust===rc&&day===rd,reference:r};
+     return {kind:'positive',status:r.status,exact:r.status==='تطبیق دقیق'&&qOk&&cust===rc&&day===rd,reference:r};
    }
    if(r.status==='فاکتور/تاریخ پیدا شد؛ وجه افتراق نامنطبق')return {kind:'rejected',status:r.status,reference:r};
  }
