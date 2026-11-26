@@ -7,7 +7,7 @@
     {
       "binding": "DB",
       "database_name": "imed-manager-db",
-      "database_id": "REPLACE_WITH_DATABASE_ID",
+      "database_id": "f0b49851-7dc3-425d-9d00-13469ed55ead",
     }
   ],
   "vars": {
