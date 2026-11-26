@@ -8,7 +8,6 @@
       "binding": "DB",
       "database_name": "imed-manager-db",
       "database_id": "REPLACE_WITH_DATABASE_ID",
-      "migrations_dir": "migrations"
     }
   ],
   "vars": {
