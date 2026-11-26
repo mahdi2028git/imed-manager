@@ -83,6 +83,42 @@ export default {
     }
 
     const parts = url.pathname.split("/").filter(Boolean);
+
+    // Local-first match sync: only confirmed allocations are synchronized.
+    // Source records stay in each device local SQLite database.
+    if (parts[0] === "api" && parts[1] === "matches" && parts[2] === "sync") {
+      try {
+        if (request.method === "GET") {
+          const since = url.searchParams.get("since") || "1970-01-01T00:00:00.000Z";
+          const result = await env.DB.prepare("SELECT * FROM match_allocations WHERE updated_at > ? ORDER BY updated_at ASC LIMIT 500").bind(since).all();
+          return json({ data: result.results || [], meta: { count: (result.results || []).length } }, 200, cors);
+        }
+        if (request.method === "POST") {
+          const body = await request.json();
+          const matches = Array.isArray(body.matches) ? body.matches : [];
+          if (!matches.length || matches.length > 100) return json({ error: "Send between 1 and 100 matches per batch" }, 400, cors);
+          const statements = [];
+          for (const m of matches) {
+            if (!m || !m.id || !m.distribution_key || !m.sepidar_item_key || !Number.isFinite(Number(m.matched_quantity)) || Number(m.matched_quantity) < 0) {
+              return json({ error: "Each match requires id, distribution_key, sepidar_item_key and a non-negative matched_quantity" }, 400, cors);
+            }
+            statements.push(env.DB.prepare("INSERT INTO match_allocations (id, distribution_key, sepidar_item_key, distribution_local_id, sepidar_item_local_id, matched_quantity, match_method, status, notes, device_id, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(distribution_key, sepidar_item_key) DO UPDATE SET id=excluded.id, distribution_local_id=excluded.distribution_local_id, sepidar_item_local_id=excluded.sepidar_item_local_id, matched_quantity=excluded.matched_quantity, match_method=excluded.match_method, status=excluded.status, notes=excluded.notes, device_id=excluded.device_id, updated_at=excluded.updated_at, deleted_at=excluded.deleted_at WHERE excluded.updated_at >= match_allocations.updated_at").bind(
+              String(m.id), String(m.distribution_key), String(m.sepidar_item_key),
+              String(m.distribution_local_id || ""), String(m.sepidar_item_local_id || ""),
+              Number(m.matched_quantity), String(m.match_method || "manual"),
+              String(m.status || "confirmed"), String(m.notes || ""), String(m.device_id || ""),
+              String(m.updated_at || new Date().toISOString()), m.deleted_at ? String(m.deleted_at) : null
+            ));
+          }
+          const result = await env.DB.batch(statements);
+          return json({ ok: true, processed: result.length }, 200, cors);
+        }
+        return json({ error: "Method not allowed" }, 405, cors);
+      } catch (error) {
+        return json({ error: "Match sync failed", detail: error.message }, 500, cors);
+      }
+    }
+
     if (parts[0] !== "api" || !TABLES[parts[1]]) return json({ error: "Not found" }, 404, cors);
 
     const table = parts[1];
