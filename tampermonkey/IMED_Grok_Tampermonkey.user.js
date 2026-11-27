@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IMED Distribution Auto-Fill (Grok)
 // @namespace    https://github.com/mahdi2028git/imed-manager
-// @version      0.1.0
+// @version      0.1.1
 // @description  پر کردن فرم توزیع IMED تا قبل از ثبت نهایی - بدون کلیک روی ثبت
 // @author       Grok (prepared for mahdi2028git)
 // @match        https://register.imed.ir/SaleDistribution/Dist/Dist_QuotaDistribution.aspx*
@@ -138,16 +138,15 @@
     }
 
     if (lower.length) {
-      // Phase 2 - fill quantities and prices in lower table
-      const report = [];
-      for (const [irc, rec] of grouped) {
-        let priceDone = false;
-        const prices = rec.prices;
-        // Try to find matching row and fill qty / price
-        // (simplified from original - keeps safety)
-        report.push("IRC " + irc + ": تعداد " + rec.qty + (priceDone ? "، فی وارد شد" : " — فی را دستی بررسی کنید"));
-      }
-      status.innerHTML = "<b>مرحله ۲:</b> اطلاعات جدول پایین.<br>فاکتور " + g.invoice + " / " + g.date + "<br>" + report.join("<br>") + "<br><b>کنترل کنید و ذخیره/ثبت را دستی بزنید.</b>";
+      // The live lower-grid field mapping has not been verified; never claim to fill it.
+      // Show the exact source rows so the operator can enter and verify them manually.
+      const details = g.rows.map(r =>
+        "IRC " + ircOf(r) + " | تعداد " + Number(r.Count || 0) + " | فی " + Number(r.RialPrice || 0)
+      );
+      status.textContent = "مرحله ۲ به‌صورت خودکار انجام نمی‌شود؛ ساختار فیلدهای جدول پایین در نسخه فعلی IMED هنوز تأیید نشده است.\n" +
+        "فاکتور " + g.invoice + " / " + g.date + "\n" +
+        "ردیف‌ها را با همین تعداد و فی در جدول پایین وارد و کنترل کن:\n" +
+        details.join("\n") + "\n\nثبت نهایی همچنان فقط با کلیک دستی خودت انجام می‌شود.";
       return;
     }
 
