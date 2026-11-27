@@ -6,7 +6,7 @@ let cloudEnabled=false;
 const IDB_NAME='imedManagerSqliteStorage';
 const IDB_STORE='databaseFiles';
 let SQL=null, sqliteDB=null, saveQueue=Promise.resolve();
-const state={imed:[],sepidar:[],allocations:{},virtualInventory:[],virtualInventoryMeta:{},currentDoc:'',importRows:[],importHeaders:[],importName:'',importMode:'imed',importRaw:[],importSources:{},preview:[]};
+const state={imed:[],sepidar:[],allocations:{},matchProposals:null,virtualInventory:[],virtualInventoryMeta:{},currentDoc:'',importRows:[],importHeaders:[],importName:'',importMode:'imed',importRaw:[],importSources:{},preview:[]};
 const $=id=>document.getElementById(id);
 const faNum=n=>Number(n||0).toLocaleString('fa-IR');
 const latin=s=>String(s??'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
@@ -65,7 +65,7 @@ INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','3');
 `)}
 function runPrepared(db,sql,values){const st=db.prepare(sql);try{st.run(values)}finally{st.free()}}
 function jsonRows(db,table){const r=db.exec(`SELECT raw_json FROM ${table} ORDER BY rowid`);if(!r.length)return[];return r[0].values.map(row=>JSON.parse(row[0]))}
-function loadStateFromSQLite(db){createSchema(db);state.imed=jsonRows(db,'imed_distributions');state.sepidar=jsonRows(db,'sepidar_rows');state.virtualInventory=jsonRows(db,'virtual_inventory');state.allocations={};const r=db.exec('SELECT distribution_id, raw_json FROM allocations ORDER BY rowid');if(r.length){for(const row of r[0].values){const did=row[0];if(!state.allocations[did])state.allocations[did]=[];state.allocations[did].push(JSON.parse(row[1]))}}const m=db.exec("SELECT value FROM app_meta WHERE key='virtual_inventory_meta'");state.virtualInventoryMeta=m.length&&m[0].values.length?JSON.parse(m[0].values[0][0]):{};const im=db.exec("SELECT value FROM app_meta WHERE key='import_sources'");state.importSources=im.length&&im[0].values.length?JSON.parse(im[0].values[0][0]):{};const cd=db.exec("SELECT value FROM app_meta WHERE key='current_doc'");state.currentDoc=cd.length&&cd[0].values.length?String(cd[0].values[0][0]):'' }
+function loadStateFromSQLite(db){createSchema(db);state.imed=jsonRows(db,'imed_distributions');state.sepidar=jsonRows(db,'sepidar_rows');state.virtualInventory=jsonRows(db,'virtual_inventory');state.allocations={};const r=db.exec('SELECT distribution_id, raw_json FROM allocations ORDER BY rowid');if(r.length){for(const row of r[0].values){const did=row[0];if(!state.allocations[did])state.allocations[did]=[];state.allocations[did].push(JSON.parse(row[1]))}}const m=db.exec("SELECT value FROM app_meta WHERE key='virtual_inventory_meta'");state.virtualInventoryMeta=m.length&&m[0].values.length?JSON.parse(m[0].values[0][0]):{};const im=db.exec("SELECT value FROM app_meta WHERE key='import_sources'");state.importSources=im.length&&im[0].values.length?JSON.parse(im[0].values[0][0]):{};const cd=db.exec("SELECT value FROM app_meta WHERE key='current_doc'");state.currentDoc=cd.length&&cd[0].values.length?String(cd[0].values[0][0]):'';const mp=db.exec("SELECT value FROM app_meta WHERE key='match_proposals'");state.matchProposals=mp.length&&mp[0].values.length?JSON.parse(mp[0].values[0][0]):null }
 function writeStateToSQLite(){if(!sqliteDB)throw new Error('SQLite database not initialized');const db=sqliteDB;db.exec('BEGIN');try{
  db.exec('DELETE FROM allocations; DELETE FROM sepidar_rows; DELETE FROM imed_distributions;');
  for(const d of state.imed){runPrepared(db,'INSERT INTO imed_distributions VALUES (?,?,?,?,?,?,?,?,?,?)',[String(d.id||id()),String(d.distributionNo||''),String(d.distributionDate||''),String(d.receiver||''),String(d.product||''),String(d.irc||''),num(d.quantity),String(d.supplier||''),String(d.distributionType||''),JSON.stringify(d)])}
@@ -76,6 +76,7 @@ function writeStateToSQLite(){if(!sqliteDB)throw new Error('SQLite database not 
  runPrepared(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('virtual_inventory_meta',?)",[JSON.stringify(state.virtualInventoryMeta||{})]);
  runPrepared(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('import_sources',?)",[JSON.stringify(state.importSources||{})]);
  runPrepared(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('current_doc',?)",[String(state.currentDoc||'')]);
+ runPrepared(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('match_proposals',?)",[JSON.stringify(state.matchProposals||null)]);
  db.exec('COMMIT');
  }catch(e){try{db.exec('ROLLBACK')}catch(_){}throw e}}
 async function persistSQLiteToBrowser(){if(!sqliteDB)return;const bytes=sqliteDB.export();const copy=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);await idbPut('main',copy)}
@@ -84,7 +85,7 @@ function cloudStatus(message){const el=$('cloudSyncStatus');if(el)el.textContent
 function cloudProgress(percent,detail){const el=$('cloudSyncStatus');if(el)el.innerHTML=progressMarkup('در حال انتقال اطلاعات به Cloudflare',percent,detail)}
 function cloudKey(){return localStorage.getItem(CLOUD_KEY_STORAGE)||''}
 async function cloudRequest(path,options={}){const key=cloudKey();if(!key)throw new Error('ابتدا کلید دسترسی Cloudflare را وارد و اتصال را برقرار کنید');const headers={...(options.headers||{}),Authorization:'Bearer '+key};if(options.body)headers['Content-Type']='application/json';const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),90000);try{const response=await fetch(CLOUD_API+path,{...options,headers,signal:controller.signal});let body={};try{body=await response.json()}catch(_){}if(!response.ok){const error=new Error(body.error||('خطای سرور: '+response.status));error.status=response.status;throw error}return body}catch(err){if(err.name==='AbortError')throw new Error('مهلت پاسخ سرور تمام شد؛ اتصال اینترنت را بررسی کنید و دوباره تلاش کنید');throw err}finally{clearTimeout(timer)}}
-function cloudSnapshot(){return{version:1,savedAt:new Date().toISOString(),imed:state.imed,sepidar:state.sepidar,allocations:state.allocations,virtualInventory:state.virtualInventory,virtualInventoryMeta:state.virtualInventoryMeta,currentDoc:state.currentDoc,importSources:state.importSources}}
+function cloudSnapshot(){return{version:1,savedAt:new Date().toISOString(),imed:state.imed,sepidar:state.sepidar,allocations:state.allocations,virtualInventory:state.virtualInventory,virtualInventoryMeta:state.virtualInventoryMeta,currentDoc:state.currentDoc,importSources:state.importSources,matchProposals:state.matchProposals||null}}
 async function cloudPushSnapshot(){
  if(!cloudEnabled)return;
  if(!state.imed.length&&!state.sepidar.length&&!state.virtualInventory.length&&!Object.keys(state.allocations||{}).length)throw new Error('اطلاعات محلی خالی است؛ برای جلوگیری از پاک‌شدن نسخه ابری، ارسال متوقف شد. ابتدا نسخه ابری را بازیابی کن.');
@@ -108,7 +109,7 @@ async function cloudPushSnapshot(){
  cloudStatus('انتقال کامل به Cloudflare D1 — '+faNum(result.parts)+' بخش — '+new Date().toLocaleString('fa-IR'));
  return result;
 }
-async function cloudApplySnapshot(data,{allowShrink=false}={}){if(!data||typeof data!=='object'||!Array.isArray(data.imed)||!Array.isArray(data.sepidar)||!Array.isArray(data.virtualInventory)||!data.allocations||typeof data.allocations!=='object')throw new Error('ساختار نسخه ابری ناقص است؛ اطلاعات فعلی تغییر نکرد.');const remote={imed:data.imed.length,sepidar:data.sepidar.length,inventory:data.virtualInventory.length};if(!remote.imed&&!remote.sepidar&&!remote.inventory&&!Object.keys(data.allocations).length)throw new Error('نسخه ابری خالی است؛ برای جلوگیری از حذف اطلاعات، بازیابی متوقف شد.');const local={imed:state.imed.length,sepidar:state.sepidar.length,inventory:state.virtualInventory.length};if(!allowShrink&&(remote.imed<local.imed||remote.sepidar<local.sepidar||remote.inventory<local.inventory))throw new Error('نسخه ابری از اطلاعات این دستگاه رکوردهای کمتری دارد؛ برای جلوگیری از حذف داده‌ها، همگام‌سازی خودکار متوقف شد.');state.imed=data.imed;state.sepidar=data.sepidar;state.allocations=data.allocations;state.virtualInventory=data.virtualInventory;state.virtualInventoryMeta=data.virtualInventoryMeta||{};state.currentDoc=String(data.currentDoc||'');state.importSources=data.importSources||{};invalidateSepidarSearchIndex();writeStateToSQLite();await persistSQLiteToBrowser();refresh();if(state.currentDoc)openDoc(state.currentDoc)}
+async function cloudApplySnapshot(data,{allowShrink=false}={}){if(!data||typeof data!=='object'||!Array.isArray(data.imed)||!Array.isArray(data.sepidar)||!Array.isArray(data.virtualInventory)||!data.allocations||typeof data.allocations!=='object')throw new Error('ساختار نسخه ابری ناقص است؛ اطلاعات فعلی تغییر نکرد.');const remote={imed:data.imed.length,sepidar:data.sepidar.length,inventory:data.virtualInventory.length};if(!remote.imed&&!remote.sepidar&&!remote.inventory&&!Object.keys(data.allocations).length)throw new Error('نسخه ابری خالی است؛ برای جلوگیری از حذف اطلاعات، بازیابی متوقف شد.');const local={imed:state.imed.length,sepidar:state.sepidar.length,inventory:state.virtualInventory.length};if(!allowShrink&&(remote.imed<local.imed||remote.sepidar<local.sepidar||remote.inventory<local.inventory))throw new Error('نسخه ابری از اطلاعات این دستگاه رکوردهای کمتری دارد؛ برای جلوگیری از حذف داده‌ها، همگام‌سازی خودکار متوقف شد.');state.imed=data.imed;state.sepidar=data.sepidar;state.allocations=data.allocations;state.virtualInventory=data.virtualInventory;state.virtualInventoryMeta=data.virtualInventoryMeta||{};state.currentDoc=String(data.currentDoc||'');state.importSources=data.importSources||{};state.matchProposals=data.matchProposals||state.matchProposals||null;invalidateSepidarSearchIndex();writeStateToSQLite();await persistSQLiteToBrowser();refresh();if(state.currentDoc)openDoc(state.currentDoc)}
 async function cloudLoadOnStartup(){const key=cloudKey();if(!key)return;cloudEnabled=true;try{const remote=await cloudRequest('/api/state');await cloudApplySnapshot(remote.data||{});cloudEnabled=true;cloudStatus('همگام‌سازی ابری فعال است — '+(remote.updatedAt||''));}catch(err){if(err.status===404){try{if(state.imed.length||state.sepidar.length||state.virtualInventory.length){cloudStatus('پایگاه ابری خالی است؛ انتقال خودکار اطلاعات این مرورگر آغاز شد…');await cloudPushSnapshot();toast('اطلاعات این مرورگر به Cloudflare منتقل شد');}else cloudStatus('اتصال برقرار است؛ اطلاعات محلی برای انتقال وجود ندارد.');}catch(uploadError){cloudEnabled=false;cloudStatus('انتقال خودکار ناموفق بود: '+uploadError.message);console.error('Cloud first upload failed',uploadError)}}else{cloudEnabled=false;cloudStatus('اتصال ابری برقرار نشد: '+err.message);console.error('Cloud startup sync failed',err)}}}
 
 function persistCurrentDoc(){if(!sqliteDB)return Promise.resolve();saveQueue=saveQueue.then(async()=>{runPrepared(sqliteDB,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('current_doc',?)",[String(state.currentDoc||'')]);await persistSQLiteToBrowser();if(cloudEnabled)await cloudPushSnapshot()}).catch(err=>{console.error(err);toast('ذخیره آخرین سند ناموفق بود: '+err.message)});return saveQueue}
@@ -592,8 +593,28 @@ function allMatchInvoiceRows(x){
  const proposed=(x.planned||[]).map(p=>({...p,isExisting:false}));
  return [...saved,...proposed];
 }
+async function currentMatchBaseHash(){return matchCacheHash({matcherVersion:4,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS})}
+async function restoreSavedMatchProposals(){
+ const saved=state.matchProposals;if(!saved||saved.version!==1||!Array.isArray(saved.rows))return null;
+ const hash=await currentMatchBaseHash();if(saved.baseHash!==hash)return null;
+ const docs=new Map(state.imed.map(d=>[String(d.id),d])),invoices=new Map(state.sepidar.map(x=>[String(x.id),x])),restored=[];
+ for(const row of saved.rows){
+  const d=docs.get(String(row.distributionId));if(!d)return null;
+  const planned=[];for(const p of (row.planned||[])){const source=invoices.get(String(p.sourceId));if(!source)return null;planned.push({s:source,q:num(p.q),score:num(p.score),signals:Array.isArray(p.signals)?p.signals:[],ircConflict:!!p.ircConflict})}
+  restored.push({d,already:num(row.already),target:num(row.target),got:num(row.got),left:num(row.left),total:num(row.total),status:String(row.status||'بدون تطبیق'),planned});
+ }
+ return restored;
+}
+async function persistMatchProposals(rows){
+ const baseHash=await currentMatchBaseHash();
+ state.matchProposals={version:1,baseHash,savedAt:new Date().toISOString(),rows:rows.map(x=>({distributionId:String(x.d.id),already:num(x.already),target:num(x.target),got:num(x.got),left:num(x.left),total:num(x.total),status:String(x.status||''),planned:(x.planned||[]).map(p=>({sourceId:String(p.s.id),q:num(p.q),score:num(p.score),signals:Array.isArray(p.signals)?p.signals:[],ircConflict:!!p.ircConflict}))}))};
+ await save();
+ toast('پیشنهادهای تطبیق در همان پایگاه داده SQLite ذخیره شدند');
+}
 async function renderAllAutoMatches(){
- allAutoRows=await calculateAllAutoMatches();
+ const restored=await restoreSavedMatchProposals();
+ allAutoRows=restored||await calculateAllAutoMatches();
+ if(!restored)await persistMatchProposals(allAutoRows);
  refresh();
  const complete=allAutoRows.filter(x=>x.status==='کامل').length,partial=allAutoRows.filter(x=>x.status==='ناقص').length,none=allAutoRows.filter(x=>x.status==='بدون تطبیق').length;
  const completeRate=allAutoRows.length?Math.round(complete/allAutoRows.length*100):0;$('allMatchStats').innerHTML=`تعداد اسناد: <b>${faNum(allAutoRows.length)}</b> | نرخ اسناد کامل: <b>${faNum(completeRate)}٪</b> (${faNum(complete)}) | ناقص: <b>${faNum(partial)}</b> | بدون تطبیق: <b>${faNum(none)}</b> | پیشنهاد جدید: <b>${faNum(allAutoRows.reduce((n,x)=>n+x.planned.length,0))}</b> ردیف فاکتور | مرجع: <b>${faNum(MATCH_REFERENCE_ROWS.length)}</b> ردیف جدول تطبیق (موارد وجه افتراق نامنطبق حذف می‌شوند)`;
