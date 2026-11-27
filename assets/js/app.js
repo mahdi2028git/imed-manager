@@ -804,7 +804,7 @@ function inferTypeId(d){
  // Receiver nature is the primary source when supplied; distribution type is fallback only when nature is absent.
  const nature=String(d?.receiverNature||'').trim();
  let type=norm(nature||d?.distributionType||'');
- if(!type)return'';
+ if(!type)return'2';
  type=type.replace(/^ماهیتدریافتکننده/,'').replace(/^نوعتوزیع/,'');
  for(const [typeId,aliases] of Object.entries(DISTRIBUTION_TYPE_ALIASES)){
   if(aliases.some(label=>norm(label)===type))return typeId;
@@ -816,7 +816,7 @@ function inferTypeId(d){
    if(typeId===prefixed[1]&&aliases.some(label=>norm(label)===suffix))return typeId;
   }
  }
- return '';
+ return '2';
 }
 function applyKnownTypeIds(){
  let changed=0,unresolved=0;
