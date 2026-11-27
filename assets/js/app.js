@@ -1127,6 +1127,56 @@ async function buildAllDocumentsBatchScript(){
 }
 $('bulkRegisterAll').onclick=async()=>{try{await buildAllDocumentsBatchScript()}catch(err){toast(err.message)}};
 
+async function buildOfflineImedExports(){
+ await ensureAutoMatchesReady();
+ if(!window.IMEDOfflineExport?.build)throw Error('ماژول خروجی آفلاین بارگذاری نشده؛ صفحه را تازه‌سازی کن.');
+ const documents=[],sharedUsed={};
+ for(const d of state.imed){
+  const forScript=makeQuotaRows(d,false,true);
+  const inventoryCandidate={...sharedUsed};
+  const forXml=makeQuotaRows(d,false,false,inventoryCandidate);
+  if(!forXml.errors.length&&forXml.rows.length)Object.assign(sharedUsed,inventoryCandidate);
+  const scriptErrors=[...forScript.errors],xmlErrors=[...forXml.errors];
+  const safeDocument={...d,distributionNo:String(d.distributionNo||'').replace(/\\*\\//g,'* /').replace(/[\\r\\n]/g,' ')};
+  const code=!scriptErrors.length&&forScript.rows.length?buildFormAutofillSource(safeDocument,forScript.rows):'';
+  const total=num(d.quantity);
+  const warnings=[...forScript.skipped,...forXml.skipped];
+  if(forScript.rows.length&&forScript.total+0.00001<total)warnings.push('تطبیق جزئی: تعداد '+forScript.total+' از '+total);
+  documents.push({
+   distributionNo:String(d.distributionNo||d.id||''),
+   label:'سند '+String(d.distributionNo||d.id||'')+' | '+String(d.product||'')+' | '+forScript.rows.length+' ردیف',
+   scriptRows:forScript.rows,code,scriptErrors,
+   xmlRows:forXml.rows,xmlErrors,warnings
+  });
+ }
+ return window.IMEDOfflineExport.build({sourceInvoices:state.sepidar,documents});
+}
+async function downloadOfflineImedFile(kind){
+ try{
+  const output=await buildOfflineImedExports();
+  if(kind==='js'){
+   downloadText(output.js,'IMED_Offline_All_Sepidar_Invoices.js','text/javascript;charset=utf-8');
+   toast('JavaScript شامل '+faNum(output.summary.sepidarSourceRows)+' ردیف سپیدار و '+faNum(output.summary.formReadyDocuments)+' سند آماده دانلود شد.');
+  }else if(kind==='xml'){
+   if(!output.xml){
+    toast('XML معتبر نداریم؛ گزارش را بگیر و InventoryID، گیرنده و تطبیق‌ها را بررسی کن.');
+    return;
+   }
+   const parsed=new DOMParser().parseFromString(output.xml,'application/xml');
+   if(parsed.querySelector('parsererror'))throw Error('XML تولیدشده معتبر نیست.');
+   downloadText(output.xml,'IMED_Offline_Valid_Quotas.xml','application/xml;charset=utf-8');
+   toast('XML شامل '+faNum(output.summary.validXmlRows)+' ردیف معتبر دانلود شد. ثبت در IMED هنوز تست نشده است.');
+  }else if(kind==='report'){
+   downloadText(output.report,'IMED_Offline_Coverage_Report.json','application/json;charset=utf-8');
+   toast('گزارش فاکتورهای آماده و غیرآماده دانلود شد.');
+  }
+ }catch(err){console.error('IMED offline export:',err);toast('خروجی آفلاین آماده نشد: '+(err.message||err))}
+}
+$('downloadOfflineJs')?.addEventListener('click',()=>downloadOfflineImedFile('js'));
+$('downloadOfflineXml')?.addEventListener('click',()=>downloadOfflineImedFile('xml'));
+$('downloadOfflineReport')?.addEventListener('click',()=>downloadOfflineImedFile('report'));
+
+
 // Import workbook and map columns
 let workbook=null,activeMatrix=[];
 const fields={imed:[['distributionNo','شماره سند توزیع',['شماره سند','شماره سند توزیع','شماره سند2','شماره']],['distributionDate','تاریخ سند',['تاریخ صدور','تاریخ سند','تاریخ']],['receiver','دریافت‌کننده',['دریافت کننده','نام دریافت کننده','مشتری']],['product','نام فارسی کامل کالا',['نام فارسی کامل کالا','نام فارسی کالا','نام کالا','کالا خدمت','کالا/خدمت','شرح کالا','شرح کالا/خدمت','شرح کالا خدمت','کالا']],['irc','IRC',['irc']],['quantity','تعداد توزیع',['تعداد توزیع','تعداد','مقدار']],['supplier','صادرکننده / تأمین‌کننده',['صادرکننده سند','تامین کننده','کمپانی قانونی']],['distributionType','نوع توزیع',['نوع توزیع']],['receiverNature','ماهیت دریافت‌کننده',['ماهیت دریافت کننده','ماهیت دریافت‌کننده','ماهیت مشتری','ماهیت']],['typeId','TypeID / کد نوع توزیع',['typeid','کد نوع توزیع']],['receiverCode','کد دریافت‌کننده',['receivercode','کد دریافت کننده','کد مشتری']]],sepidar:[['invoiceNo','شماره فاکتور',['شماره فاکتور','شماره','شماره سند']],['invoiceDate','تاریخ فاکتور',['تاریخ فاکتور','تاریخ']],['customer','مشتری',['نام مشتری','مشتری']],['product','نام فارسی کامل کالا / شرح کالا و خدمت',['نام فارسی کامل کالا','نام فارسی کالا','کالا خدمت','کالا/خدمت','شرح کالا','شرح کالا/خدمت','شرح کالا خدمت','نام کالا','کالا']],['irc','IRC',['irc']],['quantity','مقدار اصلی',['مقدار اصلی','مقداراصلی','مقدار']],['unitPrice','فی واحد',['فی','فی واحد','فی قیمت','في','قیمت واحد']]]};
