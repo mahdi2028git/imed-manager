@@ -137,9 +137,10 @@ function totalAllocated(docId){return allocationsFor(docId).reduce((s,a)=>s+num(
 function docStatus(d){let t=target(d),s=totalAllocated(d.id);if(t>0&&Math.abs(s-t)<.00001&&allocationsFor(d.id).length)return'exact';if(s>t&&t>0)return'over';if(s>0)return'partial';return'none'}
 function dashboardDocStatus(d){const row=allAutoRows.find(x=>String(x.d?.id)===String(d.id));if(!row)return docStatus(d);if(row.status==='کامل')return'exact';if(row.status==='ناقص'||(row.planned||[]).length||num(row.already)>0)return'partial';return'none'}
 function statusTag(status){if(status==='exact')return'<span class="tag good">تطبیق کامل</span>';if(status==='over')return'<span class="tag bad">بیش از مقدار توزیع</span>';if(status==='partial')return'<span class="tag warn">ناقص</span>';return'<span class="tag neutral">بدون تطبیق</span>'}
+function needsManualReviewStatus(status){return status==='none'||status==='over'}
 function refresh(){
  $('statDist').textContent=faNum(state.imed.length);$('statSep').textContent=faNum(state.sepidar.length);
- const full=state.imed.filter(d=>dashboardDocStatus(d)==='exact').length,pending=state.imed.length-full;
+ const full=state.imed.filter(d=>dashboardDocStatus(d)==='exact').length,pending=state.imed.filter(d=>needsManualReviewStatus(dashboardDocStatus(d))).length;
  $('statFull').textContent=faNum(full);$('statPending').textContent=faNum(pending);
  $('recentDistributions').innerHTML=state.imed.length?`<div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>تعداد</th><th>وضعیت</th></tr></thead><tbody>${state.imed.slice().sort((a,b)=>dateOrderValue(a.distributionDate)-dateOrderValue(b.distributionDate)).slice(0,6).map(d=>`<tr><td>${esc(d.distributionNo||'—')}</td><td>${esc(d.product||'—')}</td><td>${faNum(d.quantity)}</td><td>${statusTag(dashboardDocStatus(d))}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">هنوز سندی وارد نشده است.</div>';
  const counts={exact:full,partial:state.imed.filter(d=>dashboardDocStatus(d)==='partial').length,over:state.imed.filter(d=>dashboardDocStatus(d)==='over').length,none:state.imed.filter(d=>dashboardDocStatus(d)==='none').length};
