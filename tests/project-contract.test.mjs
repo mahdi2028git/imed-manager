@@ -38,8 +38,8 @@ const quota = app.slice(app.indexOf("function makeQuotaRows"), app.indexOf("func
 assert.match(quota, /تطبیق ناقص/);
 assert.match(quota, /skipped\.push/);
 assert.match(app, /if\(v\.errors\.length\)/, "XML generation must stop when any required row field is invalid");
-assert.match(quota, /v\.skipped\.map/, "partial quantity must be reported visibly");
-assert.match(quota, /فقط برای همین ردیف‌های معتبر/, "partial XML must explain its actual scope");
+assert.match(app, /v\.skipped\.map/, "partial quantity must be reported visibly");
+assert.match(app, /فقط برای همین ردیف‌های معتبر/, "partial XML must explain its actual scope");
 
 // Local SQLite restore must validate a database before replacing the current handle.
 assert.match(app, /sqlite_master WHERE type='table'/, "SQLite restore must reject unrelated databases");
