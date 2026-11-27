@@ -61,7 +61,7 @@ const contentTypes = {
 };
 
 function encodedKey(key) {
-  return String(key).split("/").map(encodeURIComponent).join("/");
+  return String(key).split("/").map(part => encodeURIComponent(part).replace(/[!'()*]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase())).join("/");
 }
 
 function signedHeaders(method, key, body, digest, contentType) {
@@ -75,7 +75,7 @@ function signedHeaders(method, key, body, digest, contentType) {
     "x-amz-date": amzDate
   };
   if (method === "PUT") { headers["x-amz-meta-sha256"] = digest; headers["content-type"] = contentType; }
-  const canonicalHeaderNames = ["host", ...Object.keys(headers).map(k => k.toLowerCase()).sort()];
+  const canonicalHeaderNames = [...Object.keys(headers).map(k => k.toLowerCase()), "host"].sort();
   const canonicalHeaders = canonicalHeaderNames.map(name => {
     const v = name === "host" ? url.host : headers[Object.keys(headers).find(k => k.toLowerCase() === name)];
     return name + ":" + String(v).trim().replace(/\s+/g, " ");
