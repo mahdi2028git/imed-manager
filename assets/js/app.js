@@ -116,7 +116,18 @@ async function exportSQLiteFile(){await saveQueue;writeStateToSQLite();await per
 async function initApp(){try{await loadExternalScript(SQL_JS_URL,'initSqlJs');if(!window.initSqlJs)throw new Error('کتابخانه SQLite بارگذاری نشد؛ اتصال اینترنت را بررسی کنید');SQL=await initSqlJs({locateFile:f=>`https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}`});const saved=await idbGet('main');if(saved){sqliteDB=new SQL.Database(new Uint8Array(saved));createSchema(sqliteDB);loadStateFromSQLite(sqliteDB)}else{sqliteDB=new SQL.Database();createSchema(sqliteDB);let migrated=false;try{const old=JSON.parse(localStorage.getItem(STORE)||'null');if(old&&Array.isArray(old.imed)&&Array.isArray(old.sepidar)){state.imed=old.imed;state.sepidar=old.sepidar;state.allocations=old.allocations||{};migrated=true}}catch(e){console.warn('Legacy localStorage migration skipped',e)}writeStateToSQLite();await persistSQLiteToBrowser();if(migrated)toast('اطلاعات قبلی به SQLite منتقل شد')}if(state.imed.length&&!state.imed.some(d=>String(d.id)===String(state.currentDoc)))state.currentDoc=state.imed[0].id;await persistCurrentDoc();refresh();if(state.currentDoc)openDoc(state.currentDoc);await cloudLoadOnStartup()}catch(e){console.error(e);toast('راه‌اندازی پایگاه داده ناموفق بود: '+e.message)}}
 const titleMap={dashboard:'داشبورد',import:'ورود اطلاعات',distributions:'اسناد توزیع',sepidar:'فاکتورهای فروش سپیدار',reconcile:'تطبیق و ردیابی',inventory:'انبار مجازی IMED',xml:'تولید XML',formscript:'اسکریپت ثبت IMED',settings:'تنظیمات'};
 function goto(v){const target=$('view-'+v);if(!target){console.warn('Navigation target not found:',v);return false}document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));target.classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));const heading=$('pageTitle');if(heading)heading.textContent=titleMap[v]||'';if(v==='reconcile')refreshDocOptions();if(v==='inventory')renderInventory();if(v==='xml')refreshXmlDocs();if(v==='formscript')refreshScriptDocs();window.scrollTo({top:0,behavior:'instant'});return true}
-const navRoot=document.querySelector('.nav');if(navRoot)navRoot.addEventListener('click',e=>{const button=e.target.closest('button[data-view]');if(!button)return;e.preventDefault();goto(button.dataset.view)});
+const navRoot=document.querySelector('.nav');
+if(navRoot){
+ const navigateFromEvent=e=>{const button=e.target.closest('button[data-view]');if(!button||!navRoot.contains(button))return;e.preventDefault();e.stopPropagation();goto(button.dataset.view)};
+ navRoot.addEventListener('click',navigateFromEvent,true);
+ navRoot.querySelectorAll('button[data-view]').forEach(button=>{
+  button.disabled=false;
+  button.removeAttribute('aria-disabled');
+  button.style.pointerEvents='auto';
+  button.addEventListener('click',e=>{e.preventDefault();goto(button.dataset.view)});
+ });
+}
+window.imedManagerNavigate=goto;
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>goto(b.dataset.goto)));
 function allocationsFor(docId){return state.allocations[docId]||[]}
 function target(doc){return num(doc?.quantity)}
