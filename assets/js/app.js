@@ -888,10 +888,17 @@ function setRadio(type){const el=document.querySelector('input[name="ctl00$MainC
 function makePanel(message){let p=document.getElementById('imedMultiHelperPanel');if(!p){p=document.createElement('div');p.id='imedMultiHelperPanel';p.dir='rtl';p.style.cssText='position:fixed;z-index:2147483647;top:14px;right:14px;width:340px;max-width:calc(100vw - 36px);background:#fff;color:#172b43;border:1px solid #8ca6c4;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.22);padding:12px;font:13px Tahoma,sans-serif;line-height:1.8';document.body.appendChild(p)}p.innerHTML='<b>IMED — ثبت چندکالایی</b><div style="margin:8px 0">'+message+'</div><button id="imedMultiClose" style="padding:6px 12px">بستن</button>';p.querySelector('#imedMultiClose').onclick=()=>p.remove()}
 if(!ROWS.length){makePanel('هیچ ردیف تخصیصی در کد وجود ندارد.');return}
 if(invoices.length>1||dates.length>1){makePanel('این سند شامل بیش از یک شماره فاکتور یا تاریخ است. چون سربرگ ایمد فقط یک شماره و تاریخ دارد، اجرای خودکار متوقف شد. فاکتورها را جداگانه به سندهای مستقل تقسیم کنید.');console.error('Mixed invoice header values',invoices,dates);return}
-if(types.length!==1||!['1','2','4','5','6','9','15','17','18','19','21'].includes(types[0])){console.warn('TypeID ناقص یا نامعتبر است؛ اسکریپت ادامه می‌یابد و باید در فرم IMED کنترل شود:',types)}
+const validTypes=['1','2','4','5','6','9','15','17','18','19','21'];
+if(!ircs.length||ircs.some(x=>!/^\\d+$/.test(x))){makePanel('کد IRC معتبر برای همه ردیف‌ها موجود نیست؛ هیچ تغییری در فرم انجام نشد.');return}
+if(invoices.length!==1||!invoices[0]||dates.length!==1||!dates[0]){makePanel('شماره فاکتور و تاریخ باید برای این گروه مشخص و یکتا باشند؛ هیچ تغییری در فرم انجام نشد.');return}
+if(types.length!==1||!validTypes.includes(types[0])){makePanel('TypeID معتبر و یکتا در داده‌های این گروه پیدا نشد. نوع گیرنده/توزیع را در برنامه اصلاح کن؛ هیچ تغییری در فرم انجام نشد.');console.error('Invalid TypeID:',types);return}
+if(ROWS.some(r=>!Number.isFinite(Number(r.Count))||Number(r.Count)<=0||!Number.isFinite(Number(r.RialPrice))||Number(r.RialPrice)<=0)){makePanel('تعداد یا فی قیمت در یک یا چند ردیف معتبر نیست. داده‌ها را در برنامه اصلاح کن؛ هیچ تغییری در فرم انجام نشد.');return}
 const date=document.getElementById(FORM.date),invoice=document.getElementById(FORM.invoice);
-if(date&&dates[0])setValue(date,dates[0]);
-if(invoice&&invoices[0])setValue(invoice,invoices[0]);
+if(!date||!invoice){makePanel('فیلد تاریخ یا شماره فاکتور در فرم پیدا نشد؛ ساختار صفحه ممکن است تغییر کرده باشد. هیچ تغییری انجام نشد.');return}
+const radioElement=document.querySelector('input[name="ctl00$MainContent$rbtnCenterTypeLevel1"][value="'+CSS.escape(types[0])+'"]');
+if(!radioElement){makePanel('گزینه TypeID '+types[0]+' در فرم پیدا نشد؛ هیچ تغییری انجام نشد.');return}
+setValue(date,dates[0]);
+setValue(invoice,invoices[0]);
 const radioOk=setRadio(types[0]);
 const lowerQty=[...document.querySelectorAll('input[id*="GV_transfer"][id$="txt_comment"]')];
 if(lowerQty.length){
@@ -911,7 +918,7 @@ if(lowerQty.length){
      if(table){const headers=[...table.querySelectorAll('tr')].filter(x=>x.querySelector('th')).flatMap(x=>[...x.children].filter(c=>c.matches('th,td')));priceIndex=headers.findIndex(c=>norm(c.textContent).includes(norm('فی قیمت'))||norm(c.textContent).includes(norm('فی')));}
      if(priceIndex>=0&&cells[priceIndex]){const inp=cells[priceIndex].querySelector('input:not([type=hidden])');if(inp){setValue(inp,priceVals[0]);priceDone=true}}
    }
-   report.push('IRC '+irc+': تعداد '+rec.qty+(priceDone?'، فی قیمت وارد شد':'، فی قیمت را دستی کنترل/وارد کنید'));
+   report.push('IRC '+irc+': تعداد '+rec.qty+(priceDone?'، فی قیمت وارد شد':priceVals.length>1?'، چند فی قیمت متفاوت؛ فی را دستی بررسی کن':'، فی قیمت پیدا/وارد نشد؛ دستی کنترل کن'));
  }
  makePanel('مرحله دوم فاکتور '+(invoices[0]||'—')+' انجام شد. تعدادها در ردیف‌های پایین وارد شدند. '+report.join(' | ')+'<br><b>اکنون ذخیره موقت را دستی بزنید و نتیجه را کنترل کنید. صدور نهایی خودکار نیست.</b>');
  log('Phase 2 report',report);return;
@@ -951,12 +958,12 @@ for(const irc of ircs){
  if(!cb.checked)cb.click();checked.push(irc);
 }
 const headerOk=!!date&&!!invoice&&!!radioOk;
-const msg='مرحله اول: '+checked.length+' کالا از '+ircs.length+' IRC انتخاب شد. '+(missing.length?'موارد پیدا نشده/مبهم: '+missing.join('، '):'همه IRCها پیدا شدند.')+'<br>شماره فاکتور و تاریخ در سربرگ وارد شدند: '+(headerOk?'بله':'برخی فیلدهای سربرگ پیدا نشدند')+'<br><b>حالا دکمه «افزودن به سند توزیع» را دستی بزنید. پس از بارگذاری مجدد صفحه، همین کد را دوباره در Console اجرا کنید تا تعدادها در جدول پایین پر شوند.</b>';
+const msg='مرحله اول: '+checked.length+' کالا از '+ircs.length+' IRC انتخاب شد. '+(missing.length?'موارد پیدا نشده/مبهم: '+missing.join('، '):'همه IRCها پیدا شدند.')+'<br>شماره فاکتور، تاریخ و TypeID وارد شدند: '+(headerOk?'بله':'خیر؛ سربرگ را بررسی کن')+'<br><b>اگر حتی یک IRC پیدا نشده یا TypeID درست نیست، افزودن را نزن. در غیر این صورت دکمه «افزودن به سند توزیع» را دستی بزنید. پس از بارگذاری مجدد صفحه، همین کد را دوباره اجرا کنید.</b>';
 makePanel(msg);log('Phase 1 checked IRCs',checked,'missing',missing,'headerOk',headerOk);
 })();`;
 }
 
-function renderScriptReady(){const d=state.imed.find(x=>x.id===$('scriptDocSelect')?.value);if(!d)return;const v=makeQuotaRows(d,false,true);const blocked=!v.rows.length;const partial=v.total+0.00001<num(d.quantity);$('scriptReadyStatus').textContent=blocked?`${faNum(v.rows.length)} ردیف آماده — نیازمند اصلاح`:`${faNum(v.rows.length)} ردیف آماده برای فرم IMED${partial?' — تطبیق/تعداد جزئی پذیرفته شد':''}${v.skipped.length?' — '+faNum(v.skipped.length)+' ردیف فاقد داده اجباری کنار گذاشته شد':''}`;$('scriptReadyStatus').className='tag '+(blocked||v.skipped.length?'warn':'good');$('formScriptCode').value=blocked?'برای این سند هیچ ردیف تخصیصی یا پیشنهادی پیدا نشد.':buildFormAutofillSource(d,v.rows)}
+function renderScriptReady(){const d=state.imed.find(x=>x.id===$('scriptDocSelect')?.value);if(!d)return;const v=makeQuotaRows(d,false,true);const blocked=!v.rows.length;const partial=v.total+0.00001<num(d.quantity);const warnings=[...v.errors,...v.skipped];$('scriptReadyStatus').textContent=blocked?'هیچ ردیفی برای ساخت اسکریپت آماده نیست':`${faNum(v.rows.length)} ردیف آماده | تعداد ${faNum(v.total)} از ${faNum(d.quantity)}${partial?' | تطبیق جزئی':''}${warnings.length?' | '+faNum(warnings.length)+' هشدار':''}`;$('scriptReadyStatus').className='tag '+(blocked||warnings.length?'warn':'good');$('formScriptCode').value=blocked?'برای این سند هیچ ردیف تخصیصی یا پیشنهادی پیدا نشد.':buildFormAutofillSource(d,v.rows);if(warnings.length)console.warn('IMED form script preflight:',d.distributionNo,warnings)}
 async function refreshSingleFormScript(){try{await ensureAutoMatchesReady();renderScriptReady()}catch(err){$('scriptReadyStatus').textContent=err.message;$('scriptReadyStatus').className='tag warn';$('formScriptCode').value=''}}
 $('downloadFormScript').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');downloadText(code,`IMED_Form_Autofill_${$('scriptDocSelect').value}.js`,'text/javascript;charset=utf-8');toast('اسکریپت فرم IMED دانلود شد')};
 $('copyFormScript').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');copyText(code)};
