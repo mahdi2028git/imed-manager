@@ -2,6 +2,21 @@
 
 All notable user-facing changes are recorded here. Versions follow the policy in [VERSIONING.md](VERSIONING.md).
 
+## [0.32.2] - 2026-11-28
+
+### Added
+- Dashboard download buttons together: Excel (.xlsx), XML (.xml), and Console JavaScript (.js).
+- Excel shows positive remaining inventory and proposed matching details with an exclusion summary.
+- XML outputs valid matched rows and provides rejected-document reasons separately.
+- JavaScript prepares eligible invoices one by one; final form submission stays manual.
+
+### Fixed
+- Latest inventory snapshots supersede older duplicate InventoryID values when calculating positive stock candidates.
+
+### Safety
+- No automatic final submission until IMED second-step and final-submit selectors have been verified in a real browser.
+- Historical sales and zero-remaining inventory records are preserved in the data model.
+
 ## [0.32.1] - 2026-11-28
 
 ### Fixed

@@ -423,6 +423,16 @@ function positiveInventoryByIrc(rows){
  for(const v of unique.values())if(v.remaining>0)balances.set(v.irc,(balances.get(v.irc)||0)+v.remaining);
  return balances;
 }
+// Use only the most recent copy of each InventoryID/IRC pair. A later zero
+// balance supersedes an earlier positive snapshot, never the other way round.
+function latestPositiveVirtualInventoryRows(rows){
+ const latest=new Map();
+ for(const v of (rows||[])){
+  const irc=norm(v.irc),inventoryId=String(v.inventoryId||'').trim();
+  if(irc&&inventoryId)latest.set(irc+'|'+inventoryId,v);
+ }
+ return [...latest.values()].filter(v=>num(v.remainingQty)>0);
+}
 async function calculateAllAutoMatches(){
  // Build reusable indexes once. The previous version scored every Sepidar row
  // against every IMED document, even when product/IRC had no overlap.
@@ -455,7 +465,7 @@ async function calculateAllAutoMatches(){
  // Pre-index virtual-inventory descriptors by IRC, so documents sharing an IRC
  // do not each rescan the entire inventory snapshot.
  const inventoryByIrc=new Map(),inventoryByToken=new Map();
- for(const v of (state.virtualInventory||[])){
+ for(const v of latestPositiveVirtualInventoryRows(state.virtualInventory)){
   if(num(v.remainingQty)<=0)continue;
    const k=norm(v.irc);if(k){let a=inventoryByIrc.get(k);if(!a)inventoryByIrc.set(k,a=[]);a.push(v)}
    // Index inventory descriptors once; avoid rescanning the full virtual inventory
@@ -698,8 +708,12 @@ async function exportAllAutoMatches(){
   downloadText(xml,'IMED_All_Matched_Invoices.xml','application/xml;charset=utf-8');
   const summary=`${faNum(xmlRows.length)} ردیف فاکتور معتبر در XML ساخته شد؛ ${faNum(rejected.length)} سند به‌دلیل خطای اطلاعات اجباری یا نبود تخصیص معتبر کنار گذاشته شد.`;
   toast(summary);
-  if(rejected.length)console.warn('اسناد کنارگذاشته‌شده از XML:',rejected);
- }catch(err){console.error(err);toast('ساخت XML کلی ناموفق بود: '+err.message)}
+  if(rejected.length){
+   console.warn('اسناد کنارگذاشته‌شده از XML:',rejected);
+   downloadText('فهرست سندهای کنارگذاشته‌شده از XML\n'+rejected.join('\n'),'IMED_XML_Rejected_Documents.txt','text/plain;charset=utf-8');
+  }
+  return {downloaded:true,count:xmlRows.length,rejected:rejected.length};
+ }catch(err){console.error(err);toast('ساخت XML کلی ناموفق بود: '+err.message);return {downloaded:false,error:err.message}}
 }
 let allMatchBusy=false;
 async function refreshAutoMatchButtonState(){
@@ -758,6 +772,56 @@ function buildInventoryBridgeSource(){return String.raw`(()=>{
   const bodyText=document.body.innerText||'';if(/صفحه\s*\d+\s*(از|\/)\s*\d+|page\s*\d+\s*(of|\/)\s*\d+/i.test(bodyText))console.warn('احتمالاً جدول صفحه‌بندی دارد. اگر همه صفحات نمایش داده نشده‌اند، هر صفحه را جداگانه خروجی بگیر و Snapshotها را ادغام کن.');
   console.table(best.rows.slice(0,10));
 })();`}
+// One dashboard entry point for active-stock exports. All data stays in the browser.
+function downloadCenterMessage(message){
+ const target=$('downloadCenterStatus');
+ if(target)target.textContent=message;
+}
+async function downloadPositiveStockExcel(){
+ try{
+  downloadCenterMessage('در حال تهیه اکسل از Snapshot انبار با مانده مثبت و پیشنهادهای جدید…');
+  await ensureAutoMatchesReady();
+  const active=latestPositiveVirtualInventoryRows(state.virtualInventory);
+  if(!active.length)throw Error('هیچ InventoryID با مانده مثبت در Snapshot فعلی پیدا نشد. ابتدا از IMED موجودی تازه دریافت کن.');
+  if(!window.XLSX)await loadExternalScript(XLSX_JS_URL,'XLSX');
+  if(!window.XLSX)throw Error('کتابخانه Excel بارگذاری نشد.');
+  const stockRows=active.map(v=>({
+   InventoryID:String(v.inventoryId||''),IRC:String(v.irc||''),RemainingQty:num(v.remainingQty),
+   Product:String(v.persianName||v.product||''),Model:String(v.model||''),
+   EntryDate:String(v.entryDate||''),SnapshotDate:String(state.virtualInventoryMeta?.fetchedAt||'')
+  }));
+  const suggestions=allAutoRows.flatMap(x=>(x.planned||[]).map(p=>({
+   DistributionNo:String(x.d.distributionNo||''),IMED_IRC:String(x.d.irc||''),
+   InvoiceNo:String(p.s?.invoiceNo||''),InvoiceDate:String(p.s?.invoiceDate||''),
+   Customer:String(p.s?.customer||''),Product:String(p.s?.product||''),
+   AllocatedCount:num(p.q),RialPrice:num(p.s?.unitPrice),
+   AmountRial:num(p.q)*num(p.s?.unitPrice),
+   RemainingIRC:positiveInventoryByIrc(state.virtualInventory).get(norm(x.d.irc))||0,
+   ReviewStatus:'پیشنهاد تطبیق؛ پیش از ثبت تأیید شود'
+  })));
+  const book=XLSX.utils.book_new();
+  const sheet=(rows,headers)=>XLSX.utils.json_to_sheet(rows.length?rows:[Object.fromEntries(headers.map(h=>[h,'']))],{header:headers});
+  XLSX.utils.book_append_sheet(book,sheet(stockRows,['InventoryID','IRC','RemainingQty','Product','Model','EntryDate','SnapshotDate']),'Positive_Inventory');
+  XLSX.utils.book_append_sheet(book,sheet(suggestions,['DistributionNo','IMED_IRC','InvoiceNo','InvoiceDate','Customer','Product','AllocatedCount','RialPrice','AmountRial','RemainingIRC','ReviewStatus']),'Match_Proposals');
+  const exclusions=[{Reason:'IRC با مانده صفر/ناموجود خارج از دامنه فعلی',Count:state.imed.length-allAutoRows.length},{Reason:'اسناد در محدوده با مانده مثبت',Count:allAutoRows.length},{Reason:'ردیف‌های پیشنهاد تطبیق',Count:suggestions.length}];
+  XLSX.utils.book_append_sheet(book,XLSX.utils.json_to_sheet(exclusions),'Summary');
+  XLSX.writeFile(book,'IMED_Positive_Inventory_Matches.xlsx');
+  downloadCenterMessage('اکسل آماده شد: '+faNum(active.length)+' رکورد مانده مثبت؛ '+faNum(suggestions.length)+' ردیف پیشنهاد تطبیق. ثبت واقعی هنوز انجام نشده است.');
+ }catch(err){console.error('Excel export failed',err);downloadCenterMessage('دانلود اکسل انجام نشد: '+err.message);toast('دانلود اکسل ناموفق: '+err.message)}
+}
+$('downloadReadyExcel')?.addEventListener('click',downloadPositiveStockExcel);
+$('downloadReadyXml')?.addEventListener('click',async()=>{
+ downloadCenterMessage('در حال بررسی ردیف‌های XML با مانده مثبت، کد دریافت‌کننده و InventoryID معتبر…');
+ const result=await exportAllAutoMatches();
+ downloadCenterMessage(result?.downloaded?'XML دریافت شد: '+faNum(result.count)+' ردیف معتبر؛ '+faNum(result.rejected)+' سند کنار گذاشته شده. قبل از آپلود، Snapshot و تطبیق‌ها را بررسی کن.':'XML آماده نشد: '+(result?.error||'اطلاعات کافی یا معتبر پیدا نشد.'));
+});
+$('downloadReadyJs')?.addEventListener('click',async()=>{
+ downloadCenterMessage('در حال ساخت JavaScript دسته‌ای مخصوص Console برای فاکتورهای دارای مانده مثبت…');
+ try{
+  await buildAllDocumentsBatchScript();
+  downloadCenterMessage('JavaScript دانلود شد. این نسخه فقط کمک‌فرم دسته‌ای است؛ ثبت نهایی و مرحله دوم به تأیید دستی نیاز دارند.');
+ }catch(err){console.error('Console script export failed',err);downloadCenterMessage('JavaScript آماده نشد: '+err.message);toast('ساخت JavaScript ناموفق: '+err.message)}
+});
 function downloadText(text,name,type='text/plain;charset=utf-8'){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
 async function copyText(text){try{await navigator.clipboard.writeText(text);toast('کد در کلیپ‌بورد کپی شد')}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('کد کپی شد')}}
 function renderInventory(){const q=norm($('inventorySearch')?.value||'');const rows=(state.virtualInventory||[]).filter(v=>!q||norm(Object.values(v).join(' ')).includes(q));const meta=state.virtualInventoryMeta||{};if($('invRows'))$('invRows').textContent=faNum(state.virtualInventory.length);if($('invQty'))$('invQty').textContent=faNum(state.virtualInventory.reduce((s,v)=>s+num(v.remainingQty),0));if($('invIRC'))$('invIRC').textContent=faNum(new Set(state.virtualInventory.map(v=>v.irc).filter(Boolean)).size);if($('invWhen'))$('invWhen').textContent=meta.fetchedAt?new Date(meta.fetchedAt).toLocaleString('fa-IR'):'—';if($('inventorySyncInfo'))$('inventorySyncInfo').textContent=meta.fetchedAt?`آخرین Snapshot: ${new Date(meta.fetchedAt).toLocaleString('fa-IR')} | ${meta.pageTitle||''} | ${meta.sourceUrl||''}`:'هنوز Snapshot از IMED وارد نشده است.';if($('inventorySyncBadge')){$('inventorySyncBadge').textContent=meta.fetchedAt?'دریافت‌شده از IMED':'هنوز همگام‌سازی نشده';$('inventorySyncBadge').className='tag '+(meta.fetchedAt?'good':'warn')};if(!$('inventoryTable'))return;const cols=[['inventoryId','کد انبار مجازی'],['entryDate','تاریخ ورود به انبار مجازی'],['irc','IRC'],['mainGroup','گروه اصلی'],['subGroup','گروه فرعی'],['persianName','نام فارسی کامل کالا'],['persianDistinction','وجه افتراق فارسی'],['legalCompany','کمپانی قانونی'],['manufacturerCountry','کشور سازنده اصلی'],['mainSupplier','شرکت تامین کننده اصلی'],['model','مدل'],['distributedQty','تعداد توزیع'],['initialQty','تعداد کل موجودی اولیه'],['remainingQty','تعداد باقیمانده در انبار مجازی'],['supplierType','نوع تامین کننده'],['distributionIssuer','صادر کننده سند توزیع'],['declaration','اظهار'],['orderRegistration','ثبت سفارش'],['batchNo','شماره سری ساخت / بچ'],['strategicReserves','ذخایر استراتژیک'],['productionDate','تاریخ تولید'],['expiryDate','تاریخ انقضاء']];$('inventoryTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${rows.slice(0,1000).map(v=>`<tr>${cols.map(([k])=>`<td>${esc((v[k]??(k==='persianName'?v.product:''))||'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="smalltext" style="margin-top:8px">نمایش ${faNum(Math.min(rows.length,1000))} ردیف از ${faNum(rows.length)} ردیف فیلترشده؛ جدول شامل تمام ۲۲ ستون فایل IMED است.</div>`:'<div class="empty">هنوز موجودی مجازی از IMED وارد نشده یا نتیجه‌ای با این جست‌وجو وجود ندارد.</div>'}
@@ -889,7 +953,7 @@ function loadXmlDoc(docId){
 $('xmlDocSelect').addEventListener('change',e=>loadXmlDoc(e.target.value));
 $('saveXmlHeader').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند توزیع را انتخاب کن');d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save();renderXmlRows();toast('مشخصات گیرنده ذخیره شد')};
 function autoSaveXmlHeader(){const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return;d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save()}$('xmlTypeId').addEventListener('change',autoSaveXmlHeader);$('xmlReceiverCode').addEventListener('change',autoSaveXmlHeader);
-function stockCandidates(d,a){const irc=norm(d.irc||a.irc||'');return state.virtualInventory.filter(v=>norm(v.irc)===irc&&num(v.remainingQty)>0)}
+function stockCandidates(d,a){const irc=norm(d.irc||a.irc||'');return latestPositiveVirtualInventoryRows(state.virtualInventory).filter(v=>norm(v.irc)===irc)}
 function resolveStock(d,a,used={}){const c=stockCandidates(d,a);const ok=v=>num(v.remainingQty)-num(used[v.inventoryId]||0)>=num(a.allocatedQty);if(a.inventoryId){const v=c.find(x=>String(x.inventoryId)===String(a.inventoryId));if(v&&ok(v))return{row:v,reason:'انتخاب‌شده'};return{row:null,reason:'InventoryID انتخاب‌شده موجودی کافی ندارد یا در Snapshot نیست'}}const eligible=c.filter(ok);const exact=eligible.filter(v=>Math.abs(num(v.remainingQty)-num(used[v.inventoryId]||0)-num(a.allocatedQty))<0.00001);if(exact.length===1)return{row:exact[0],reason:'تطبیق یکتای مقدار با باقیمانده'};if(exact.length>1)return{row:null,reason:'چند InventoryID با باقیمانده برابر پیدا شد؛ انتخاب دستی لازم است'};if(eligible.length===1)return{row:eligible[0],reason:'تنها InventoryID دارای موجودی کافی'};if(!eligible.length)return{row:null,reason:c.length?'موجودی باقیمانده کافی نیست':'IRC در Snapshot انبار پیدا نشد'};const sorted=eligible.slice().sort((a,b)=>(num(a.remainingQty)-num(used[a.inventoryId]||0))-(num(b.remainingQty)-num(used[b.inventoryId]||0))||String(a.inventoryId).localeCompare(String(b.inventoryId)));return{row:sorted[0],reason:'کمترین مانده کافی برای همان IRC؛ از Snapshot موجودی'}}
 function quotaAllocationsFor(d){
  const saved=allocationsFor(d.id);
