@@ -1,0 +1,16 @@
+[
+  { "localPath": "imed_manager_distinction_v22(1).html", "objectKey": "imed/source/app/imed_manager_distinction_v22(1).html" },
+  { "localPath": "imed_manager_cloudflare_v22.zip", "objectKey": "imed/source/releases/imed_manager_cloudflare_v22.zip" },
+  { "localPath": "انبار_مجازی_ترکیبی_سه_گروه.json", "objectKey": "imed/source/inventory/انبار_مجازی_ترکیبی_سه_گروه.json" },
+  { "localPath": "DistVirtualStoreReport_11_26_2026 (1)(1).xls", "objectKey": "imed/source/inventory/DistVirtualStoreReport_11_26_2026 (1)(1).xls" },
+  { "localPath": "DistVirtualStoreReport_11_26_2026(2).xls", "objectKey": "imed/source/inventory/DistVirtualStoreReport_11_26_2026(2).xls" },
+  { "localPath": "DistVirtualStoreReport_11_26_2026 (2).xls", "objectKey": "imed/source/inventory/DistVirtualStoreReport_11_26_2026 (2).xls" },
+  { "localPath": "DistVirtualStoreReport_10_31_2026_tolid_jadid.xls", "objectKey": "imed/source/inventory/DistVirtualStoreReport_10_31_2026_tolid_jadid.xls" },
+  { "localPath": "IMED_565_rows_uploader_beautified.txt", "objectKey": "imed/source/scripts/IMED_565_rows_uploader_beautified.txt" },
+  { "localPath": "IMED_completed_final_2(2)(1).xlsm", "objectKey": "imed/source/workbooks/IMED_completed_final_2(2)(1).xlsm" },
+  { "localPath": "Sepidar_All(1)(1).xlsx", "objectKey": "imed/source/workbooks/Sepidar_All(1)(1).xlsx" },
+  { "localPath": "vared.xls.xlsx", "objectKey": "imed/source/references/vared.xls.xlsx" },
+  { "localPath": "tolid.xls.xlsx", "objectKey": "imed/source/references/tolid.xls.xlsx" },
+  { "localPath": "SaleXMLReceiverListCoding(2).xlsx", "objectKey": "imed/source/references/SaleXMLReceiverListCoding(2).xlsx" },
+  { "localPath": "ToziTypeReport (2).xls", "objectKey": "imed/source/references/ToziTypeReport (2).xls" }
+]
