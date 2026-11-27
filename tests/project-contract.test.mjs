@@ -42,6 +42,8 @@ assert.match(app, /if\(v\.errors\.length\)/, "XML generation must stop when any 
 assert.match(app, /v\.skipped\.map/, "partial quantity must be reported visibly");
 assert.match(app, /فقط برای همین ردیف‌های معتبر/, "partial XML must explain its actual scope");
 
+assert.match(app, /makeQuotaRows\(x\.d,false,false,usedInventory\)/, "bulk XML must share remaining InventoryID capacity across documents");
+assert.match(app, /sharedInventoryUsed\|\|\{\}/, "quota generation must accept a shared inventory-capacity ledger");
 // Local SQLite restore must validate a database before replacing the current handle.
 assert.match(app, /sqlite_master WHERE type='table'/, "SQLite restore must reject unrelated databases");
 assert.match(app, /await idbPut\('main',copy\)/, "SQLite restore must persist the validated replacement before swapping the live database");
