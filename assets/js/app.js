@@ -407,6 +407,19 @@ async function matchCacheSaveRemote(baseHash,rows){
  if(!cloudEnabled||!rows.length)return;
  for(let i=0;i<rows.length;i+=50)await cloudRequest('/api/match-cache',{method:'POST',body:JSON.stringify({baseHash,rows:rows.slice(i,i+50)})});
 }
+// Positive remaining stock defines the scope of NEW matching proposals.
+// Source invoices and historical allocations are retained unchanged.
+function positiveInventoryByIrc(rows){
+ const unique=new Map();
+ for(const v of (rows||[])){
+  const irc=norm(v.irc),inventoryId=String(v.inventoryId||'').trim(),remaining=num(v.remainingQty);
+  if(!irc||!inventoryId||remaining<=0)continue;
+  unique.set(irc+'|'+inventoryId,{irc,remaining});
+ }
+ const balances=new Map();
+ for(const v of unique.values())balances.set(v.irc,(balances.get(v.irc)||0)+v.remaining);
+ return balances;
+}
 async function calculateAllAutoMatches(){
  // Build reusable indexes once. The previous version scored every Sepidar row
  // against every IMED document, even when product/IRC had no overlap.
@@ -429,6 +442,7 @@ async function calculateAllAutoMatches(){
    grams(x.s.product).forEach(g=>add(byGram,g,x));
  }
  const rows=[];
+ const remainingCapacityByIrc=positiveInventoryByIrc(state.virtualInventory);
  // Declare the callback before the first progress event; otherwise the initial
  // matchProgress call hits the temporal dead zone for syncRemoteJob.
  let syncRemoteJob=async()=>{};
@@ -439,6 +453,7 @@ async function calculateAllAutoMatches(){
  // do not each rescan the entire inventory snapshot.
  const inventoryByIrc=new Map(),inventoryByToken=new Map();
  for(const v of (state.virtualInventory||[])){
+  if(num(v.remainingQty)<=0)continue;
    const k=norm(v.irc);if(k){let a=inventoryByIrc.get(k);if(!a)inventoryByIrc.set(k,a=[]);a.push(v)}
    // Index inventory descriptors once; avoid rescanning the full virtual inventory
    // for every IMED document that has no IRC.
@@ -468,8 +483,8 @@ async function calculateAllAutoMatches(){
  for(const r of MATCH_REFERENCE_ROWS){const k=norm(r.distributionNo);if(!k)continue;let a=refsByDoc.get(k);if(!a)refsByDoc.set(k,a=[]);a.push(r)}
  const byInvoice=new Map();
  for(const x of sepidarIndex){const k=norm(x.s.invoiceNo);if(k){let a=byInvoice.get(k);if(!a)byInvoice.set(k,a=[]);a.push(x)}}
- const docs=[...state.imed].sort((a,b)=>dateOrderValue(a.distributionDate)-dateOrderValue(b.distributionDate));
- const baseHash=await matchCacheHash({matcherVersion:4,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+ const docs=state.imed.filter(d=>remainingCapacityByIrc.has(norm(d.irc))).sort((a,b)=>dateOrderValue(a.distributionDate)-dateOrderValue(b.distributionDate));
+ const baseHash=await matchCacheHash({matcherVersion:5,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
  let remoteMatchJob=null,lastRemoteJobUpdate=0;
  if(cloudEnabled){
    try{
@@ -498,12 +513,16 @@ async function calculateAllAutoMatches(){
    const saved=await idbGet(checkpointKey);
    if(saved&&Number.isInteger(saved.nextIndex)&&saved.nextIndex>0&&saved.nextIndex<=docs.length&&Array.isArray(saved.freeById)){
      const restoredRows=[];let valid=true;
+     const restoredCapacity=new Map(remainingCapacityByIrc);
      for(let i=0;i<saved.nextIndex;i++){
        const cachedRow=await idbGet(checkpointRowKey(i));if(!cachedRow||!Array.isArray(cachedRow.planned)){valid=false;break}
        const planned=[];for(const p of cachedRow.planned){const source=sepidarById.get(String(p.sourceId));if(!source){valid=false;break}planned.push({s:source,q:num(p.q),score:num(p.score),signals:Array.isArray(p.signals)?p.signals:[],ircConflict:!!p.ircConflict,inventoryId:String(p.inventoryId||'')})}if(!valid)break;
-       const d=docs[i];restoredRows.push({d,already:num(cachedRow.already),target:num(cachedRow.target),got:num(cachedRow.got),left:num(cachedRow.left),total:num(cachedRow.total),status:String(cachedRow.status||'بدون تطبیق'),planned});
+       const d=docs[i],irc=norm(d.irc),plannedQty=planned.reduce((n,p)=>n+p.q,0);
+       if(plannedQty>num(restoredCapacity.get(irc))+0.00001){valid=false;break}
+       restoredCapacity.set(irc,Math.max(0,num(restoredCapacity.get(irc))-plannedQty));
+       restoredRows.push({d,already:num(cachedRow.already),target:num(cachedRow.target),got:num(cachedRow.got),left:num(cachedRow.left),total:num(cachedRow.total),status:String(cachedRow.status||'بدون تطبیق'),planned});
      }
-     if(valid){freeById.clear();saved.freeById.forEach(([k,v])=>freeById.set(String(k),num(v)));rows.push(...restoredRows);startIndex=saved.nextIndex;reused=startIndex;chain=String(saved.chain||chain);matchProgress((startIndex/Math.max(1,docs.length))*100,'ادامه از سند '+faNum(startIndex+1)+' از '+faNum(docs.length)+' — '+faNum(startIndex)+' سند قبلاً ذخیره شده؛ از ابتدا محاسبه نمی‌شود');}
+     if(valid){remainingCapacityByIrc.clear();restoredCapacity.forEach((v,k)=>remainingCapacityByIrc.set(k,v));freeById.clear();saved.freeById.forEach(([k,v])=>freeById.set(String(k),num(v)));rows.push(...restoredRows);startIndex=saved.nextIndex;reused=startIndex;chain=String(saved.chain||chain);matchProgress((startIndex/Math.max(1,docs.length))*100,'ادامه از سند '+faNum(startIndex+1)+' از '+faNum(docs.length)+' — '+faNum(startIndex)+' سند قبلاً ذخیره شده؛ از ابتدا محاسبه نمی‌شود');}
    }
  }catch(err){console.warn('Could not restore matching checkpoint; falling back to saved per-document cache',err)}
  const saveCheckpoint=async(nextIndex,currentChain)=>{
@@ -522,7 +541,9 @@ async function calculateAllAutoMatches(){
    if(cached&&Array.isArray(cached.planned)){
      const restored=[];let valid=true;
      for(const p of cached.planned){const source=sepidarById.get(String(p.sourceId)),free=freeById.get(String(p.sourceId))||0,q=num(p.q);if(!source||q<=0||q>free+0.00001){valid=false;break}restored.push({s:source,q,score:num(p.score),signals:Array.isArray(p.signals)?p.signals:[],ircConflict:!!p.ircConflict})}
-     if(valid){
+     const cachedIrc=norm(d.irc),cachedQty=restored.reduce((n,p)=>n+p.q,0);
+     if(valid&&cachedQty<=num(remainingCapacityByIrc.get(cachedIrc))+0.00001){
+       remainingCapacityByIrc.set(cachedIrc,Math.max(0,num(remainingCapacityByIrc.get(cachedIrc))-cachedQty));
        restored.forEach(p=>freeById.set(String(p.s.id),Math.max(0,(freeById.get(String(p.s.id))||0)-p.q)));
        const restoredRow={d,already:num(cached.already),target:num(cached.target),got:num(cached.got),left:num(cached.left),total:num(cached.total),status:String(cached.status||'بدون تطبیق'),planned:restored};
        rows.push(restoredRow);reused++;chain=await matchCacheHash({previous:chain,result:cached});
@@ -538,7 +559,9 @@ async function calculateAllAutoMatches(){
    }
    const already=totalAllocated(d.id),target=Math.max(0,num(d.quantity)),need=Math.max(0,target-already);
    let left=need,planned=[];
-   if(left>0){
+   const inventoryIrc=norm(d.irc);
+   let stockRemaining=Math.max(0,num(remainingCapacityByIrc.get(inventoryIrc)));
+   if(left>0&&stockRemaining>0){
      const descriptors=getPreparedDescriptors(d);
      const di=norm(d.irc),terms=new Set([...productTokens(d.product),...(descriptors.allTerms||[])]);
      const candidateMap=new Map();
@@ -564,6 +587,8 @@ async function calculateAllAutoMatches(){
      for(const x of candidates){
        if(++scannedCandidates%600===0){const fraction=Math.min(.95,scannedCandidates/Math.max(1,candidateTotal));const percent=((docIndex+fraction)/Math.max(1,docs.length))*100;matchProgress(percent,'سند '+faNum(docIndex+1)+' از '+faNum(docs.length)+' — بررسی '+faNum(scannedCandidates)+' از '+faNum(candidateTotal)+' فاکتور کاندیدا');await new Promise(resolve=>setTimeout(resolve,0));}
        const s=x.s,free=freeById.get(String(s.id))||0;if(free<=0)continue;
+       // Reject different explicit IRCs even if product descriptions look similar.
+       if(x.irc&&x.irc!==di)continue;
        const ref=referenceMatch(d,s,refsByDoc);
        if(ref?.kind==='rejected')continue; // The reference table explicitly flagged this distinction as mismatched.
        const signals=matchSignals(d,s,free,descriptors);
@@ -575,8 +600,9 @@ async function calculateAllAutoMatches(){
        if(signals.eligible&&signals.score>=20)pool.push({s,free,...signals,referenceStatus:ref?.status||''});
      }
      pool.sort((a,b)=>b.score-a.score||(a.dateGap??999)-(b.dateGap??999));
-     for(const c of pool){if(left<=0)break;const q=Math.min(left,c.free);if(q>0){planned.push({s:c.s,q,score:c.score,signals:c.signals,ircConflict:c.ircConflict});freeById.set(String(c.s.id),Math.max(0,c.free-q));left-=q}}
+     for(const c of pool){if(left<=0||stockRemaining<=0)break;const q=Math.min(left,c.free,stockRemaining);if(q>0){planned.push({s:c.s,q,score:c.score,signals:c.signals,ircConflict:c.ircConflict});freeById.set(String(c.s.id),Math.max(0,c.free-q));left-=q;stockRemaining-=q}}
    }
+   remainingCapacityByIrc.set(inventoryIrc,stockRemaining);
    const got=planned.reduce((n,x)=>n+x.q,0),total=already+got;
    const status=total>=target?'کامل':total>0?'ناقص':already>0?'دارای تخصیص قبلی':'بدون تطبیق';
    const row={d,already,target,got,left:Math.max(0,target-total),total,status,planned};rows.push(row);
@@ -608,7 +634,7 @@ function allMatchInvoiceRows(x){
  const proposed=(x.planned||[]).map(p=>({...p,isExisting:false}));
  return [...saved,...proposed];
 }
-async function currentMatchBaseHash(){return matchCacheHash({matcherVersion:4,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS})}
+async function currentMatchBaseHash(){return matchCacheHash({matcherVersion:5,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS})}
 async function restoreSavedMatchProposals(){
  const saved=state.matchProposals;if(!saved||saved.version!==1||!Array.isArray(saved.rows))return null;
  const hash=await currentMatchBaseHash();if(saved.baseHash!==hash)return null;
@@ -632,7 +658,8 @@ async function renderAllAutoMatches(){
  if(!restored)await persistMatchProposals(allAutoRows);
  refresh();
  const complete=allAutoRows.filter(x=>x.status==='کامل').length,partial=allAutoRows.filter(x=>x.status==='ناقص').length,none=allAutoRows.filter(x=>x.status==='بدون تطبیق').length;
- const completeRate=allAutoRows.length?Math.round(complete/allAutoRows.length*100):0;$('allMatchStats').innerHTML=`تعداد اسناد: <b>${faNum(allAutoRows.length)}</b> | نرخ اسناد کامل: <b>${faNum(completeRate)}٪</b> (${faNum(complete)}) | ناقص: <b>${faNum(partial)}</b> | بدون تطبیق: <b>${faNum(none)}</b> | پیشنهاد جدید: <b>${faNum(allAutoRows.reduce((n,x)=>n+x.planned.length,0))}</b> ردیف فاکتور | مرجع: <b>${faNum(MATCH_REFERENCE_ROWS.length)}</b> ردیف جدول تطبیق (موارد وجه افتراق نامنطبق حذف می‌شوند)`;
+ const excludedDocs=state.imed.length-allAutoRows.length;
+ const completeRate=allAutoRows.length?Math.round(complete/allAutoRows.length*100):0;$('allMatchStats').innerHTML=`محدوده: IRCهای دارای مانده مثبت | اسناد کنارگذاشته‌شده از جست‌وجو (صفر/فاقد Snapshot): <b>${faNum(excludedDocs)}</b> | تعداد اسناد در تطبیق: <b>${faNum(allAutoRows.length)}</b> | نرخ اسناد کامل: <b>${faNum(completeRate)}٪</b> (${faNum(complete)}) | ناقص: <b>${faNum(partial)}</b> | بدون تطبیق: <b>${faNum(none)}</b> | پیشنهاد جدید: <b>${faNum(allAutoRows.reduce((n,x)=>n+x.planned.length,0))}</b> ردیف فاکتور | مرجع: <b>${faNum(MATCH_REFERENCE_ROWS.length)}</b> ردیف جدول تطبیق (موارد وجه افتراق نامنطبق حذف می‌شوند)`;
  const sortedRows=allAutoRows.slice().sort((a,b)=>dateOrderValue(a.d?.distributionDate)-dateOrderValue(b.d?.distributionDate));
  const pageCount=Math.max(1,Math.ceil(sortedRows.length/5));allMatchPage=Math.min(allMatchPage,pageCount);
  const visibleRows=sortedRows.slice((allMatchPage-1)*5,allMatchPage*5);
@@ -675,7 +702,7 @@ let allMatchBusy=false;
 async function refreshAutoMatchButtonState(){
  const buttons=[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean);if(!buttons.length||!state.imed.length)return;
  try{
-  const baseHash=await matchCacheHash({matcherVersion:4,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+  const baseHash=await matchCacheHash({matcherVersion:5,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
   const saved=await idbGet('matchCheckpoint:'+baseHash);
   if(cloudEnabled){
     try{
