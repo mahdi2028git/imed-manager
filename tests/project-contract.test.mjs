@@ -66,6 +66,12 @@ assert.match(app, /String\(x\.irc\|\|''\)===String\(row\.irc\|\|''\)/, "Sepidar 
 assert.match(app, /num\(x\.unitPrice\)===num\(row\.unitPrice\)/, "Sepidar import dedupe must preserve distinct price lines");
 assert.match(app, /norm\(x\.product\)===norm\(d\.product\)/, "IMED import dedupe must preserve product distinctions");
 
+// Incomplete matches are valid partial sales, not items requiring manual review.
+const reviewStatus = app.slice(app.indexOf("function needsManualReviewStatus"), app.indexOf("function refresh()"));
+assert.match(reviewStatus, /status==='none'\\|\\|status==='over'/, "only unmatched or overallocated documents need review");
+assert.doesNotMatch(reviewStatus, /status==='partial'/, "partial matches must not be counted as needing review");
+assert.match(app, /pending=state\\.imed\\.filter\\(d=>needsManualReviewStatus\\(dashboardDocStatus\\(d\\)\\)\\)\\.length/, "dashboard needs-review card must use the new classification");
+
 // The legacy userscript must not claim that its unverified phase two was auto-filled.
 assert.doesNotMatch(userscript, /priceDone/);
 assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام نمی‌شود/);
