@@ -414,7 +414,7 @@ async function calculateAllAutoMatches(){
    grams(x.s.product).forEach(g=>add(byGram,g,x));
  }
  const rows=[];
- const matchProgress=(percent,detail)=>{const el=$('allMatchStats');if(el)el.innerHTML=progressMarkup('در حال تطبیق اسناد IMED با فاکتورهای سپیدار',percent,detail);const label='در حال محاسبه — '+faNum(Math.round(percent))+'٪';[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean).forEach(b=>{if(allMatchBusy)b.textContent=label})};
+ const matchProgress=(percent,detail)=>{const el=$('allMatchStats');if(el)el.innerHTML=progressMarkup('در حال تطبیق اسناد IMED با فاکتورهای سپیدار',percent,detail);const label='در حال محاسبه — '+faNum(Math.round(percent))+'٪';[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean).forEach(b=>{if(allMatchBusy)b.textContent=label});syncRemoteJob(percent,detail,percent>=100?'completed':'running').catch(()=>{});};
  matchProgress(0,'در حال آماده‌سازی شاخص‌های کالا، IRC و موجودی مجازی…');
  await new Promise(resolve=>setTimeout(resolve,0));
  // Pre-index virtual-inventory descriptors by IRC, so documents sharing an IRC
@@ -452,6 +452,23 @@ async function calculateAllAutoMatches(){
  for(const x of sepidarIndex){const k=norm(x.s.invoiceNo);if(k){let a=byInvoice.get(k);if(!a)byInvoice.set(k,a=[]);a.push(x)}}
  const docs=[...state.imed].sort((a,b)=>String(a.distributionDate||'').localeCompare(String(b.distributionDate||'')));
  const baseHash=await matchCacheHash({matcherVersion:3,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+ let remoteMatchJob=null,lastRemoteJobUpdate=0;
+ if(cloudEnabled){
+   try{
+     const started=await cloudRequest('/api/match-jobs',{method:'POST',body:JSON.stringify({baseHash,total:docs.length})});
+     remoteMatchJob=started.job||null;
+     if(remoteMatchJob&&remoteMatchJob.status==='completed'&&Number(remoteMatchJob.percent)>=100){
+       console.info('Cloud matching job already completed; local cache will restore its results.');
+     }
+   }catch(err){console.warn('Cloud matching job could not be started; local checkpoint remains active:',err)}
+ }
+ const syncRemoteJob=async(percent,detail,status='running',completed=Math.round(percent/100*docs.length))=>{
+   if(!remoteMatchJob?.id||!cloudEnabled)return;
+   const now=Date.now();if(status==='running'&&now-lastRemoteJobUpdate<1800)return;
+   lastRemoteJobUpdate=now;
+   try{await cloudRequest('/api/match-jobs/'+encodeURIComponent(remoteMatchJob.id),{method:'PATCH',body:JSON.stringify({percent,completed,status,detail})})}
+   catch(err){console.warn('Cloud matching progress sync failed:',err)}
+ };
  const remoteCache=new Map(),pendingRemote=[];
  if(cloudEnabled){try{const response=await cloudRequest('/api/match-cache?baseHash='+encodeURIComponent(baseHash));for(const row of response.data||[]){try{remoteCache.set(row.doc_key,JSON.parse(row.result_json))}catch(_){}}}catch(err){console.warn('Remote match cache unavailable; local resumable cache remains active',err)}}
  const sepidarById=new Map(sepidarIndex.map(x=>[String(x.s.id),x.s]));
@@ -558,6 +575,7 @@ async function calculateAllAutoMatches(){
  if(pendingRemote.length){try{await matchCacheSaveRemote(baseHash,pendingRemote.splice(0,pendingRemote.length))}catch(err){console.warn('Final remote match cache save failed; local cache is safe',err)}}
  try{await idbPut(checkpointKey,{version:1,nextIndex:docs.length,chain,freeById:[...freeById.entries()],completed:true})}catch(err){console.warn('Final matching checkpoint save failed',err)}
  matchProgress(100,'پایان تطبیق — '+faNum(reused)+' نتیجه بازیابی شد و '+faNum(computed)+' نتیجه جدید محاسبه شد.');
+ await syncRemoteJob(100,'محاسبه کامل شد — '+faNum(docs.length)+' سند','completed',docs.length);
  return rows;
 }
 let allAutoRows=[];
@@ -591,6 +609,16 @@ async function refreshAutoMatchButtonState(){
  try{
   const baseHash=await matchCacheHash({matcherVersion:3,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
   const saved=await idbGet('matchCheckpoint:'+baseHash);
+  if(cloudEnabled){
+    try{
+      const remote=await cloudRequest('/api/match-jobs?baseHash='+encodeURIComponent(baseHash));
+      const job=remote.job;
+      if(job&&job.status==='running'&&Number(job.percent)>0){
+        const pct=Math.floor(Number(job.percent));
+        buttons.forEach(b=>{if(!allMatchBusy){b.textContent='ادامه محاسبه از '+faNum(pct)+'٪';b.title='وضعیت ذخیره‌شده در Cloudflare Worker؛ '+(job.detail||'')}})
+      }
+    }catch(err){console.warn('Could not read Cloudflare matching job status',err)}
+  }
   const next=Math.max(0,Math.min(state.imed.length,Number(saved?.nextIndex)||0));
   const percent=Math.floor(next/Math.max(1,state.imed.length)*100);
   const label=saved?.completed||next>=state.imed.length?'محاسبه مجدد':next>0?'ادامه محاسبه از '+faNum(percent)+'٪':'شروع محاسبه تطبیق';
