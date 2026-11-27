@@ -159,15 +159,74 @@ let activePositiveIrcs=new Set();
 function dashboardDocStatus(d){if(!activePositiveIrcs.has(norm(d.irc)))return'out-of-scope';const row=allAutoRows.find(x=>String(x.d?.id)===String(d.id));if(!row)return docStatus(d);if(row.status==='کامل')return'exact';if(row.status==='ناقص'||(row.planned||[]).length||num(row.already)>0)return'partial';return'none'}
 function statusTag(status){if(status==='out-of-scope')return'<span class="tag neutral">خارج از تطبیق: مانده صفر/ناموجود</span>';if(status==='exact')return'<span class="tag good">تطبیق کامل</span>';if(status==='over')return'<span class="tag bad">بیش از مقدار توزیع</span>';if(status==='partial')return'<span class="tag warn">ناقص</span>';return'<span class="tag neutral">بدون تطبیق</span>'}
 function needsManualReviewStatus(status){return status==='none'||status==='over'}
+// Only remaining positive stock and matched invoices awaiting clearance count.
+function calculateClearanceFinancials(){
+ const active=latestPositiveVirtualInventoryRows(state.virtualInventory);
+ const capacity=positiveInventoryByIrc(state.virtualInventory);
+ const available=new Map(capacity),usedSources=new Map();
+ const imedRates=new Map(),sepRates=new Map();
+ const add=(rates,irc,qty,price)=>{
+  if(!irc||qty<=0||!hasRialAmount(price))return;
+  const previous=rates.get(irc)||{sum:0,qty:0};
+  previous.sum+=qty*num(price);previous.qty+=qty;rates.set(irc,previous);
+ };
+ for(const d of state.imed){
+  const irc=norm(d.irc),qty=num(d.quantity);
+  if(!capacity.has(irc)||qty<=0)continue;
+  const rate=hasRialAmount(d.imedUnitPrice)?num(d.imedUnitPrice):
+   hasRialAmount(d.imedTotalAmount)?num(d.imedTotalAmount)/qty:null;
+  add(imedRates,irc,qty,rate);
+ }
+ const bySource=new Map(state.sepidar.map(x=>[String(x.id),x]));
+ const docs=state.imed.filter(d=>capacity.has(norm(d.irc))).slice()
+  .sort((a,b)=>dateOrderValue(a.distributionDate)-dateOrderValue(b.distributionDate)||String(a.id).localeCompare(String(b.id)));
+ let queueTotal=0,queueRows=0,queuePriced=0,queueQty=0,missingReceiver=0,overCapacity=0;
+ for(const d of docs){
+  const irc=norm(d.irc);
+  for(const a of quotaAllocationsFor(d)){
+   const requested=Math.max(0,num(a.allocatedQty)),remaining=Math.max(0,num(available.get(irc)));
+   if(!requested||!remaining){overCapacity+=requested;continue}
+   if(norm(a.irc)&&norm(a.irc)!==irc)continue;
+   const source=a.sourceId?bySource.get(String(a.sourceId)):null;
+   const free=source?Math.max(0,num(source.quantity)-num(usedSources.get(String(a.sourceId)))):requested;
+   const qty=Math.min(requested,remaining,free);
+   if(qty<=0){overCapacity+=requested;continue}
+   available.set(irc,remaining-qty);
+   if(source)usedSources.set(String(a.sourceId),num(usedSources.get(String(a.sourceId)))+qty);
+   const price=hasRialAmount(a.unitPrice)?a.unitPrice:source?.unitPrice;
+   if(hasRialAmount(price)){queueTotal+=qty*num(price);queuePriced++;add(sepRates,irc,qty,price)}
+   if(!(approvedReceiverCodeForCustomer(a.customer||source?.customer||d.receiver)||d.receiverCode))missingReceiver++;
+   queueRows++;queueQty+=qty;overCapacity+=requested-qty;
+  }
+ }
+ let stockTotal=0,stockPriced=0,directImed=0,estimatedSepidar=0;
+ for(const v of active){
+  const irc=norm(v.irc),direct=imedRates.get(irc),estimate=sepRates.get(irc);
+  const rate=direct?.qty>0?direct:estimate?.qty>0?estimate:null;
+  if(!rate)continue;
+  stockTotal+=num(v.remainingQty)*rate.sum/rate.qty;
+  stockPriced++;if(direct?.qty>0)directImed++;else estimatedSepidar++;
+ }
+ return {stockValue:stockPriced?stockTotal:null,stockPriced,stockCount:active.length,
+  directImed,estimatedSepidar,missingStockPrice:active.length-stockPriced,
+  queueValue:queuePriced?queueTotal:null,queueRows,queuePriced,queueQty,
+  missingReceiver,overCapacity};
+}
 function refresh(){
  activePositiveIrcs=new Set(positiveInventoryByIrc(state.virtualInventory).keys());
  $('statDist').textContent=faNum(state.imed.length);$('statSep').textContent=faNum(state.sepidar.length);
  const full=state.imed.filter(d=>dashboardDocStatus(d)==='exact').length,pending=state.imed.filter(d=>needsManualReviewStatus(dashboardDocStatus(d))).length;
  $('statFull').textContent=faNum(full);$('statPending').textContent=faNum(pending);
-  const valuedImed=state.imed.map(imedLineTotal).filter(x=>x!==null),valuedSepidar=state.sepidar.map(sepidarLineTotal).filter(x=>x!==null);
-  if($('statImedAmount'))$('statImedAmount').textContent=money(valuedImed.reduce((s,x)=>s+x,0));
-  if($('statSepAmount'))$('statSepAmount').textContent=money(valuedSepidar.reduce((s,x)=>s+x,0));
-  if($('statFinancialCoverage'))$('statFinancialCoverage').textContent=`IMED: ${faNum(valuedImed.length)} ردیف قیمت‌دار از ${faNum(state.imed.length)}؛ سپیدار: ${faNum(valuedSepidar.length)} ردیف قیمت‌دار از ${faNum(state.sepidar.length)}؛ نرخ‌ها جداگانه‌اند.`;
+  const financials=calculateClearanceFinancials();
+  if($('statImedAmount'))$('statImedAmount').textContent=financials.stockValue===null?'—':money(financials.stockValue);
+  if($('statSepAmount'))$('statSepAmount').textContent=financials.queueValue===null?'—':money(financials.queueValue);
+  if($('statFinancialCoverage'))$('statFinancialCoverage').textContent=
+   'انبار مجازی با مانده مثبت: '+faNum(financials.stockPriced)+' قلم ارزش‌گذاری‌شده از '+faNum(financials.stockCount)+
+   ' (نرخ IMED: '+faNum(financials.directImed)+'، برآورد با قیمت فاکتور تطبیق‌شده سپیدار: '+faNum(financials.estimatedSepidar)+
+   '، فاقد نرخ: '+faNum(financials.missingStockPrice)+'). '+
+   'سپیدارِ در صف ثبت: '+faNum(financials.queueRows)+' ردیف، '+faNum(financials.queueQty)+
+   ' عدد، از جمله '+faNum(financials.missingReceiver)+' ردیف نیازمند تکمیل ReceiverCode. '+
+   'این دو ارزش فقط محدوده مانده مثبت انبار را نشان می‌دهند؛ کل فروش تاریخی سپیدار جمع نشده و قیمت ناموجود به‌جای صفر «—» است.';
  $('recentDistributions').innerHTML=state.imed.length?`<div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>تعداد</th><th>وضعیت</th></tr></thead><tbody>${state.imed.slice().sort((a,b)=>dateOrderValue(a.distributionDate)-dateOrderValue(b.distributionDate)).slice(0,6).map(d=>`<tr><td>${esc(d.distributionNo||'—')}</td><td>${esc(d.product||'—')}</td><td>${faNum(d.quantity)}</td><td>${statusTag(dashboardDocStatus(d))}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">هنوز سندی وارد نشده است.</div>';
  const counts={exact:full,partial:state.imed.filter(d=>dashboardDocStatus(d)==='partial').length,over:state.imed.filter(d=>dashboardDocStatus(d)==='over').length,none:state.imed.filter(d=>dashboardDocStatus(d)==='none').length,'out-of-scope':state.imed.filter(d=>dashboardDocStatus(d)==='out-of-scope').length};
  const denominator=Math.max(1,state.imed.length);
