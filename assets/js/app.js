@@ -6,12 +6,23 @@ let cloudEnabled=false;
 const IDB_NAME='imedManagerSqliteStorage';
 const IDB_STORE='databaseFiles';
 let SQL=null, sqliteDB=null, saveQueue=Promise.resolve();
-const state={imed:[],sepidar:[],allocations:{},matchProposals:null,virtualInventory:[],virtualInventoryMeta:{},currentDoc:'',importRows:[],importHeaders:[],importName:'',importMode:'imed',importRaw:[],importSources:{},preview:[]};
+const state={imed:[],sepidar:[],allocations:{},matchProposals:null,receiverMappings:{},virtualInventory:[],virtualInventoryMeta:{},currentDoc:'',importRows:[],importHeaders:[],importName:'',importMode:'imed',importRaw:[],importSources:{},preview:[]};
 const $=id=>document.getElementById(id);
 const faNum=n=>Number(n||0).toLocaleString('fa-IR');
 const latin=s=>String(s??'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 const num=v=>{let s=latin(v).replace(/[٬,\s]/g,'').replace(/[٫]/g,'.');let n=Number(s);return Number.isFinite(n)?n:0};
 const norm=s=>latin(String(s??'').toLowerCase()).replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/[\u200c\s\-_/،,().]/g,'').trim();
+// Explicitly user-approved receiver alias, rechecked against all receiver-coding rows.
+// 56918426 = active Tehran medical center "بیمارستان عرفان نیایش".
+// 99065020 belongs to the different short-name "عرفان" and MUST NOT be inferred
+// from a Sepidar customer named "بیمارستان عرفان".
+const APPROVED_RECEIVER_CODING_ALIASES=new Map([
+ [norm('بیمارستان عرفان'),'56918426'],
+ [norm('بیمارستان عرفان نیایش'),'56918426']
+]);
+function approvedReceiverCodeForCustomer(customer){
+ return state.receiverMappings?.[window.IMEDReceiverMatcher?.norm(customer)||norm(customer)]?.code||APPROVED_RECEIVER_CODING_ALIASES.get(norm(customer))||'';
+}
 const id=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 window.addEventListener('error',e=>{
@@ -73,7 +84,7 @@ INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','3');
 `)}
 function runPrepared(db,sql,values){const st=db.prepare(sql);try{st.run(values)}finally{st.free()}}
 function jsonRows(db,table){const r=db.exec(`SELECT raw_json FROM ${table} ORDER BY rowid`);if(!r.length)return[];return r[0].values.map(row=>JSON.parse(row[0]))}
-function loadStateFromSQLite(db){createSchema(db);state.imed=jsonRows(db,'imed_distributions');state.sepidar=jsonRows(db,'sepidar_rows');state.virtualInventory=jsonRows(db,'virtual_inventory');state.allocations={};const r=db.exec('SELECT distribution_id, raw_json FROM allocations ORDER BY rowid');if(r.length){for(const row of r[0].values){const did=row[0];if(!state.allocations[did])state.allocations[did]=[];state.allocations[did].push(JSON.parse(row[1]))}}const m=db.exec("SELECT value FROM app_meta WHERE key='virtual_inventory_meta'");state.virtualInventoryMeta=m.length&&m[0].values.length?JSON.parse(m[0].values[0][0]):{};const im=db.exec("SELECT value FROM app_meta WHERE key='import_sources'");state.importSources=im.length&&im[0].values.length?JSON.parse(im[0].values[0][0]):{};const cd=db.exec("SELECT value FROM app_meta WHERE key='current_doc'");state.currentDoc=cd.length&&cd[0].values.length?String(cd[0].values[0][0]):'';const mp=db.exec("SELECT value FROM app_meta WHERE key='match_proposals'");state.matchProposals=mp.length&&mp[0].values.length?JSON.parse(mp[0].values[0][0]):null }
+function loadStateFromSQLite(db){createSchema(db);state.imed=jsonRows(db,'imed_distributions');state.sepidar=jsonRows(db,'sepidar_rows');state.virtualInventory=jsonRows(db,'virtual_inventory');state.allocations={};const r=db.exec('SELECT distribution_id, raw_json FROM allocations ORDER BY rowid');if(r.length){for(const row of r[0].values){const did=row[0];if(!state.allocations[did])state.allocations[did]=[];state.allocations[did].push(JSON.parse(row[1]))}}const m=db.exec("SELECT value FROM app_meta WHERE key='virtual_inventory_meta'");state.virtualInventoryMeta=m.length&&m[0].values.length?JSON.parse(m[0].values[0][0]):{};const im=db.exec("SELECT value FROM app_meta WHERE key='import_sources'");state.importSources=im.length&&im[0].values.length?JSON.parse(im[0].values[0][0]):{};const cd=db.exec("SELECT value FROM app_meta WHERE key='current_doc'");state.currentDoc=cd.length&&cd[0].values.length?String(cd[0].values[0][0]):'';const mp=db.exec("SELECT value FROM app_meta WHERE key='match_proposals'");state.matchProposals=mp.length&&mp[0].values.length?JSON.parse(mp[0].values[0][0]):null;const rc=db.exec("SELECT value FROM app_meta WHERE key='receiver_mappings'");state.receiverMappings=rc.length&&rc[0].values.length?JSON.parse(rc[0].values[0][0]):{} }
 function writeStateToSQLite(){if(!sqliteDB)throw new Error('SQLite database not initialized');const db=sqliteDB;db.exec('BEGIN');try{
  db.exec('DELETE FROM allocations; DELETE FROM sepidar_rows; DELETE FROM imed_distributions;');
  for(const d of state.imed){runPrepared(db,'INSERT INTO imed_distributions VALUES (?,?,?,?,?,?,?,?,?,?)',[String(d.id||id()),String(d.distributionNo||''),String(d.distributionDate||''),String(d.receiver||''),String(d.product||''),String(d.irc||''),num(d.quantity),String(d.supplier||''),String(d.distributionType||''),JSON.stringify(d)])}
@@ -85,6 +96,7 @@ function writeStateToSQLite(){if(!sqliteDB)throw new Error('SQLite database not 
  runPrepared(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('import_sources',?)",[JSON.stringify(state.importSources||{})]);
  runPrepared(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('current_doc',?)",[String(state.currentDoc||'')]);
  runPrepared(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('match_proposals',?)",[JSON.stringify(state.matchProposals||null)]);
+  runPrepared(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('receiver_mappings',?)",[JSON.stringify(state.receiverMappings||{})]);
  db.exec('COMMIT');
  }catch(e){try{db.exec('ROLLBACK')}catch(_){}throw e}}
 async function persistSQLiteToBrowser(){if(!sqliteDB)return;const bytes=sqliteDB.export();const copy=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);await idbPut('main',copy)}
@@ -93,7 +105,7 @@ function cloudStatus(message){const el=$('cloudSyncStatus');if(el)el.textContent
 function cloudProgress(percent,detail){const el=$('cloudSyncStatus');if(el)el.innerHTML=progressMarkup('در حال انتقال اطلاعات به Cloudflare',percent,detail)}
 function cloudKey(){return localStorage.getItem(CLOUD_KEY_STORAGE)||''}
 async function cloudRequest(path,options={}){const key=cloudKey();if(!key)throw new Error('ابتدا کلید دسترسی Cloudflare را وارد و اتصال را برقرار کنید');const headers={...(options.headers||{}),Authorization:'Bearer '+key};if(options.body)headers['Content-Type']='application/json';const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),90000);try{const response=await fetch(CLOUD_API+path,{...options,headers,signal:controller.signal});let body={};try{body=await response.json()}catch(_){}if(!response.ok){const error=new Error(body.error||('خطای سرور: '+response.status));error.status=response.status;throw error}return body}catch(err){if(err.name==='AbortError')throw new Error('مهلت پاسخ سرور تمام شد؛ اتصال اینترنت را بررسی کنید و دوباره تلاش کنید');throw err}finally{clearTimeout(timer)}}
-function cloudSnapshot(){return{version:1,savedAt:new Date().toISOString(),imed:state.imed,sepidar:state.sepidar,allocations:state.allocations,virtualInventory:state.virtualInventory,virtualInventoryMeta:state.virtualInventoryMeta,currentDoc:state.currentDoc,importSources:state.importSources,matchProposals:state.matchProposals||null}}
+function cloudSnapshot(){return{version:1,savedAt:new Date().toISOString(),imed:state.imed,sepidar:state.sepidar,allocations:state.allocations,virtualInventory:state.virtualInventory,virtualInventoryMeta:state.virtualInventoryMeta,currentDoc:state.currentDoc,importSources:state.importSources,matchProposals:state.matchProposals||null,receiverMappings:state.receiverMappings||{}}}
 async function cloudPushSnapshot(){
  if(!cloudEnabled)return;
  if(!state.imed.length&&!state.sepidar.length&&!state.virtualInventory.length&&!Object.keys(state.allocations||{}).length)throw new Error('اطلاعات محلی خالی است؛ برای جلوگیری از پاک‌شدن نسخه ابری، ارسال متوقف شد. ابتدا نسخه ابری را بازیابی کن.');
@@ -117,7 +129,7 @@ async function cloudPushSnapshot(){
  cloudStatus('انتقال کامل به Cloudflare D1 — '+faNum(result.parts)+' بخش — '+new Date().toLocaleString('fa-IR'));
  return result;
 }
-async function cloudApplySnapshot(data,{allowShrink=false}={}){if(!data||typeof data!=='object'||!Array.isArray(data.imed)||!Array.isArray(data.sepidar)||!Array.isArray(data.virtualInventory)||!data.allocations||typeof data.allocations!=='object')throw new Error('ساختار نسخه ابری ناقص است؛ اطلاعات فعلی تغییر نکرد.');const remote={imed:data.imed.length,sepidar:data.sepidar.length,inventory:data.virtualInventory.length};if(!remote.imed&&!remote.sepidar&&!remote.inventory&&!Object.keys(data.allocations).length)throw new Error('نسخه ابری خالی است؛ برای جلوگیری از حذف اطلاعات، بازیابی متوقف شد.');const local={imed:state.imed.length,sepidar:state.sepidar.length,inventory:state.virtualInventory.length};if(!allowShrink&&(remote.imed<local.imed||remote.sepidar<local.sepidar||remote.inventory<local.inventory))throw new Error('نسخه ابری از اطلاعات این دستگاه رکوردهای کمتری دارد؛ برای جلوگیری از حذف داده‌ها، همگام‌سازی خودکار متوقف شد.');state.imed=data.imed;state.sepidar=data.sepidar;state.allocations=data.allocations;state.virtualInventory=data.virtualInventory;state.virtualInventoryMeta=data.virtualInventoryMeta||{};state.currentDoc=String(data.currentDoc||'');state.importSources=data.importSources||{};state.matchProposals=data.matchProposals||state.matchProposals||null;invalidateSepidarSearchIndex();writeStateToSQLite();await persistSQLiteToBrowser();refresh();if(state.currentDoc)openDoc(state.currentDoc)}
+async function cloudApplySnapshot(data,{allowShrink=false}={}){if(!data||typeof data!=='object'||!Array.isArray(data.imed)||!Array.isArray(data.sepidar)||!Array.isArray(data.virtualInventory)||!data.allocations||typeof data.allocations!=='object')throw new Error('ساختار نسخه ابری ناقص است؛ اطلاعات فعلی تغییر نکرد.');const remote={imed:data.imed.length,sepidar:data.sepidar.length,inventory:data.virtualInventory.length};if(!remote.imed&&!remote.sepidar&&!remote.inventory&&!Object.keys(data.allocations).length)throw new Error('نسخه ابری خالی است؛ برای جلوگیری از حذف اطلاعات، بازیابی متوقف شد.');const local={imed:state.imed.length,sepidar:state.sepidar.length,inventory:state.virtualInventory.length};if(!allowShrink&&(remote.imed<local.imed||remote.sepidar<local.sepidar||remote.inventory<local.inventory))throw new Error('نسخه ابری از اطلاعات این دستگاه رکوردهای کمتری دارد؛ برای جلوگیری از حذف داده‌ها، همگام‌سازی خودکار متوقف شد.');state.imed=data.imed;state.sepidar=data.sepidar;state.allocations=data.allocations;state.virtualInventory=data.virtualInventory;state.virtualInventoryMeta=data.virtualInventoryMeta||{};state.currentDoc=String(data.currentDoc||'');state.importSources=data.importSources||{};state.matchProposals=data.matchProposals||state.matchProposals||null;state.receiverMappings=data.receiverMappings||state.receiverMappings||{};invalidateSepidarSearchIndex();writeStateToSQLite();await persistSQLiteToBrowser();refresh();if(state.currentDoc)openDoc(state.currentDoc)}
 async function cloudLoadOnStartup(){const key=cloudKey();if(!key)return;cloudEnabled=true;try{const remote=await cloudRequest('/api/state');await cloudApplySnapshot(remote.data||{});cloudEnabled=true;cloudStatus('همگام‌سازی ابری فعال است — '+(remote.updatedAt||''));}catch(err){if(err.status===404){try{if(state.imed.length||state.sepidar.length||state.virtualInventory.length){cloudStatus('پایگاه ابری خالی است؛ انتقال خودکار اطلاعات این مرورگر آغاز شد…');await cloudPushSnapshot();toast('اطلاعات این مرورگر به Cloudflare منتقل شد');}else cloudStatus('اتصال برقرار است؛ اطلاعات محلی برای انتقال وجود ندارد.');}catch(uploadError){cloudEnabled=false;cloudStatus('انتقال خودکار ناموفق بود: '+uploadError.message);console.error('Cloud first upload failed',uploadError)}}else{cloudEnabled=false;cloudStatus('اتصال ابری برقرار نشد: '+err.message);console.error('Cloud startup sync failed',err)}}}
 
 function persistCurrentDoc(){if(!sqliteDB)return Promise.resolve();saveQueue=saveQueue.then(async()=>{runPrepared(sqliteDB,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('current_doc',?)",[String(state.currentDoc||'')]);await persistSQLiteToBrowser();if(cloudEnabled)await cloudPushSnapshot()}).catch(err=>{console.error(err);toast('ذخیره آخرین سند ناموفق بود: '+err.message)});return saveQueue}
@@ -822,6 +834,115 @@ $('downloadReadyJs')?.addEventListener('click',async()=>{
   downloadCenterMessage('JavaScript دانلود شد. این نسخه فقط کمک‌فرم دسته‌ای است؛ ثبت نهایی و مرحله دوم به تأیید دستی نیاز دارند.');
  }catch(err){console.error('Console script export failed',err);downloadCenterMessage('JavaScript آماده نشد: '+err.message);toast('ساخت JavaScript ناموفق: '+err.message)}
 });
+// Receiver Coding workbook stays local in IndexedDB; only approved mappings are
+// stored in SQLite/cloud state. This avoids uploading a huge 88k-row coding file.
+let receiverCodingIndex=null,receiverReview=[],receiverCodingFileName='';
+const RECEIVER_CODING_CACHE_KEY='receiverCodingRows:v1';
+function receiverCodingStatus(message){if($('receiverCodingStatus'))$('receiverCodingStatus').textContent=message}
+function receiverCodingSavedMapping(name){
+ const key=window.IMEDReceiverMatcher?.norm(name);
+ return key?(state.receiverMappings||{})[key]:null;
+}
+function receiverCodingNames(){
+ const names=new Map();
+ for(const s of state.sepidar||[])if(String(s.customer||'').trim())names.set(window.IMEDReceiverMatcher.norm(s.customer),String(s.customer).trim());
+ for(const d of state.imed||[])if(String(d.receiver||'').trim())names.set(window.IMEDReceiverMatcher.norm(d.receiver),String(d.receiver).trim());
+ return [...names.values()].sort((a,b)=>a.localeCompare(b,'fa'));
+}
+function receiverCodingRun(){
+ const matcher=window.IMEDReceiverMatcher;
+ if(!matcher||!receiverCodingIndex)throw Error('ابتدا فایل Coding را وارد کن.');
+ const names=receiverCodingNames();
+ if(!names.length)throw Error('ابتدا فاکتورهای سپیدار یا اسناد IMED را وارد کن.');
+ receiverReview=names.map(name=>({name,match:matcher.find(receiverCodingIndex,name)}));
+ const exact=receiverReview.filter(x=>x.match.status==='exact').length;
+ const approved=receiverReview.filter(x=>x.match.status==='user_approved').length;
+ const manual=receiverReview.filter(x=>x.match.status==='review').length;
+ const missed=receiverReview.filter(x=>x.match.status==='not_found').length;
+ receiverCodingStatus('جست‌وجو در '+faNum(receiverCodingIndex.sourceRows)+' رکورد Coding؛ '+faNum(names.length)+' نام مشتری | '+faNum(exact)+' تطبیق یکتای قابل‌اعمال | '+faNum(approved)+' تأیید مستقیم | '+faNum(manual)+' نیازمند بازبینی | '+faNum(missed)+' بدون تطبیق مطمئن.');
+ const review=receiverReview.map((x,i)=>({...x,i})).filter(x=>x.match.status==='review').slice(0,45);
+ const target=$('receiverCodingReview');
+ if(target)target.innerHTML=review.length?'<div class="table-wrap"><table><thead><tr><th>مشتری سپیدار</th><th>نام و کدهای پیشنهادی Coding</th><th>انتخاب دقیق</th></tr></thead><tbody>'+
+  review.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+((x.match.candidates||[]).slice(0,3).map(c=>esc(c.record.name)+' ('+esc(c.record.category)+', '+esc(c.record.city||'شهر نامشخص')+') — '+esc(c.record.code)).join('<br>')||'گزینه نزدیک پیدا نشد')+'</td><td><select data-receiver-pick="'+x.i+'" style="max-width:260px"><option value="">انتخاب دستی</option>'+x.match.candidates.map(c=>'<option value="'+esc(c.record.code)+'">'+esc(c.record.code+' | '+c.record.name+' | '+c.record.category+' | '+(c.record.city||'—'))+'</option>').join('')+'</select> <button class="btn small" data-receiver-confirm="'+x.i+'">تأیید همین کد</button></td></tr>').join('')+'</tbody></table></div><div class="smalltext">فقط ۴۵ مورد مبهم اول نمایش داده شده‌اند؛ فایل CSV شامل همه نتایج است.</div>':'<div class="smalltext">مورد مبهمی برای انتخاب دستی وجود ندارد.</div>';
+ return receiverReview;
+}
+function receiverMappingFromEntry(e,source){
+ const typeId=e.type==='medical'?'2':e.type==='distributor'?'15':'';
+ return {code:String(e.code),typeId,category:e.category,codingName:e.name,city:e.city||'',source,verifiedAt:new Date().toISOString()};
+}
+async function receiverApplySafe(){
+ if(!receiverReview.length)receiverCodingRun();
+ let changed=0,conflicts=0,untyped=0;
+ for(const x of receiverReview){
+  if(!['exact','user_approved'].includes(x.match.status)||!x.match.code)continue;
+  const e=x.match.candidates.find(c=>c.record.code===x.match.code)?.record;
+  if(!e)continue;
+  const mapped=receiverMappingFromEntry(e,x.match.status==='user_approved'?'user-approved-alias':'unique-coding-name');
+  if(!mapped.typeId){untyped++;continue}
+  const k=window.IMEDReceiverMatcher.norm(x.name);
+  const prev=state.receiverMappings[k];
+  if(prev&&prev.code!==mapped.code){conflicts++;continue}
+  if(!prev){state.receiverMappings[k]=mapped;changed++}
+ }
+ if(changed)await save();
+ receiverCodingStatus('کدهای قطعی ذخیره شدند: '+faNum(changed)+' نام جدید؛ '+faNum(conflicts)+' تضاد با نگاشت قبلی (بدون تغییر)؛ '+faNum(untyped)+' نوع مرکز بدون TypeID قطعی (برای بررسی). موارد مبهم خودکار اعمال نشدند.');
+ toast(faNum(changed)+' نام مشتری با کد دریافت‌کننده قطعی ذخیره شد');
+}
+$('receiverCodingFile')?.addEventListener('change',async event=>{
+ const f=event.target.files?.[0];if(!f)return;
+ receiverCodingStatus('در حال خواندن کامل Excel و ساخت نمایه نام‌های دریافت‌کننده…');
+ try{
+  if(!window.XLSX)await loadExternalScript(XLSX_JS_URL,'XLSX');
+  const workbook=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:false});
+  const matcher=window.IMEDReceiverMatcher;
+  if(!matcher)throw Error('ماژول جست‌وجوی کدینگ بارگذاری نشد؛ صفحه را تازه کن.');
+  let records=[];
+  for(const sheetName of workbook.SheetNames){
+   const sheetRows=XLSX.utils.sheet_to_json(workbook.Sheets[sheetName],{header:1,raw:false,defval:''});
+   try{const parsed=matcher.fromSheet(sheetRows);if(parsed.length>records.length)records=parsed}catch(_){}
+  }
+  if(records.length<1)throw Error('ردیف‌های Coding در اکسل پیدا نشدند.');
+  receiverCodingIndex=matcher.buildIndex(records);
+  receiverCodingFileName=f.name;
+  await idbPut(RECEIVER_CODING_CACHE_KEY,records);
+  receiverCodingStatus('فایل '+f.name+' بارگذاری شد؛ '+faNum(records.length)+' رکورد، '+faNum(receiverCodingIndex.entries.length)+' کد فعال قابل جست‌وجو. دکمه جست‌وجو را بزن.');
+ }catch(err){console.error(err);receiverCodingStatus('خطای فایل Coding: '+err.message);toast('خطا: '+err.message)}
+});
+$('receiverCodingSearch')?.addEventListener('click',()=>{
+ try{receiverCodingRun()}catch(err){receiverCodingStatus(err.message);toast(err.message)}
+});
+$('receiverCodingApplySafe')?.addEventListener('click',async()=>{
+ try{await receiverApplySafe()}catch(err){receiverCodingStatus(err.message);toast(err.message)}
+});
+$('receiverCodingExport')?.addEventListener('click',()=>{
+ try{
+  if(!receiverReview.length)receiverCodingRun();
+  const rows=[['نام مشتری','وضعیت','ReceiverCode قطعی','کد پیشنهادی اول','نام Coding اول','ماهیت اول','شهر اول','امتیاز اول','کد پیشنهادی دوم','نام Coding دوم','توضیح']];
+  receiverReview.forEach(x=>{const a=x.match.candidates||[],c=a[0],d=a[1];rows.push([x.name,x.match.status,x.match.code||'',c?.record.code||'',c?.record.name||'',c?.record.category||'',c?.record.city||'',c?.score||'',d?.record.code||'',d?.record.name||'',x.match.reason||''])});
+  downloadCSV(rows,'IMED_Receiver_Coding_Name_Match_Review.csv');
+ }catch(err){receiverCodingStatus(err.message);toast(err.message)}
+});
+$('receiverCodingReview')?.addEventListener('click',async event=>{
+ const btn=event.target.closest('[data-receiver-confirm]');if(!btn)return;
+ const i=Number(btn.dataset.receiverConfirm),item=receiverReview[i];
+ const selector=$('receiverCodingReview').querySelector('[data-receiver-pick="'+i+'"]'),code=selector?.value;
+ if(!item||!code)return toast('ابتدا کد دریافت‌کننده موردنظر را انتخاب کن.');
+ const record=item.match.candidates.find(c=>c.record.code===code)?.record;
+ if(!record)return toast('کد انتخاب‌شده در فهرست پیشنهادها نیست.');
+ if(!confirm('تطبیق این مشتری را تأیید می‌کنی؟\n'+item.name+'\n'+record.name+' | '+record.code+' | '+record.category+' | '+(record.city||'شهر نامشخص')))return;
+ const k=window.IMEDReceiverMatcher.norm(item.name),previous=state.receiverMappings[k];
+ if(previous&&previous.code!==code&&!confirm('این مشتری قبلاً کد متفاوتی داشت. نگاشت قبلی جایگزین شود؟'))return;
+ state.receiverMappings[k]=receiverMappingFromEntry(record,'manual-reviewed');
+ await save();
+ toast('ReceiverCode انتخاب‌شده برای این نام مشتری ذخیره شد');
+});
+(async()=>{try{
+ const records=await idbGet(RECEIVER_CODING_CACHE_KEY);
+ if(Array.isArray(records)&&records.length&&window.IMEDReceiverMatcher){
+  receiverCodingIndex=window.IMEDReceiverMatcher.buildIndex(records);
+  receiverCodingStatus('فایل Coding قبلی از حافظه همین مرورگر بازیابی شد ('+faNum(records.length)+' رکورد). می‌توانی دوباره جست‌وجو کنی.');
+ }
+}catch(e){console.warn('Receiver Coding local cache unavailable',e)}})();
 function downloadText(text,name,type='text/plain;charset=utf-8'){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
 async function copyText(text){try{await navigator.clipboard.writeText(text);toast('کد در کلیپ‌بورد کپی شد')}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('کد کپی شد')}}
 function renderInventory(){const q=norm($('inventorySearch')?.value||'');const rows=(state.virtualInventory||[]).filter(v=>!q||norm(Object.values(v).join(' ')).includes(q));const meta=state.virtualInventoryMeta||{};if($('invRows'))$('invRows').textContent=faNum(state.virtualInventory.length);if($('invQty'))$('invQty').textContent=faNum(state.virtualInventory.reduce((s,v)=>s+num(v.remainingQty),0));if($('invIRC'))$('invIRC').textContent=faNum(new Set(state.virtualInventory.map(v=>v.irc).filter(Boolean)).size);if($('invWhen'))$('invWhen').textContent=meta.fetchedAt?new Date(meta.fetchedAt).toLocaleString('fa-IR'):'—';if($('inventorySyncInfo'))$('inventorySyncInfo').textContent=meta.fetchedAt?`آخرین Snapshot: ${new Date(meta.fetchedAt).toLocaleString('fa-IR')} | ${meta.pageTitle||''} | ${meta.sourceUrl||''}`:'هنوز Snapshot از IMED وارد نشده است.';if($('inventorySyncBadge')){$('inventorySyncBadge').textContent=meta.fetchedAt?'دریافت‌شده از IMED':'هنوز همگام‌سازی نشده';$('inventorySyncBadge').className='tag '+(meta.fetchedAt?'good':'warn')};if(!$('inventoryTable'))return;const cols=[['inventoryId','کد انبار مجازی'],['entryDate','تاریخ ورود به انبار مجازی'],['irc','IRC'],['mainGroup','گروه اصلی'],['subGroup','گروه فرعی'],['persianName','نام فارسی کامل کالا'],['persianDistinction','وجه افتراق فارسی'],['legalCompany','کمپانی قانونی'],['manufacturerCountry','کشور سازنده اصلی'],['mainSupplier','شرکت تامین کننده اصلی'],['model','مدل'],['distributedQty','تعداد توزیع'],['initialQty','تعداد کل موجودی اولیه'],['remainingQty','تعداد باقیمانده در انبار مجازی'],['supplierType','نوع تامین کننده'],['distributionIssuer','صادر کننده سند توزیع'],['declaration','اظهار'],['orderRegistration','ثبت سفارش'],['batchNo','شماره سری ساخت / بچ'],['strategicReserves','ذخایر استراتژیک'],['productionDate','تاریخ تولید'],['expiryDate','تاریخ انقضاء']];$('inventoryTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${rows.slice(0,1000).map(v=>`<tr>${cols.map(([k])=>`<td>${esc((v[k]??(k==='persianName'?v.product:''))||'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="smalltext" style="margin-top:8px">نمایش ${faNum(Math.min(rows.length,1000))} ردیف از ${faNum(rows.length)} ردیف فیلترشده؛ جدول شامل تمام ۲۲ ستون فایل IMED است.</div>`:'<div class="empty">هنوز موجودی مجازی از IMED وارد نشده یا نتیجه‌ای با این جست‌وجو وجود ندارد.</div>'}
@@ -985,7 +1106,13 @@ function makeQuotaRows(d,checkXmlTotal=true,forForm=false,sharedInventoryUsed=nu
  const formIrcKey='irc:'+inventoryIrc;
  const availableForForm=inventoryCapacity-num(used[formIrcKey]||0);
  const requestedForForm=docAllocations.reduce((sum,a)=>sum+Math.max(0,num(a.allocatedQty)),0);
- if(forForm&&requestedForForm>availableForForm+0.00001)return{rows,errors:['جمع تعداد فاکتور از مانده مثبت قابل استفاده این IRC بیشتر است؛ اسکریپت فرم ساخته نمی‌شود.'],total:0,skipped};/* تطبیق ناقص به‌تنهایی مانع ساخت اسکریپت ثبت نیست؛ فقط ردیف‌های پیشنهادی با تعداد مثبت ارسال می‌شوند. */const rawTypeId=String(d.typeId||'').trim();const mappedTypeId=inferTypeId(d);const hasTypeSource=String(d.receiverNature||d.distributionType||'').trim();const typeId=rawTypeId||mappedTypeId;const receiverCode=String(d.receiverCode||'').trim();if(rawTypeId&&hasTypeSource&&mappedTypeId&&rawTypeId!==mappedTypeId)errors.push(`TypeID ذخیره‌شده (${rawTypeId}) با نوع توزیع «${d.distributionType||'—'}» و نگاشت مرجع (${mappedTypeId}) مغایرت دارد.`);for(const a of docAllocations){const r=forForm?{row:null,reason:'فیلدهای درخواستی خالی گذاشته شدند'}:resolveStock(d,a,used);const inv=r.row;const row={TypeID:typeId,IRC:String(d.irc||a.irc||''),Count:num(a.allocatedQty),RialPrice:num(a.unitPrice),InvoiceNo:String(a.invoiceNo||''),InvoiceDate:String(a.invoiceDate||''),InventoryID:forForm?'':(inv?String(inv.inventoryId):String(a.inventoryId||'')),ReceiverCode:forForm?'':receiverCode,ReceiverName:forForm?'':String(d.receiver||'')};let miss=[];const required=forForm?['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate']:['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate','InventoryID','ReceiverCode','ReceiverName'];for(const k of required){if(row[k]===''||row[k]===0||row[k]==null)miss.push(k)}if(!forForm&&!inv)miss.push('InventoryID/موجودی قابل تأیید');if(inv)used[inv.inventoryId]=(used[inv.inventoryId]||0)+row.Count;if(miss.length){const message=`فاکتور ${row.InvoiceNo||'؟'}: فیلدهای ضروری ناقص یا نامعتبر: ${[...new Set(miss)].join('، ')} (${r.reason})`;errors.push(message);continue}else rows.push(row)}const total=rows.reduce((s,x)=>s+x.Count,0);if(total>num(d.quantity)+0.00001)errors.push(`تعداد تخصیص‌یافته (${faNum(total)}) از مقدار سند IMED (${faNum(d.quantity)}) بیشتر است؛ ابتدا تخصیص اضافی را اصلاح کن.`);else if(checkXmlTotal&&total+0.00001<num(d.quantity))skipped.push(`تطبیق ناقص: تعداد تخصیص‌یافته ${faNum(total)} از مقدار سند IMED (${faNum(d.quantity)}) کمتر است؛ XML با مقدار واقعی تخصیص‌یافته ساخته می‌شود.`);if(!docAllocations.length)errors.push('هیچ فاکتور فروشی به این سند تخصیص داده نشده یا پیشنهاد تطبیقی محاسبه نشده است.');if(forForm&&!rows.length&&!errors.length)errors.push('هیچ ردیفی با فیلدهای اجباری کافی برای ارسال به فرم IMED باقی نماند.');if(forForm&&!errors.length&&rows.length)used[formIrcKey]=num(used[formIrcKey]||0)+total;return{rows,errors,total,skipped}}
+ if(forForm&&requestedForForm>availableForForm+0.00001)return{rows,errors:['جمع تعداد فاکتور از مانده مثبت قابل استفاده این IRC بیشتر است؛ اسکریپت فرم ساخته نمی‌شود.'],total:0,skipped};/* تطبیق ناقص به‌تنهایی مانع ساخت اسکریپت ثبت نیست؛ فقط ردیف‌های پیشنهادی با تعداد مثبت ارسال می‌شوند. */const rawTypeId=String(d.typeId||'').trim();const mappedTypeId=inferTypeId(d);const hasTypeSource=String(d.receiverNature||d.distributionType||'').trim();const typeId=rawTypeId||mappedTypeId;const receiverCode=String(d.receiverCode||'').trim();if(rawTypeId&&hasTypeSource&&mappedTypeId&&rawTypeId!==mappedTypeId)errors.push(`TypeID ذخیره‌شده (${rawTypeId}) با نوع توزیع «${d.distributionType||'—'}» و نگاشت مرجع (${mappedTypeId}) مغایرت دارد.`);for(const a of docAllocations){const r=forForm?{row:null,reason:'فیلدهای درخواستی خالی گذاشته شدند'}:resolveStock(d,a,used);const inv=r.row;
+ const customerNameForCoding=a.customer||d.receiver||'';
+ const approvedReceiverCode=approvedReceiverCodeForCustomer(customerNameForCoding);
+ const approvedTypeId=state.receiverMappings?.[window.IMEDReceiverMatcher?.norm(customerNameForCoding)||norm(customerNameForCoding)]?.typeId||'';
+ if(approvedTypeId&&rawTypeId&&String(rawTypeId)!==String(approvedTypeId))errors.push('TypeID صریح سند با ماهیت کدینگ تأییدشده این مشتری سازگار نیست؛ قبل از خروجی اصلاح شود.');
+ const selectedReceiverCode=approvedReceiverCode||receiverCode;
+ const row={TypeID:approvedTypeId||(approvedReceiverCode&&APPROVED_RECEIVER_CODING_ALIASES.has(norm(customerNameForCoding))?'2':typeId),IRC:String(d.irc||a.irc||''),Count:num(a.allocatedQty),RialPrice:num(a.unitPrice),InvoiceNo:String(a.invoiceNo||''),InvoiceDate:String(a.invoiceDate||''),InventoryID:forForm?'':(inv?String(inv.inventoryId):String(a.inventoryId||'')),ReceiverCode:forForm?'':selectedReceiverCode,ReceiverName:forForm?'':String(approvedReceiverCode?(a.customer||d.receiver):d.receiver||'')};let miss=[];const required=forForm?['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate']:['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate','InventoryID','ReceiverCode','ReceiverName'];for(const k of required){if(row[k]===''||row[k]===0||row[k]==null)miss.push(k)}if(!forForm&&!inv)miss.push('InventoryID/موجودی قابل تأیید');if(inv)used[inv.inventoryId]=(used[inv.inventoryId]||0)+row.Count;if(miss.length){const message=`فاکتور ${row.InvoiceNo||'؟'}: فیلدهای ضروری ناقص یا نامعتبر: ${[...new Set(miss)].join('، ')} (${r.reason})`;errors.push(message);continue}else rows.push(row)}const total=rows.reduce((s,x)=>s+x.Count,0);if(total>num(d.quantity)+0.00001)errors.push(`تعداد تخصیص‌یافته (${faNum(total)}) از مقدار سند IMED (${faNum(d.quantity)}) بیشتر است؛ ابتدا تخصیص اضافی را اصلاح کن.`);else if(checkXmlTotal&&total+0.00001<num(d.quantity))skipped.push(`تطبیق ناقص: تعداد تخصیص‌یافته ${faNum(total)} از مقدار سند IMED (${faNum(d.quantity)}) کمتر است؛ XML با مقدار واقعی تخصیص‌یافته ساخته می‌شود.`);if(!docAllocations.length)errors.push('هیچ فاکتور فروشی به این سند تخصیص داده نشده یا پیشنهاد تطبیقی محاسبه نشده است.');if(forForm&&!rows.length&&!errors.length)errors.push('هیچ ردیفی با فیلدهای اجباری کافی برای ارسال به فرم IMED باقی نماند.');if(forForm&&!errors.length&&rows.length)used[formIrcKey]=num(used[formIrcKey]||0)+total;return{rows,errors,total,skipped}}
 function xmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
 function quotaXml(rows){return `<?xml version="1.0" encoding="UTF-8"?>\n<QuotaList>\n${rows.map(r=>'  <Quota>\n'+Object.entries(r).map(([k,v])=>`    <${k}>${xmlEsc(v)}</${k}>`).join('\n')+'\n  </Quota>').join('\n')}\n</QuotaList>\n`}
 function validateXmlDoc(d,show=true){

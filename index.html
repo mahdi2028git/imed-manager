@@ -7,8 +7,8 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%232676d8%22/%3E%3Cpath d=%22M27 12h10v15h15v10H37v15H27V37H12V27h15z%22 fill=%22white%22/%3E%3C/svg%3E" />
-<title>سامانه توسعه سلامت میهن | نسخه ۰.۳۲.۲</title>
-<link rel="stylesheet" href="assets/css/styles.css?v=0.32.2" />
+<title>سامانه توسعه سلامت میهن | نسخه ۰.۳۲.۳</title>
+<link rel="stylesheet" href="assets/css/styles.css?v=0.32.3" />
 </head>
 <body>
 <div class="shell">
@@ -29,7 +29,7 @@
   <div class="side-note">Snapshot انبار از IMED دریافت می‌شود. اطلاعات و تطبیق‌ها روی همین مرورگر ذخیره می‌شوند؛ مرتب SQLite پشتیبان بگیر.</div>
 </aside>
 <main class="main">
-  <header class="topbar"><div><div class="eyebrow">سامانه کنترل اسناد، موجودی و فاکتورها</div><h1 id="pageTitle">داشبورد</h1></div><div class="top-actions"><span class="local-pill">نسخه ۰.۳۲.۲</span><span class="local-pill">● پایگاه داده SQLite محلی</span><button class="btn" id="exportSqliteTop">دانلود SQLite</button></div></header>
+  <header class="topbar"><div><div class="eyebrow">سامانه کنترل اسناد، موجودی و فاکتورها</div><h1 id="pageTitle">داشبورد</h1></div><div class="top-actions"><span class="local-pill">نسخه ۰.۳۲.۳</span><span class="local-pill">● پایگاه داده SQLite محلی</span><button class="btn" id="exportSqliteTop">دانلود SQLite</button></div></header>
 
   <section class="view active" id="view-dashboard">
     <div class="grid stats">
@@ -75,6 +75,18 @@
         <div class="table-wrap" id="previewTable"></div>
         <div class="actions"><button class="btn primary" id="confirmImport">ثبت نهایی اطلاعاتِ مپ‌شده</button><button class="btn" id="backMapping">بازگشت به تعیین ستون‌ها</button></div>
       </div>
+    </div>
+    <div class="card" id="receiverCodingPanel" style="margin-top:16px">
+      <div class="section-head"><div><h2>پیداکردن هوشمند ReceiverCode از Coding</h2><p>فایل کامل SaleXMLReceiverListCoding را وارد کن؛ جست‌وجو روی تمام نام‌ها انجام می‌شود، نه فقط اولین نتیجه.</p></div></div>
+      <div class="field"><label for="receiverCodingFile">فایل Excel کدینگ دریافت‌کنندگان</label><input id="receiverCodingFile" type="file" accept=".xlsx,.xls,.xlsm"/></div>
+      <div class="actions">
+        <button class="btn primary" id="receiverCodingSearch" type="button">جست‌وجوی هوشمند نام مشتری‌ها</button>
+        <button class="btn" id="receiverCodingApplySafe" type="button">اعمال فقط کدهای قطعی</button>
+        <button class="btn" id="receiverCodingExport" type="button">دانلود گزارش نام‌های پیدا‌شده / مبهم</button>
+      </div>
+      <div id="receiverCodingStatus" class="smalltext" role="status" aria-live="polite">ابتدا فایل Coding را وارد کن. نتایج مبهم بدون تأیید به XML اضافه نمی‌شوند.</div>
+      <div id="receiverCodingReview" style="margin-top:12px"></div>
+      <div class="notice warn">نام‌های کوتاه، مراکز هم‌نام در شهرهای مختلف، آزمایشگاه‌ها و داروخانه‌های هم‌نام به‌طور خودکار جای بیمارستان انتخاب نمی‌شوند. برای موارد مبهم، گزینه درست را از فهرست انتخاب و تأیید کن.</div>
     </div>
     <div class="footer-note">نکته: اگر فایل چند ردیف عنوان یا سرستون ادغام‌شده دارد، «ردیف عنوان ستون‌ها» را تغییر دهید. قبل از تأیید، حتماً ستون تعداد و تاریخ را در پیش‌نمایش کنترل کنید.</div>
   </section>
@@ -188,12 +200,13 @@
         <div class="notice info" id="cloudSyncStatus" style="margin-top:12px">حالت آفلاین فعال است؛ اطلاعات روی همین دستگاه ذخیره می‌شوند.</div>
         <div class="smalltext">کد اتصال فقط در همین مرورگر نگهداری می‌شود و داخل فایل‌های عمومی برنامه قرار نمی‌گیرد. برای شروع، «فعال‌سازی همگام‌سازی» را انتخاب کن؛ برنامه پیش از جایگزینی اطلاعات، تعداد رکوردها را نشان می‌دهد.</div>
       </div>
-      <div class="notice info" style="margin-top:16px">ذخیره محلی SQLite همچنان به‌عنوان نسخه پشتیبان فعال است؛ برای خروجی مستقل، دکمه «دانلود پایگاه داده SQLite» را بزنید.</div><div class="footer-note">نسخه ۰.۳۲.۲ — همگام‌سازی امن و ذخیره محلی پشتیبان.</div>
+      <div class="notice info" style="margin-top:16px">ذخیره محلی SQLite همچنان به‌عنوان نسخه پشتیبان فعال است؛ برای خروجی مستقل، دکمه «دانلود پایگاه داده SQLite» را بزنید.</div><div class="footer-note">نسخه ۰.۳۲.۳ — همگام‌سازی امن و ذخیره محلی پشتیبان.</div>
     </div>
   </section>
 </main>
 </div>
 <div class="toast" id="toast"></div>
-<script src="assets/js/app.js?v=0.32.2"></script>
+<script src="assets/js/receiver-matcher.js?v=0.32.3"></script>
+<script src="assets/js/app.js?v=0.32.3"></script>
 </body>
 </html>

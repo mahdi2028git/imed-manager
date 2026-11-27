@@ -2,6 +2,17 @@
 
 All notable user-facing changes are recorded here. Versions follow the policy in [VERSIONING.md](VERSIONING.md).
 
+## [0.32.3] - 2026-11-28
+
+### Fixed
+- Applied a user-approved exact customer-name alias for Sepidar “بیمارستان عرفان” and “بیمارستان عرفان نیایش” to active receiver code 56918426 and TypeID 2.
+- Prevented the short name “عرفان” (a different coding identity) and intermediary names such as “صبا داروی میلاد (بیمارستان عرفان)” from inheriting the hospital's code.
+- Rechecked the entire 88,038-row receiver-coding workbook instead of selecting the first substring match; the active hospital coding record is distinct from the short-name coding record.
+
+### Safety
+- Only exact normalized customer names receive the user-confirmed override. Other receivers still require verified mapping; an unverified full upload remains blocked by XML validation.
+- Zero-balance inventory exclusions and manual final submission remain unchanged.
+
 ## [0.32.2] - 2026-11-28
 
 ### Added
