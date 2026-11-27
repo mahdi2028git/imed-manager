@@ -42,6 +42,9 @@ assert.match(quota, /v\.skipped\.map/, "partial quantity must be reported visibl
 assert.match(quota, /فقط برای همین ردیف‌های معتبر/, "partial XML must explain its actual scope");
 
 // Local SQLite restore must validate a database before replacing the current handle.
+assert.match(app, /sqlite_master WHERE type='table'/, "SQLite restore must reject unrelated databases");
+assert.match(app, /await idbPut\('main',copy\)/, "SQLite restore must persist the validated replacement before swapping the live database");
+assert.match(app, /Object\.assign\(state,previousState\)/, "SQLite restore must roll back in-memory state after a failed restore");
 assert.match(app, /const nextDB=new SQL\.Database\(bytes\)/);
 assert.match(app, /loadStateFromSQLite\(nextDB\)/);
 assert.match(app, /if\(!confirm\('پایگاه داده فعلی با فایل SQLite انتخاب‌شده جایگزین شود\؟'\)\)return/);
