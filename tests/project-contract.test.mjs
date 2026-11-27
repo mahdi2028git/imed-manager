@@ -86,8 +86,8 @@ assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک د
 // Canonical release version, app shell, and cache-busting versions stay aligned.
 assert.equal(version.trim(), "0.33.0", "VERSION must be the canonical release version");
 assert.match(html, /نسخه ۰\.۳۳\.۰/);
-assert.match(html, /styles\.css\?v=0\.32\.3/);
-assert.match(html, /app\.js\?v=0\.32\.3/);
+assert.match(html, /styles\.css\?v=0\.33\.0/);
+assert.match(html, /app\.js\?v=0\.33\.0/);
 
 // Financial fields are optional, separate across source systems, and totals are shown for review.
 assert.match(app, /imedUnitPrice/);
@@ -203,7 +203,7 @@ assert.match(app,/receiverApplySafe\(\)/);
 assert.match(app,/RECEIVER_CODING_CACHE_KEY/,"workbook should be cached locally");
 assert.match(app,/approvedReceiverCodeForCustomer\(customerNameForCoding\)/,"XML must resolve the actual invoice customer");
 assert.match(html,/id="receiverCodingFile"/);
-assert.match(html,/receiver-matcher\.js\?v=0\.32\.3/);
+assert.match(html,/receiver-matcher\.js\?v=0\.33\.0/);
 
 
 // Dashboard financial cards must NOT include all historical Sepidar sales.
