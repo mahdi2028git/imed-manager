@@ -51,7 +51,7 @@ function refMatch(d,s,refs) {
   if(!rp||!prod||(rp!==prod&&!(rp.length>24&&prod.length>24&&(rp.includes(prod)||prod.includes(rp)))))continue;
   if(rc&&cust&&rc!==cust)continue;const rd=dateValue(r.actualDate);if(day&&rd&&day!==rd)continue;
   const qOk=num(r.actualQty)<=0||Math.abs(num(s.quantity)-num(r.actualQty))<.00001;
-  if(["تطبیق دقیق","تطبیق کالا/مشتری/فی","تطبیق کالا و مشتری","تطبیق کالا/مشتری"].includes(r.status))return {kind:"positive",exact:r.status==="تطبیق دقیق"&&qOk&&cust===rc&&day===rd,status:r.status};
+  if(["تطبیق دقیق","تطبیق کالا/مشتری/فی","تطبیق کالا/مشتری/تعداد"].includes(r.status))return {kind:"positive",exact:r.status==="تطبیق دقیق"&&qOk&&cust===rc&&day===rd,status:r.status};
   if(r.status==="فاکتور/تاریخ پیدا شد؛ وجه افتراق نامنطبق")return {kind:"rejected"};
  }
  return null;
@@ -66,7 +66,7 @@ export async function processBackgroundMatch(db, jobId, queue) {
  const d=docs[cursor],already=(allocations[String(d.id)]||[]).reduce((n,a)=>n+num(a.allocatedQty),0),target=Math.max(0,num(d.quantity)),need=Math.max(0,target-already),desc=descriptors(d,inventory,refs);
  const candidates=new Map(),add=(s)=>candidates.set(String(s.id),s),di=norm(d.irc),terms=new Set([...tokens(d.product),...desc.allTerms]);
  for(const s of sepidar){if(di&&norm(s.irc)===di)add(s);if(tokens(s.product).some(t=>terms.has(t)))add(s);if([...grams(s.product)].some(g=>grams([d.product,...desc.values].join(" ")).has(g)))add(s)}
- for(const r of refs.filter(x=>norm(x.distributionNo)===norm(d.distributionNo)))for(const s of sepidar)if(norm(s.invoiceNo)===norm(r.invoiceNo))add(s);
+ if(candidates.size===0&&terms.size===0)for(const s of sepidar)add(s);\n for(const r of refs.filter(x=>norm(x.distributionNo)===norm(d.distributionNo)))for(const s of sepidar)if(norm(s.invoiceNo)===norm(r.invoiceNo))add(s);
  const pool=[];for(const s of candidates.values()){const f=free.get(String(s.id))||0;if(f<=0)continue;const ref=refMatch(d,s,refs);if(ref?.kind==="rejected")continue;const sig=signals(d,s,f,desc);if(ref?.kind==="positive"){sig.eligible=true;sig.score+=ref.exact?220:130;sig.notes.push(ref.exact?"تأیید دقیق در جدول مرجع":"تأیید در جدول مرجع")}if(sig.eligible&&sig.score>=20)pool.push({s,free:f,...sig})}
  pool.sort((a,b)=>b.score-a.score||(a.dateGap??999)-(b.dateGap??999));
  let left=need,planned=[];for(const c of pool){if(left<=0)break;const q=Math.min(left,c.free);if(q>0){planned.push({sourceId:String(c.s.id),q,score:c.score,signals:c.notes,ircConflict:!!c.ircConflict});free.set(String(c.s.id),Math.max(0,c.free-q));left-=q}}
