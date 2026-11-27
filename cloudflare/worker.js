@@ -106,6 +106,37 @@ export default {
       }
     }
 
+    // Durable cache for automatic invoice suggestions. Cache rows never create allocations.
+    if (parts[0] === "api" && parts[1] === "match-cache") {
+      try {
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS match_suggestion_cache (base_hash TEXT NOT NULL, doc_key TEXT NOT NULL, result_json TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (base_hash, doc_key))").run();
+        if (request.method === "GET") {
+          const baseHash = String(url.searchParams.get("baseHash") || "");
+          if (!/^[a-f0-9]{64}$/.test(baseHash)) return json({ error: "Invalid cache fingerprint" }, 400, cors);
+          const result = await env.DB.prepare("SELECT doc_key, result_json FROM match_suggestion_cache WHERE base_hash = ?").bind(baseHash).all();
+          return json({ data: result.results || [] }, 200, cors);
+        }
+        if (request.method === "POST") {
+          const body = await request.json();
+          const baseHash = String(body.baseHash || "");
+          const rows = Array.isArray(body.rows) ? body.rows : [];
+          if (!/^[a-f0-9]{64}$/.test(baseHash) || !rows.length || rows.length > 50) return json({ error: "Invalid cache batch" }, 400, cors);
+          const statements = [];
+          for (const row of rows) {
+            const docKey = String(row?.docKey || "");
+            const resultJson = JSON.stringify(row?.result);
+            if (!/^[a-f0-9]{64}$/.test(docKey) || !row?.result || resultJson.length > 500000) return json({ error: "Invalid cache row" }, 400, cors);
+            statements.push(env.DB.prepare("INSERT INTO match_suggestion_cache (base_hash, doc_key, result_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(base_hash, doc_key) DO UPDATE SET result_json=excluded.result_json, updated_at=CURRENT_TIMESTAMP").bind(baseHash, docKey, resultJson));
+          }
+          const result = await env.DB.batch(statements);
+          return json({ ok: true, saved: result.length }, 200, cors);
+        }
+        return json({ error: "Method not allowed" }, 405, cors);
+      } catch (error) {
+        return json({ error: "Match cache operation failed", detail: error.message }, 500, cors);
+      }
+    }
+
     // Local-first match sync: only confirmed allocations are synchronized.
     // Source records stay in each device local SQLite database.
     if (parts[0] === "api" && parts[1] === "matches" && parts[2] === "sync") {
