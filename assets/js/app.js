@@ -851,7 +851,32 @@ function validateXmlDoc(d,show=true){const v=makeQuotaRows(d);if(show&&$('xmlVal
 $('resolveInventoryIds').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند انتخاب نشده');let used={};for(const a of allocationsFor(d.id)){const r=resolveStock(d,a,used);if(r.row){if(!a.inventoryId)a.inventoryId=r.row.inventoryId;used[r.row.inventoryId]=(used[r.row.inventoryId]||0)+num(a.allocatedQty)}}save();renderXmlRows();toast('پیشنهادهای یکتای InventoryID اعمال شدند؛ موارد مبهم را دستی انتخاب کن')};
 $('buildXml').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند انتخاب نشده');d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();const v=validateXmlDoc(d,true);if(!v.rows.length){$('xmlOutputPanel').style.display='none';toast('برای این سند هیچ ردیف تخصیصی یا پیشنهادی وجود ندارد');return}const xml=quotaXml(v.rows);const parsed=new DOMParser().parseFromString(xml,'application/xml');if(parsed.querySelector('parsererror'))return toast('خطای ساختار XML');$('xmlOutput').value=xml;$('xmlOutputPanel').style.display='block';state.lastXml={distributionId:d.id,rows:v.rows,xml,createdAt:new Date().toISOString()};save();refreshScriptDocs();$('xmlOutputPanel').scrollIntoView({behavior:'smooth',block:'start'});toast('XML آماده است؛ از دکمه کپی استفاده کن')};
 $('copyXml').onclick=async()=>{const el=$('xmlOutput');if(!el?.value)return toast('ابتدا XML را بساز');try{await navigator.clipboard.writeText(el.value);toast('XML کپی شد')}catch(e){el.focus();el.select();toast('متن انتخاب شد؛ Copy را بزن')}};
-function refreshScriptDocs(){const el=$('scriptDocSelect');if(!el)return;const prev=el.value||$('xmlDocSelect')?.value||state.currentDoc;el.innerHTML='<option value="">انتخاب سند</option>'+state.imed.map(d=>`<option value="${esc(d.id)}">${esc(d.distributionNo)} — ${esc(d.product)}</option>`).join('');if(state.imed.some(d=>d.id===prev))el.value=prev;if(el.value)renderScriptReady()}
+function refreshScriptDocs(){
+ const el=$('scriptDocSelect');if(!el)return;
+ const prev=el.value||$('xmlDocSelect')?.value||state.currentDoc;
+ el.innerHTML='<option value="">انتخاب سند</option>'+state.imed.map(d=>`<option value="${esc(d.id)}">${esc(d.distributionNo)} — ${esc(d.product)}</option>`).join('');
+ if(state.imed.some(d=>d.id===prev))el.value=prev;
+ renderScriptDocSearch();
+ if(el.value)renderScriptReady();
+}
+function renderScriptDocSearch(){
+ const input=$('scriptDocSearch'),box=$('scriptDocSearchResults');if(!input||!box)return;
+ const q=norm(input.value||'');
+ const rows=state.imed.filter(d=>!q||[d.distributionNo,d.product,d.irc,d.distributionDate,d.model,d.customer].some(v=>norm(v||'').includes(q))).slice(0,80);
+ if(!rows.length){box.innerHTML='<div class="empty">موردی با این جست‌وجو پیدا نشد.</div>';return}
+ box.innerHTML='<div class="smalltext" style="margin-bottom:7px">'+faNum(rows.length)+' نتیجه'+(rows.length===80?' (حداکثر ۸۰ مورد نمایش داده شده)':'')+'</div><div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>IRC</th><th>تعداد</th><th>عملیات</th></tr></thead><tbody>'+rows.map(d=>'<tr><td>'+esc(d.distributionNo||'—')+'</td><td>'+esc(d.product||'—')+'</td><td class="mono">'+esc(d.irc||'—')+'</td><td>'+faNum(d.quantity)+'</td><td><div class="actions" style="margin:0"><button class="btn small primary" data-script-select="'+esc(d.id)+'">انتخاب برای اسکریپت</button><button class="btn small" data-script-review="'+esc(d.id)+'">بررسی تطابق</button></div></td></tr>').join('')+'</tbody></table></div>';
+}
+$('scriptDocSearch')?.addEventListener('input',renderScriptDocSearch);
+$('scriptDocSearchResults')?.addEventListener('click',e=>{
+ const select=e.target.closest('[data-script-select]'),review=e.target.closest('[data-script-review]');
+ const docId=select?.dataset.scriptSelect||review?.dataset.scriptReview;if(!docId)return;
+ const el=$('scriptDocSelect');el.value=docId;
+ if(select){renderScriptReady();toast('سند برای ساخت اسکریپت انتخاب شد');return}
+ goto('reconcile');refreshDocOptions();$('reconcileDoc').value=docId;openDoc(docId);
+ $('invoiceFilter').value='';$('productMatch').value='auto';
+ $('findCandidates').click();
+ $('candidateResults').scrollIntoView({behavior:'smooth',block:'center'});
+});
 $('scriptDocSelect').addEventListener('change',renderScriptReady);
 function buildFormAutofillSource(d,rows){
  const data=JSON.stringify(rows);
