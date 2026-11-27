@@ -584,6 +584,8 @@ async function calculateAllAutoMatches(){
  return rows;
 }
 let allAutoRows=[];
+let allMatchPage=1;
+const selectedAllMatchDocIds=new Set();
 function allMatchInvoiceRows(x){
  const saved=allocationsFor(x.d.id).map(a=>{
   const source=state.sepidar.find(z=>String(z.id)===String(a.sourceId));
@@ -618,9 +620,12 @@ async function renderAllAutoMatches(){
  refresh();
  const complete=allAutoRows.filter(x=>x.status==='کامل').length,partial=allAutoRows.filter(x=>x.status==='ناقص').length,none=allAutoRows.filter(x=>x.status==='بدون تطبیق').length;
  const completeRate=allAutoRows.length?Math.round(complete/allAutoRows.length*100):0;$('allMatchStats').innerHTML=`تعداد اسناد: <b>${faNum(allAutoRows.length)}</b> | نرخ اسناد کامل: <b>${faNum(completeRate)}٪</b> (${faNum(complete)}) | ناقص: <b>${faNum(partial)}</b> | بدون تطبیق: <b>${faNum(none)}</b> | پیشنهاد جدید: <b>${faNum(allAutoRows.reduce((n,x)=>n+x.planned.length,0))}</b> ردیف فاکتور | مرجع: <b>${faNum(MATCH_REFERENCE_ROWS.length)}</b> ردیف جدول تطبیق (موارد وجه افتراق نامنطبق حذف می‌شوند)`;
- const visibleRows=allAutoRows.slice().sort((a,b)=>dateOrderValue(b.d?.distributionDate)-dateOrderValue(a.d?.distributionDate)).slice(0,180);
- $('allMatchTable').innerHTML=allAutoRows.length?`${allAutoRows.length>visibleRows.length?`<div class="notice info">برای جلوگیری از هنگ مرورگر، فقط ۱۸۰ سند اول در صفحه نمایش داده می‌شود؛ خروجی CSV شامل همه ${faNum(allAutoRows.length)} سند است.</div>`:''}<div class="table-wrap"><table><thead><tr><th>شماره سند IMED</th><th>تاریخ</th><th>TypeID</th><th>دریافت‌کننده</th><th>گروه کالا</th><th>نام کامل کالا و وجه افتراق IMED / IRC</th><th>تعداد هدف</th><th>تخصیص قبلی</th><th>پیشنهاد جدید</th><th>باقیمانده</th><th>وضعیت</th><th>فاکتورهای سپیدار پیشنهادی و دلایل</th></tr></thead><tbody>${visibleRows.map(x=>`<tr><td>${esc(x.d.distributionNo||'—')}</td><td>${esc(x.d.distributionDate||'—')}</td><td>${esc(x.d.typeId||inferTypeId(x.d)||'نامشخص')}</td><td>${esc(x.d.receiver||'—')}</td><td>${esc(x.d.mainGroup||x.d.productGroup||x.d.distributionType||'—')}</td><td>${esc(x.d.product||'—')}</td><td>${fullProductDetailsHtml(x.d)}</td><td>${faNum(x.target)}</td><td>${faNum(x.already)}</td><td>${faNum(x.got)}</td><td>${faNum(x.left)}</td><td><span class="tag ${x.status==='کامل'?'good':x.status==='بدون تطبیق'?'bad':'warn'}">${x.status}</span></td><td>${allMatchInvoiceRows(x).length?allMatchInvoiceRows(x).map(p=>`${p.isExisting?'✓ ثبت‌شده: ':'پیشنهادی: '}${esc(p.s.invoiceNo||'—')} (${esc(p.s.invoiceDate||'—')}) × ${faNum(p.q)}${p.score!==null&&p.score!==undefined?'؛ '+faNum(p.score)+' امتیاز':''}؛ ${esc((p.signals||[]).join('، '))}${p.ircConflict?' ⚠️ IRC متفاوت':''}`).join('<hr style="border:0;border-top:1px solid var(--line);margin:5px 0">'):'—'}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">سندی برای تطبیق وجود ندارد.</div>';
+ const sortedRows=allAutoRows.slice().sort((a,b)=>dateOrderValue(b.d?.distributionDate)-dateOrderValue(a.d?.distributionDate));
+ const pageCount=Math.max(1,Math.ceil(sortedRows.length/5));allMatchPage=Math.min(allMatchPage,pageCount);
+ const visibleRows=sortedRows.slice((allMatchPage-1)*5,allMatchPage*5);
+ $('allMatchTable').innerHTML=allAutoRows.length?`${allAutoRows.length>visibleRows.length?`<div class="notice info">برای جلوگیری از هنگ مرورگر، فقط ۱۸۰ سند اول در صفحه نمایش داده می‌شود؛ خروجی CSV شامل همه ${faNum(allAutoRows.length)} سند است.</div>`:''}<div class="table-wrap"><table><thead><tr><th>انتخاب</th><th>شماره سند IMED</th><th>تاریخ</th><th>TypeID</th><th>دریافت‌کننده</th><th>گروه کالا</th><th>نام کامل کالا و وجه افتراق IMED / IRC</th><th>تعداد هدف</th><th>تخصیص قبلی</th><th>پیشنهاد جدید</th><th>باقیمانده</th><th>وضعیت</th><th>فاکتورهای سپیدار پیشنهادی و دلایل</th></tr></thead><tbody>${visibleRows.map(x=>`<tr><td><input type="checkbox" data-select-imed-doc="${esc(x.d.id)}" ${selectedAllMatchDocIds.has(String(x.d.id))?'checked':''}></td><td>${esc(x.d.distributionNo||'—')}</td><td>${esc(x.d.distributionDate||'—')}</td><td>${esc(x.d.typeId||inferTypeId(x.d)||'نامشخص')}</td><td>${esc(x.d.receiver||'—')}</td><td>${esc(x.d.mainGroup||x.d.productGroup||x.d.distributionType||'—')}</td><td>${esc(x.d.product||'—')}</td><td>${fullProductDetailsHtml(x.d)}</td><td>${faNum(x.target)}</td><td>${faNum(x.already)}</td><td>${faNum(x.got)}</td><td>${faNum(x.left)}</td><td><span class="tag ${x.status==='کامل'?'good':x.status==='بدون تطبیق'?'bad':'warn'}">${x.status}</span></td><td>${allMatchInvoiceRows(x).length?allMatchInvoiceRows(x).map(p=>`${p.isExisting?'✓ ثبت‌شده: ':'پیشنهادی: '}${esc(p.s.invoiceNo||'—')} (${esc(p.s.invoiceDate||'—')}) × ${faNum(p.q)}${p.score!==null&&p.score!==undefined?'؛ '+faNum(p.score)+' امتیاز':''}؛ ${esc((p.signals||[]).join('، '))}${p.ircConflict?' ⚠️ IRC متفاوت':''}`).join('<hr style="border:0;border-top:1px solid var(--line);margin:5px 0">'):'—'}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">سندی برای تطبیق وجود ندارد.</div>';
  $('exportAllAutoMatches').disabled=!allAutoRows.length;
+ const pager=$('allMatchPagination');if(pager) pager.innerHTML=`<button class="btn small" data-match-page="${Math.max(1,allMatchPage-1)}" ${allMatchPage<=1?'disabled':''}>قبلی</button><span class="smalltext">صفحه ${faNum(allMatchPage)} از ${faNum(pageCount)} — ${faNum(sortedRows.length)} سند</span><button class="btn small" data-match-page="${Math.min(pageCount,allMatchPage+1)}" ${allMatchPage>=pageCount?'disabled':''}>بعدی</button>`;
  renderUnmatchedMatches();
 }
 function getUnmatchedRows(){return allAutoRows.filter(x=>x.status==='بدون تطبیق')}
@@ -1029,6 +1034,20 @@ $('copyFormScript').onclick=async()=>{await refreshSingleFormScript();const code
 const IMED_DISTRIBUTION_FORM_URL='https://register.imed.ir/SaleDistribution/Dist/Dist_QuotaDistribution.aspx';
 $('sendToImed').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');const tab=window.open(IMED_DISTRIBUTION_FORM_URL,'_blank');await copyText(code);if(!tab)toast('پنجره IMED باز نشد؛ Popup را مجاز کن. اسکریپت کپی شده است.');else toast('IMED باز شد و اسکریپت همین سند کپی شد؛ در Console همان تب Paste و اجرا کن.')};
 $('scriptDocSelect').addEventListener('change',refreshSingleFormScript);
+$('allMatchPagination')?.addEventListener('click',e=>{const b=e.target.closest('[data-match-page]');if(!b)return;allMatchPage=Number(b.dataset.matchPage)||1;renderAllAutoMatches()});
+$('allMatchTable')?.addEventListener('change',e=>{const c=e.target.closest('[data-select-imed-doc]');if(!c)return;const id=String(c.dataset.selectImedDoc);if(c.checked)selectedAllMatchDocIds.add(id);else selectedAllMatchDocIds.delete(id);const status=$('allMatchSelectionStatus');if(status)status.textContent=faNum(selectedAllMatchDocIds.size)+' سند انتخاب شده است.';const send=$('sendSelectedMatchedDocToImed');if(send)send.disabled=selectedAllMatchDocIds.size!==1});
+$('sendSelectedMatchedDocToImed')?.addEventListener('click',async()=>{
+ if(selectedAllMatchDocIds.size!==1)return toast('برای ارسال آزمایشی فقط یک سند را انتخاب کن.');
+ const docId=[...selectedAllMatchDocIds][0],doc=state.imed.find(d=>String(d.id)===docId);
+ if(!doc)return toast('سند انتخاب‌شده در اطلاعات فعلی پیدا نشد.');
+ const tab=window.open('about:blank','_blank');if(!tab)return toast('پنجره جدید باز نشد؛ اجازه Popup را فعال کن.');
+ $('scriptDocSelect').value=docId;
+ await refreshSingleFormScript();
+ const code=$('formScriptCode').value;
+ if(!code||code.startsWith('برای این سند هیچ')){tab.close();return toast('برای این سند اسکریپت معتبر آماده نشد؛ وضعیت آماده‌سازی را بررسی کن.')}
+ await copyText(code);tab.location.href=IMED_DISTRIBUTION_FORM_URL;
+ toast('صفحه ثبت IMED باز شد و اسکریپت کپی شد؛ اجرای کد و ثبت نهایی با تأیید دستی توست.');
+});
 async function buildAllDocumentsBatchScript(){
  await ensureAutoMatchesReady();
  const jobs=[],diagnostics=[],fieldCounts={};
