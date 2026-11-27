@@ -2,6 +2,21 @@
 
 All notable user-facing changes are recorded here. Versions follow the policy in [VERSIONING.md](VERSIONING.md).
 
+## [0.31.1] - 2026-11-27
+
+### Fixed
+- XML validation now distinguishes partial quantity from a fully matched document and blocks rows with missing required data.
+- Prevented over-allocation beyond a distribution's target and shared InventoryID capacity across bulk XML documents.
+- Displayed automatic match proposals in XML preparation and persisted their InventoryID choices.
+- Hardened SQLite restore validation and made the IndexedDB replacement atomic.
+- Preserved distinct invoice product lines during re-import.
+- Allowed explicit TypeID when there is no source distribution type to compare.
+- Used fixed-length timing-safe comparison for Worker API keys.
+
+### Safety
+- Partial allocation and the approved TypeID=2 fallback remain unchanged.
+- No live IMED submission, D1 migration, or Worker deployment was performed.
+
 ## [0.31.0] - 2026-11-27
 
 ### Added
