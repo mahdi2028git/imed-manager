@@ -24,8 +24,8 @@ While the product is in the 0.x phase:
 
 ## Current release
 
-- Application version: `0.32.0`
-- Intended tag: `v0.32.0`
+- Application version: `0.32.1`
+- Intended tag: `v0.32.1`
 - Production baseline before versioning metadata: `e9ee58fa5bdcbe85e4d4077012eb0f9e743e28ff`
 
 A release branch or a version string is not itself a Git tag. The release tag must point to the final production commit after merge.
