@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { runInNewContext } from "node:vm";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
@@ -96,4 +97,38 @@ assert.match(app, /computedLineTotal\(a\.allocatedQty,a\.unitPrice\)/);
 assert.match(app, /RialPrice:num\(a\.unitPrice\)/, "IMED XML rial price must come from the Sepidar allocation");
 assert.match(app, /کمترین مانده کافی برای همان IRC/, "inventory candidate selection must use remaining balance");
 assert.match(html, /statFinancialCoverage/);
+// The current stock-clearance workflow must never search IMED documents
+// whose IRC has no positive balance in the latest inventory snapshot.
+assert.match(app, /function positiveInventoryByIrc\(rows\)/);
+assert.match(app, /state\.imed\.filter\(d=>remainingCapacityByIrc\.has\(norm\(d\.irc\)\)\)/);
+assert.match(app, /if\(num\(v\.remainingQty\)<=0\)continue/, "zero-balance stock descriptors must not be indexed");
+assert.match(app, /if\(left>0&&stockRemaining>0\)/, "no proposals may be calculated for a depleted IRC");
+assert.match(app, /Math\.min\(left,c\.free,stockRemaining\)/, "new proposals must not exceed remaining inventory");
+assert.match(app, /if\(x\.irc&&x\.irc!==di\)continue/, "different explicit IRCs cannot be treated as the same item");
+assert.match(app, /matcherVersion:5/, "stock-rule changes must invalidate old matching results");
+assert.match(app, /status==='out-of-scope'/, "historical zero-stock documents must remain visible but out of scope");
+assert.match(app, /const excludedDocs=state\.imed\.length-allAutoRows\.length/);
+
+// Exercise the pure inventory-budget helper, including duplicate snapshots
+// whose last record reports zero (old positive stock must not be reused).
+const helperSource = app.slice(app.indexOf("function positiveInventoryByIrc"), app.indexOf("async function calculateAllAutoMatches"));
+const positiveInventoryByIrc = runInNewContext(
+  helperSource + "\npositiveInventoryByIrc",
+  { norm: (v) => String(v ?? "").trim(), num: (v) => Number(v) || 0, Map },
+);
+const balances = positiveInventoryByIrc([
+  { irc: "IRC-A", inventoryId: "old", remainingQty: 30 },
+  { irc: "IRC-A", inventoryId: "old", remainingQty: 0 },
+  { irc: "IRC-A", inventoryId: "new", remainingQty: 70 },
+  { irc: "IRC-B", inventoryId: "zero", remainingQty: 0 },
+  { irc: "IRC-C", inventoryId: "negative", remainingQty: -10 },
+  { irc: "IRC-D", inventoryId: "active", remainingQty: 12 },
+  { irc: "IRC-A", inventoryId: "", remainingQty: 900 },
+]);
+assert.equal(balances.get("IRC-A"), 70);
+assert.equal(balances.get("IRC-D"), 12);
+assert.equal(balances.has("IRC-B"), false);
+assert.equal(balances.has("IRC-C"), false);
+assert.equal(balances.size, 2);
+
 console.log("IMED Manager contract checks passed.");
