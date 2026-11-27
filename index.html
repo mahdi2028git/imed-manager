@@ -85,7 +85,7 @@
 
   <section class="view" id="view-reconcile">
     <div class="card" style="margin-bottom:16px">
-      <div class="section-head"><div><h2>تطبیق چندفاکتوری با سند توزیع</h2><p>یک سند توزیع می‌تواند از چند فاکتور تأمین شده باشد. جمع مقدار تخصیص‌یافته باید دقیقاً با مقدار توزیع برابر شود.</p></div><span class="tag neutral">بدون فرض برابری قیمت‌ها</span></div><div class="actions" style="margin:0 0 12px"><button class="btn primary" id="runAllAutoMatches">محاسبه خودکار تطبیق همه اسناد</button><button class="btn" data-goto="allmatches">نمایش جدول جامع</button></div>
+      <div class="section-head"><div><h2>تطبیق چندفاکتوری با سند توزیع</h2><p>یک سند توزیع می‌تواند از چند فاکتور تأمین شده باشد. جمع مقدار تخصیص‌یافته باید دقیقاً با مقدار توزیع برابر شود.</p></div><span class="tag neutral">بدون فرض برابری قیمت‌ها</span></div><div class="actions" style="margin:0 0 12px"><button class="btn primary" id="runAllAutoMatches">محاسبه خودکار تطبیق همه اسناد (مرورگر)</button><button class="btn" id="runBackgroundMatches">اجرای بک‌گراند روی سرور</button><button class="btn" data-goto="allmatches">نمایش جدول جامع</button></div>
       <div class="field" style="max-width:520px"><label>انتخاب سند توزیع</label><select id="reconcileDoc"><option value="">انتخاب کنید</option></select></div>
       <div id="docPanel" class="hidden" style="margin-top:15px">
         <div class="card" style="background:#f8fbff;box-shadow:none">
@@ -109,7 +109,7 @@
 
   <section class="view" id="view-allmatches">
     <div class="card">
-      <div class="section-head"><div><h2>جدول جامع تطبیق خودکار همه اسناد</h2><p>تطبیق آزمایشی همه اسناد با ظرفیت آزاد فاکتورهای سپیدار؛ این گزارش تخصیص‌های قبلی را تغییر نمی‌دهد.</p></div><div class="actions" style="margin:0"><button class="btn primary" id="runAllAutoMatches2">شروع محاسبه تطبیق</button><button class="btn" id="exportAllAutoMatches" disabled>خروجی CSV</button></div></div>
+      <div class="section-head"><div><h2>جدول جامع تطبیق خودکار همه اسناد</h2><p>تطبیق آزمایشی همه اسناد با ظرفیت آزاد فاکتورهای سپیدار؛ این گزارش تخصیص‌های قبلی را تغییر نمی‌دهد.</p></div><div class="actions" style="margin:0"><button class="btn primary" id="runAllAutoMatches2">شروع محاسبه تطبیق در مرورگر</button><button class="btn" id="runBackgroundMatches2">اجرای بک‌گراند روی سرور</button><button class="btn" id="exportAllAutoMatches" disabled>خروجی CSV</button></div></div>
       <div id="allMatchStats" class="notice info">برای ساخت جدول، روی «محاسبه خودکار تطبیق همه اسناد» کلیک کن.</div>
       <div id="allMatchTable"><div class="empty">هنوز گزارشی ساخته نشده است.</div></div>
       <div class="card" style="margin-top:18px;box-shadow:none;background:#fbfcfe">
