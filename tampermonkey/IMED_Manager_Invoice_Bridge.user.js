@@ -240,14 +240,21 @@
     const date = el(FORM.date), invoice = el(FORM.invoice);
     const radio = [...document.querySelectorAll('input[type=radio]')].find(x => x.name === FORM.typeName && x.value === r.TypeID);
     if (!date || !invoice || !radio) throw Error('شماره، تاریخ یا گزینه نوع توزیع در فرم پیدا نشد.');
+    if (!radio.checked) {
+      // A radio choice may trigger an ASP.NET postback, so persist before clicking.
+      persist('header-wait');
+      radio.click();
+      show('نوع توزیع انتخاب شد؛ پس از بارگذاری شماره و تاریخ را بررسی کن.', 'ادامه ثبت موقت');
+      return false;
+    }
     setValue(date, r.InvoiceDate);
     setValue(invoice, r.InvoiceNo);
-    if (!radio.checked) radio.click();
     if (digits(date.value).trim() !== r.InvoiceDate || digits(invoice.value).trim() !== r.InvoiceNo) throw Error('شماره یا تاریخ فاکتور در فرم ثبت نشد.');
+    return true;
   }
   function saveTemporary() {
     try {
-      fillHeader();
+      if (!fillHeader()) return;
       const button = el(FORM.temporary);
       if (!button) throw Error('دکمه ذخیره موقت با شناسه فعلی پیدا نشد.');
       if (!confirm('شماره، تاریخ، TypeID، تعداد و فی را بررسی کردی؟ فقط «ذخیره موقت لیست کالا» زده شود؟')) return;
@@ -264,10 +271,15 @@
       else if (state.phase === 'search-ready') await beginSearch();
       else if (state.phase === 'search-wait') processResults();
       else if (state.phase === 'add-wait') {
+        const current = lowerRows();
+        if (!current.length || state.selected.some(a =>
+          current.filter(({ tr }) => exactCell(tr, a.IRC) && exactCell(tr, a.InventoryID)).length !== 1)) {
+          throw Error('همه کالاهای انتخاب‌شده هنوز در جدول سند دیده نمی‌شوند؛ افزودن موفق را قبل از ادامه بررسی کن.');
+        }
         persist('search-ready', { searchIndex: state.searchIndex + 1 });
         await beginSearch();
       } else if (state.phase === 'lower') fillLower();
-      else if (state.phase === 'prepared') saveTemporary();
+      else if (state.phase === 'prepared' || state.phase === 'header-wait') saveTemporary();
       else if (state.phase === 'temp-wait') {
         persist('saved-check');
         show('ذخیره موقت درخواست شد. موفقیت را در سایت IMED بررسی کن؛ صدور نهایی دستی است.', 'پایان', false);
@@ -286,7 +298,7 @@
     show('افزودن کالا درخواست شده؛ بعد از کنترل وضعیت، به IRC بعدی برو.', 'IRC بعدی');
   } else if (state.phase === 'search-ready') show('آماده جست‌وجوی IRC بعدی', 'جست‌وجوی بعدی');
   else if (state.phase === 'lower') show('کالاها باید در جدول پایین دیده شوند.', 'ورود تعداد و فی');
-  else if (state.phase === 'prepared') show('فیلدهای تعداد و فی وارد شدند.', 'ذخیره موقت پس از کنترل');
+  else if (state.phase === 'prepared' || state.phase === 'header-wait') show('فیلدها را قبل از ذخیره موقت کنترل کن.', 'ذخیره موقت پس از کنترل');
   else if (state.phase === 'temp-wait') show('درخواست ذخیره موقت ارسال شد؛ نتیجه سرور را بررسی کن.', 'تأیید مشاهده', true);
   else if (state.phase === 'paused') show(state.error || 'اتصال متوقف شد؛ نیاز به بررسی', 'تلاش مجدد');
   else show('برای ادامه، وضعیت سند را کنترل کن.', 'پایان', false);
