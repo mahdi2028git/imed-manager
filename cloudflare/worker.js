@@ -106,6 +106,47 @@ export default {
       }
     }
 
+    // Persistent status for the existing automatic matching button. The matching engine
+    // remains the app's established algorithm; this endpoint persists its job/progress.
+    if (parts[0] === "api" && parts[1] === "match-jobs") {
+      try {
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS match_jobs (id TEXT PRIMARY KEY, base_hash TEXT NOT NULL UNIQUE, total INTEGER NOT NULL, completed INTEGER NOT NULL DEFAULT 0, percent REAL NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'running', detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)").run();
+        if (request.method === "POST" && parts.length === 2) {
+          const body = await request.json();
+          const baseHash = String(body.baseHash || "");
+          const total = Number(body.total);
+          if (!/^[a-f0-9]{64}$/.test(baseHash) || !Number.isInteger(total) || total < 0 || total > 1000000) return json({ error: "Invalid matching job" }, 400, cors);
+          const existing = await env.DB.prepare("SELECT * FROM match_jobs WHERE base_hash = ?").bind(baseHash).first();
+          if (existing && existing.status === "completed") return json({ job: existing, resumed: true }, 200, cors);
+          const jobId = existing?.id || crypto.randomUUID();
+          await env.DB.prepare("INSERT INTO match_jobs (id, base_hash, total, completed, percent, status, detail, updated_at) VALUES (?, ?, ?, 0, 0, 'running', 'شروع محاسبه', CURRENT_TIMESTAMP) ON CONFLICT(base_hash) DO UPDATE SET total=excluded.total, status='running', detail='ادامه محاسبه', updated_at=CURRENT_TIMESTAMP").bind(jobId, baseHash, total).run();
+          const job = await env.DB.prepare("SELECT * FROM match_jobs WHERE base_hash = ?").bind(baseHash).first();
+          return json({ job, resumed: !!existing }, 200, cors);
+        }
+        if (request.method === "GET" && parts.length === 2) {
+          const baseHash = String(url.searchParams.get("baseHash") || "");
+          if (!/^[a-f0-9]{64}$/.test(baseHash)) return json({ error: "Invalid matching fingerprint" }, 400, cors);
+          const job = await env.DB.prepare("SELECT * FROM match_jobs WHERE base_hash = ?").bind(baseHash).first();
+          return json({ job: job || null }, 200, cors);
+        }
+        if (request.method === "PATCH" && parts.length === 3) {
+          const jobId = String(parts[2] || "");
+          const body = await request.json();
+          const percent = Math.max(0, Math.min(100, Number(body.percent) || 0));
+          const completed = Math.max(0, Number(body.completed) || 0);
+          const status = body.status === "completed" ? "completed" : body.status === "failed" ? "failed" : "running";
+          const detail = String(body.detail || "").slice(0, 500);
+          const result = await env.DB.prepare("UPDATE match_jobs SET completed = ?, percent = ?, status = ?, detail = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(completed, percent, status, detail, jobId).run();
+          if (!result.meta?.changes) return json({ error: "Matching job not found" }, 404, cors);
+          const job = await env.DB.prepare("SELECT * FROM match_jobs WHERE id = ?").bind(jobId).first();
+          return json({ job }, 200, cors);
+        }
+        return json({ error: "Method not allowed" }, 405, cors);
+      } catch (error) {
+        return json({ error: "Matching job operation failed", detail: error.message }, 500, cors);
+      }
+    }
+
     // Durable cache for automatic invoice suggestions. Cache rows never create allocations.
     if (parts[0] === "api" && parts[1] === "match-cache") {
       try {
