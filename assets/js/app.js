@@ -880,7 +880,32 @@ $('copyFormScript').onclick=async()=>{await refreshSingleFormScript();const code
 const IMED_DISTRIBUTION_FORM_URL='https://register.imed.ir/SaleDistribution/Dist/Dist_QuotaDistribution.aspx';
 $('sendToImed').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('اطلاعات لازم'))return toast('ابتدا خطاهای اطلاعاتی این سند را برطرف کن');const tab=window.open(IMED_DISTRIBUTION_FORM_URL,'_blank');await copyText(code);if(!tab)toast('پنجره IMED باز نشد؛ Popup را مجاز کن. اسکریپت کپی شده است.');else toast('IMED باز شد و اسکریپت همین سند کپی شد؛ در Console همان تب Paste و اجرا کن.')};
 $('scriptDocSelect').addEventListener('change',refreshSingleFormScript);
-async function buildAllDocumentsBatchScript(){await ensureAutoMatchesReady();const jobs=[];for(const d of state.imed){const v=makeQuotaRows(d,false,true);if(!v.errors.length&&v.rows.length)jobs.push({label:`سند ${d.distributionNo||d.id} — ${d.product||''} — ${v.rows.length} ردیف`,code:buildFormAutofillSource(d,v.rows)})}if(!jobs.length)throw Error('هیچ سندی با اطلاعات کامل برای ساخت اسکریپت دسته‌ای پیدا نشد');const source=`/* IMED batch assistant: choose one distribution document per run. Final saving remains under your control. */\n(()=>{const jobs=${JSON.stringify(jobs)};const menu=jobs.map((j,i)=>(i+1)+') '+j.label).join('\\n');const raw=prompt('شماره سندی را که می‌خواهی در این نوبت در IMED تکمیل شود وارد کن:\\n\\n'+menu);if(raw===null)return;const i=Number(raw)-1;if(!Number.isInteger(i)||i<0||i>=jobs.length){alert('شماره انتخاب‌شده معتبر نیست');return}console.info('IMED batch assistant:',jobs[i].label);(0,eval)(jobs[i].code)})();`;downloadText(source,'IMED_Batch_All_Distributions.js','text/javascript;charset=utf-8');toast(`${faNum(jobs.length)} سند آماده اسکریپت دسته‌ای شد؛ ثبت هر سند جداگانه کنترل و تأیید می‌شود`)}
+async function buildAllDocumentsBatchScript(){
+ await ensureAutoMatchesReady();
+ const jobs=[],diagnostics=[],fieldCounts={};
+ for(const d of state.imed){
+  const match=allAutoRows.find(x=>String(x.d?.id)===String(d.id));
+  const v=makeQuotaRows(d,false,true);
+  if(!v.errors.length&&v.rows.length){
+   jobs.push({label:`سند ${d.distributionNo||d.id} — ${d.product||''} — ${v.rows.length} ردیف`,code:buildFormAutofillSource(d,v.rows)});
+  }else{
+   const reasons=v.errors.length?v.errors:['هیچ ردیف فاکتوری برای این سند تولید نشد'];
+   reasons.forEach(reason=>{const key=reason.includes('TypeID')?'TypeID':reason.includes('IRC')?'IRC':reason.includes('RialPrice')?'فی قیمت':reason.includes('InvoiceNo')?'شماره فاکتور':reason.includes('InvoiceDate')?'تاریخ فاکتور':reason.includes('Count')?'تعداد':reason.includes('هیچ فاکتور فروشی')?'بدون تخصیص/پیشنهاد':'سایر';fieldCounts[key]=(fieldCounts[key]||0)+1});
+   diagnostics.push({doc:d,match,reasons});
+  }
+ }
+ if(!jobs.length){
+  const lines=['گزارش علت آماده نشدن ثبت دسته‌ای IMED','تعداد اسناد IMED: '+state.imed.length,'تعداد فاکتورهای سپیدار: '+state.sepidar.length,'تعداد اسناد دارای پیشنهاد تطبیق: '+allAutoRows.filter(x=>(x.planned||[]).length).length,'تعداد اسناد دارای تخصیص ثبت‌شده: '+state.imed.filter(d=>allocationsFor(d.id).length).length,'','علت‌های پرتکرار:'];
+  Object.entries(fieldCounts).forEach(([k,n])=>lines.push(k+': '+n));
+  lines.push('','جزئیات هر سند:');
+  diagnostics.slice(0,500).forEach(({doc,match,reasons})=>lines.push('سند '+(doc.distributionNo||doc.id)+' | کالا: '+(doc.product||'')+' | TypeID: '+(doc.typeId||'')+' | IRC: '+(doc.irc||'')+' | وضعیت تطبیق: '+(match?.status||'محاسبه‌نشده')+' | پیشنهاد: '+(match?.planned?.length||0)+' | تخصیص قبلی: '+allocationsFor(doc.id).length+' | '+reasons.join(' ؛ ')));
+  downloadText(lines.join('\\n'),'IMED_Batch_Diagnostics.txt','text/plain;charset=utf-8');
+  throw Error('هیچ سندی آماده ثبت نیست؛ گزارش علت‌ها دانلود شد. معمولاً TypeID، تاریخ/شماره فاکتور یا نبود پیشنهاد تطبیق مانع است.');
+ }
+ const source=`/* IMED batch assistant: choose one distribution document per run. Final saving remains under your control. */\\n(()=>{const jobs=${JSON.stringify(jobs)};const menu=jobs.map((j,i)=>(i+1)+') '+j.label).join('\\\\n');const raw=prompt('شماره سندی را که می‌خواهی در این نوبت در IMED تکمیل شود وارد کن:\\\\n\\\\n'+menu);if(raw===null)return;const i=Number(raw)-1;if(!Number.isInteger(i)||i<0||i>=jobs.length){alert('شماره انتخاب‌شده معتبر نیست');return}console.info('IMED batch assistant:',jobs[i].label);(0,eval)(jobs[i].code)})();`;
+ downloadText(source,'IMED_Batch_All_Distributions.js','text/javascript;charset=utf-8');
+ toast(`${faNum(jobs.length)} سند آماده اسکریپت دسته‌ای شد؛ ${faNum(diagnostics.length)} سند به‌دلیل نقص اطلاعات کنار گذاشته شد. ثبت هر سند جداگانه کنترل می‌شود.`);
+}
 $('bulkRegisterAll').onclick=async()=>{try{await buildAllDocumentsBatchScript()}catch(err){toast(err.message)}};
 
 // Import workbook and map columns
