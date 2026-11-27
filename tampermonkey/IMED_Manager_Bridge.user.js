@@ -62,7 +62,7 @@
   document.body.appendChild(panel);
 
   async function fill(rows) {
-    /* IMED multi-product helper — distribution ${String(d.distributionNo||'')}
+    /* IMED multi-product helper — distribution BRIDGE
        Each run handles ONE invoice group (invoice number + date), selected in a prompt when needed.
        Phase 1: paste on IMED form; fills header and checks all matching IRC products.
        Then click "افزودن به سند توزیع" manually; after reload paste the same code and choose the SAME invoice group for Phase 2.
@@ -74,15 +74,15 @@
     const ALL_ROWS=rows;
     let ROWS=ALL_ROWS;
     const FORM={date:'ctl00_MainContent_Date_InvoiceDate',invoice:'ctl00_MainContent_txt_InvoiceNo',radio:'ctl00_MainContent_rbtnCenterTypeLevel1',add:'ctl00_MainContent_Btn_Add',temp:'ctl00_MainContent_btn_Temp'};
-    const norm=s=>String(s??'').toLowerCase().replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/[\\u200c\\s_\\-،,().]/g,'').replace(/٫/g,'.');
+    const norm=s=>String(s??'').toLowerCase().replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/[\u200c\s_\-،,().]/g,'').replace(/٫/g,'.');
     const digits=s=>String(s??'').replace(/[۰-۹]/g,c=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(c)).replace(/[٠-٩]/g,c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c));
-    const ircOf=r=>digits(r.IRC??r.irc??'').replace(/\\D/g,'');
+    const ircOf=r=>digits(r.IRC??r.irc??'').replace(/\D/g,'');
     const unique=a=>[...new Set(a.filter(Boolean).map(String))];
     const groupKey=r=>digits(r.InvoiceNo??'').trim()+'||'+digits(r.InvoiceDate??'').trim();
     const groupMap=new Map();
     for(const r of ALL_ROWS){const k=groupKey(r);if(!groupMap.has(k))groupMap.set(k,[]);groupMap.get(k).push(r)}
     const GROUPS=[...groupMap.entries()].map(([key,rows])=>({key,rows,invoice:digits(rows[0].InvoiceNo??'').trim(),date:digits(rows[0].InvoiceDate??'').trim()}));
-    if(GROUPS.length>1){const choices=GROUPS.map((g,i)=>(i+1)+') فاکتور '+(g.invoice||'—')+' | تاریخ '+(g.date||'—')+' | '+g.rows.length+' ردیف').join('\\n');const answer=prompt('چند فاکتور در این سند وجود دارد. فقط یکی را برای این نوبت انتخاب کن؛ پس از بررسی و ثبت موقت، همین کد را دوباره اجرا کن و فاکتور بعدی را انتخاب کن.\\n\\n'+choices+'\\n\\nشماره فاکتور موردنظر را وارد کن:','1');if(answer===null){console.info('[IMED helper] انتخاب فاکتور لغو شد');return}const n=Number(digits(answer).trim());if(!Number.isInteger(n)||n<1||n>GROUPS.length){alert('شماره انتخابی معتبر نیست.');return}ROWS=GROUPS[n-1].rows;}
+    if(GROUPS.length>1){const choices=GROUPS.map((g,i)=>(i+1)+') فاکتور '+(g.invoice||'—')+' | تاریخ '+(g.date||'—')+' | '+g.rows.length+' ردیف').join('\n');const answer=prompt('چند فاکتور در این سند وجود دارد. فقط یکی را برای این نوبت انتخاب کن؛ پس از بررسی و ثبت موقت، همین کد را دوباره اجرا کن و فاکتور بعدی را انتخاب کن.\n\n'+choices+'\n\nشماره فاکتور موردنظر را وارد کن:','1');if(answer===null){console.info('[IMED helper] انتخاب فاکتور لغو شد');return}const n=Number(digits(answer).trim());if(!Number.isInteger(n)||n<1||n>GROUPS.length){alert('شماره انتخابی معتبر نیست.');return}ROWS=GROUPS[n-1].rows;}
     const ircs=unique(ROWS.map(ircOf));
     const invoices=unique(ROWS.map(r=>digits(r.InvoiceNo??'').trim()));
     const dates=unique(ROWS.map(r=>digits(r.InvoiceDate??'').trim()));
@@ -90,13 +90,13 @@
     const log=(...x)=>console.log('[IMED helper]',...x);
     function setValue(el,v){if(!el)return false;const proto=el.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype;const setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;if(setter)setter.call(el,String(v??''));else el.value=String(v??'');el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:' ',code:'Space'}));el.dispatchEvent(new Event('change',{bubbles:true}));return true}
     const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-    function exactCellHasIrc(tr,irc){return [...tr.querySelectorAll('td')].some(td=>digits(td.textContent).replace(/\\D/g,'')===irc)}
+    function exactCellHasIrc(tr,irc){return [...tr.querySelectorAll('td')].some(td=>digits(td.textContent).replace(/\D/g,'')===irc)}
     function setRadio(type){const el=document.querySelector('input[name="ctl00$MainContent$rbtnCenterTypeLevel1"][value="'+CSS.escape(type)+'"]');if(!el)return false;el.click();return true}
     function makePanel(message){let p=document.getElementById('imedMultiHelperPanel');if(!p){p=document.createElement('div');p.id='imedMultiHelperPanel';p.dir='rtl';p.style.cssText='position:fixed;z-index:2147483647;top:14px;right:14px;width:340px;max-width:calc(100vw - 36px);background:#fff;color:#172b43;border:1px solid #8ca6c4;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.22);padding:12px;font:13px Tahoma,sans-serif;line-height:1.8';document.body.appendChild(p)}p.innerHTML='<b>IMED — ثبت چندکالایی</b><div style="margin:8px 0">'+message+'</div><button id="imedMultiClose" style="padding:6px 12px">بستن</button>';p.querySelector('#imedMultiClose').onclick=()=>p.remove()}
     if(!ROWS.length){makePanel('هیچ ردیف تخصیصی در کد وجود ندارد.');return}
     if(invoices.length>1||dates.length>1){makePanel('این سند شامل بیش از یک شماره فاکتور یا تاریخ است. چون سربرگ ایمد فقط یک شماره و تاریخ دارد، اجرای خودکار متوقف شد. فاکتورها را جداگانه به سندهای مستقل تقسیم کنید.');console.error('Mixed invoice header values',invoices,dates);return}
     const validTypes=['1','2','4','5','6','9','15','17','18','19','21'];
-    if(!ircs.length||ircs.some(x=>!/^\\d+$/.test(x))){makePanel('کد IRC معتبر برای همه ردیف‌ها موجود نیست؛ هیچ تغییری در فرم انجام نشد.');return}
+    if(!ircs.length||ircs.some(x=>!/^\d+$/.test(x))){makePanel('کد IRC معتبر برای همه ردیف‌ها موجود نیست؛ هیچ تغییری در فرم انجام نشد.');return}
     if(invoices.length!==1||!invoices[0]||dates.length!==1||!dates[0]){makePanel('شماره فاکتور و تاریخ باید برای این گروه مشخص و یکتا باشند؛ هیچ تغییری در فرم انجام نشد.');return}
     if(types.length!==1||!validTypes.includes(types[0])){makePanel('TypeID معتبر و یکتا در داده‌های این گروه پیدا نشد. نوع گیرنده/توزیع را در برنامه اصلاح کن؛ هیچ تغییری در فرم انجام نشد.');console.error('Invalid TypeID:',types);return}
     if(ROWS.some(r=>!Number.isFinite(Number(r.Count))||Number(r.Count)<=0||!Number.isFinite(Number(r.RialPrice))||Number(r.RialPrice)<=0)){makePanel('تعداد یا فی قیمت در یک یا چند ردیف معتبر نیست. داده‌ها را در برنامه اصلاح کن؛ هیچ تغییری در فرم انجام نشد.');return}
@@ -135,7 +135,7 @@
     const checked=[],missing=[];
     const ircInput=document.getElementById('ctl00_MainContent_txt_IRC');
     function findIrcSearchButton(input){
-     const isSearchLabel=el=>/جست.?وجو|جستجو|search|اعمال فیلتر/i.test(String(el.innerText||el.value||el.getAttribute('title')||el.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim());
+     const isSearchLabel=el=>/جست.?وجو|جستجو|search|اعمال فیلتر/i.test(String(el.innerText||el.value||el.getAttribute('title')||el.getAttribute('aria-label')||'').replace(/s+/g,' ').trim());
      let scope=input?.closest('tr, fieldset, .form-group, .row, table, form')||input?.parentElement?.parentElement||document;
      for(let depth=0;scope&&depth<5;depth++,scope=scope.parentElement){
        const candidates=[...scope.querySelectorAll('button,input[type="button"],input[type="submit"],a')];
