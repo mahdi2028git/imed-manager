@@ -941,6 +941,22 @@ const log=(...x)=>console.log('[IMED helper]',...x);
 function setValue(el,v){if(!el)return false;const proto=el.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype;const setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;if(setter)setter.call(el,String(v??''));else el.value=String(v??'');el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:' ',code:'Space'}));el.dispatchEvent(new Event('change',{bubbles:true}));return true}
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function exactCellHasIrc(tr,irc){return [...tr.querySelectorAll('td')].some(td=>digits(td.textContent).replace(/\\D/g,'')===irc)}
+function enableImedGridScroll(table){
+ if(!table)return;
+ let scroller=table.parentElement;
+ if(!scroller||scroller.dataset.imedGridScroller!=='1'){
+  scroller=document.createElement('div');
+  scroller.dataset.imedGridScroller='1';
+  scroller.dir='ltr';
+  scroller.style.cssText='display:block;width:100%;max-width:100%;max-height:55vh;overflow-x:auto;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border:1px solid #9aafc5;border-radius:8px;margin:8px 0;background:#fff;';
+  table.parentNode.insertBefore(scroller,table);
+  scroller.appendChild(table);
+ }
+ table.style.minWidth='max-content';
+ table.style.width='max-content';
+ table.style.whiteSpace='nowrap';
+ table.querySelectorAll('th').forEach(th=>{th.style.position='sticky';th.style.top='0';th.style.zIndex='2';th.style.background='#eaf1f8'});
+}
 function setRadio(type){const el=document.querySelector('input[name="ctl00$MainContent$rbtnCenterTypeLevel1"][value="'+CSS.escape(type)+'"]');if(!el)return false;el.click();return true}
 function makePanel(message){let p=document.getElementById('imedMultiHelperPanel');if(!p){p=document.createElement('div');p.id='imedMultiHelperPanel';p.dir='rtl';p.style.cssText='position:fixed;z-index:2147483647;top:14px;right:14px;width:340px;max-width:calc(100vw - 36px);background:#fff;color:#172b43;border:1px solid #8ca6c4;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.22);padding:12px;font:13px Tahoma,sans-serif;line-height:1.8';document.body.appendChild(p)}p.innerHTML='<b>IMED — ثبت چندکالایی</b><div style="margin:8px 0">'+message+'</div><button id="imedMultiClose" style="padding:6px 12px">بستن</button>';p.querySelector('#imedMultiClose').onclick=()=>p.remove()}
 if(!ROWS.length){makePanel('هیچ ردیف تخصیصی در کد وجود ندارد.');return}
@@ -1011,6 +1027,7 @@ for(const irc of ircs){
    await wait(300);
  }while(Date.now()<deadline);
  if(trs.length!==1){missing.push(irc+' ('+trs.length+' ردیف پس از کلیک جست‌وجو پیدا شد)');continue}
+ enableImedGridScroll(trs[0].closest('table'));
  const cb=trs[0].querySelector('input[type="checkbox"][id*="GV_IRC"][id$="CHBox"]');
  if(!cb.checked)cb.click();checked.push(irc);
 }
