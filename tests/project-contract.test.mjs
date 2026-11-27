@@ -37,6 +37,9 @@ assert.match(infer, /return '2'/);
 const quota = app.slice(app.indexOf("function makeQuotaRows"), app.indexOf("function xmlEsc"));
 assert.match(quota, /تطبیق ناقص/);
 assert.match(quota, /skipped\.push/);
+assert.match(quota, /if\(v\.errors\.length\)/, "XML generation must stop when any required row field is invalid");
+assert.match(quota, /v\.skipped\.map/, "partial quantity must be reported visibly");
+assert.match(quota, /فقط برای همین ردیف‌های معتبر/, "partial XML must explain its actual scope");
 
 // Local SQLite restore must validate a database before replacing the current handle.
 assert.match(app, /const nextDB=new SQL\.Database\(bytes\)/);
