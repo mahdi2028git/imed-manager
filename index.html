@@ -21,7 +21,6 @@
     <button data-view="sepidar"><span class="ico">▥</span>فاکتورهای سپیدار</button>
     <button data-view="reconcile"><span class="ico">⇄</span>تطبیق و ردیابی</button>
     <button data-view="allmatches"><span class="ico">▦</span>جدول تطبیق همه اسناد</button>
-    <button data-view="jobs"><span class="ico">◷</span>مرکز پردازش خودکار</button>
     <button data-view="inventory"><span class="ico">▦</span>انبار مجازی IMED</button>
     <button data-view="xml"><span class="ico">⌘</span>تولید XML</button>
     <button data-view="formscript"><span class="ico">JS</span>اسکریپت ثبت IMED</button>
@@ -120,14 +119,6 @@
       </div>
     </div>
   </section>
-<section class="view" id="view-jobs">
-<div class="card job-hero"><div class="section-head"><div><h2>مرکز پردازش خودکار تطبیق</h2><p>پردازش‌های سروری مستقل از مرورگر؛ می‌توانی از پنل خارج شوی و بعداً نتیجه را ببینی.</p></div><span class="tag warn" id="jobsApiStatus">در حال بررسی سرویس…</span></div>
-<div class="notice info" id="jobsApiHint">وضعیت سرویس پردازش در حال بررسی است.</div>
-<div class="job-mode-grid"><div class="job-mode-card"><div class="job-mode-head"><div><b>اجرای دستی</b><small>شروع تطبیق همه اسناد با داده‌های فعلی</small></div><span class="job-mode-icon">▶</span></div><button class="btn primary" id="startBackgroundMatch" disabled>شروع پردازش در پس‌زمینه</button></div>
-<div class="job-mode-card"><div class="job-mode-head"><div><b>اجرای خودکار پس از ورود اطلاعات</b><small>با تکمیل ورود IMED یا سپیدار، اسناد مرتبط در صف قرار می‌گیرند.</small></div><label class="job-switch"><input type="checkbox" id="autoMatchOnImport" disabled><span></span></label></div><div class="smalltext" id="autoMatchModeText">وضعیت: غیرفعال</div></div></div></div>
-<div class="grid stats job-stats"><div class="card stat"><div><div class="label">در صف</div><div class="value" id="jobQueued">۰</div></div><div class="bubble">…</div></div><div class="card stat"><div><div class="label">در حال اجرا</div><div class="value" id="jobRunning">۰</div></div><div class="bubble">↻</div></div><div class="card stat"><div><div class="label">تکمیل‌شده</div><div class="value" id="jobCompleted">۰</div></div><div class="bubble">✓</div></div><div class="card stat"><div><div class="label">دارای خطا</div><div class="value" id="jobFailed">۰</div></div><div class="bubble">!</div></div></div>
-<div class="card"><div class="section-head"><div><h2>صف و تاریخچه پردازش‌ها</h2><p>پیشرفت هر پردازش، امکان توقف یا ادامه و جزئیات خطاها</p></div><button class="btn small" id="refreshBackgroundJobs">به‌روزرسانی وضعیت</button></div><div id="backgroundJobsList"><div class="empty">هنوز اطلاعاتی از سرویس پردازش دریافت نشده است.</div></div></div>
-<div class="notice warn">توجه: این صفحه رابط کنترل است. اجرای واقعی پس‌زمینه به استقرار Workflow و API سمت Worker نیاز دارد. تا آماده‌شدن سرویس، هیچ پردازش ساختگی نمایش داده نمی‌شود.</div></section>
   <section class="view" id="view-inventory">
     <div class="card" style="margin-bottom:16px">
       <div class="section-head"><div><h2>همگام‌سازی انبار مجازی از خود IMED</h2><p>موجودی از صفحه‌ی ورودشده‌ی IMED گرفته می‌شود؛ فایل دستی سپیدار منبع موجودی نیست.</p></div><span class="tag warn" id="inventorySyncBadge">هنوز همگام‌سازی نشده</span></div>
@@ -191,6 +182,6 @@
 </main>
 </div>
 <div class="toast" id="toast"></div>
-<script src="assets/js/app.js?v=0.31.0"></script>
+<script src="assets/js/app.js?v=0.30.0"></script>
 </body>
 </html>
