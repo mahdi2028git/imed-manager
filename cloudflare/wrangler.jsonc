@@ -12,5 +12,18 @@
   ],
   "vars": {
     "APP_ORIGIN": "https://mahdi2028git.github.io"
+  },
+  "queues": {
+    "producers": [
+      { "binding": "MATCH_QUEUE", "queue": "imed-match-jobs" }
+    ],
+    "consumers": [
+      {
+        "queue": "imed-match-jobs",
+        "max_batch_size": 1,
+        "max_retries": 3,
+        "max_concurrency": 1
+      }
+    ]
   }
 }
