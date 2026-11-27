@@ -644,11 +644,11 @@ async function exportAllAutoMatches(){
    if(v.errors.length){rejected.push(`${x.d.distributionNo||x.d.id}: ${v.errors.join('؛ ')}`);continue}
    xmlRows.push(...v.rows);
   }
-  if(!xmlRows.length)throw Error('هیچ فاکتور کاملی با TypeID، IRC، تعداد، فی، شماره/تاریخ فاکتور، InventoryID و اطلاعات گیرنده معتبر برای XML پیدا نشد.');
+  if(!xmlRows.length)throw Error('هیچ ردیف تخصیص‌یافته‌ای با TypeID، IRC، تعداد، فی، شماره/تاریخ فاکتور، InventoryID و اطلاعات گیرنده معتبر برای XML پیدا نشد.');
   const xml=quotaXml(xmlRows),parsed=new DOMParser().parseFromString(xml,'application/xml');
   if(parsed.querySelector('parsererror'))throw Error('ساختار XML معتبر نیست');
   downloadText(xml,'IMED_All_Matched_Invoices.xml','application/xml;charset=utf-8');
-  const summary=`${faNum(xmlRows.length)} ردیف فاکتور در XML ساخته شد؛ ${faNum(rejected.length)} سند به‌دلیل ناقص بودن یا نداشتن موجودی کافی کنار گذاشته شد.`;
+  const summary=`${faNum(xmlRows.length)} ردیف فاکتور معتبر در XML ساخته شد؛ ${faNum(rejected.length)} سند به‌دلیل خطای اطلاعات اجباری یا نبود تخصیص معتبر کنار گذاشته شد.`;
   toast(summary);
   if(rejected.length)console.warn('اسناد کنارگذاشته‌شده از XML:',rejected);
  }catch(err){console.error(err);toast('ساخت XML کلی ناموفق بود: '+err.message)}
