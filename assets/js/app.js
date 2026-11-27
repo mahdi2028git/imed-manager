@@ -1071,7 +1071,61 @@ async function refreshSingleFormScript(){try{await ensureAutoMatchesReady();rend
 $('downloadFormScript').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');downloadText(code,`IMED_Form_Autofill_${$('scriptDocSelect').value}.js`,'text/javascript;charset=utf-8');toast('اسکریپت فرم IMED دانلود شد')};
 $('copyFormScript').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');copyText(code)};
 const IMED_DISTRIBUTION_FORM_URL='https://register.imed.ir/SaleDistribution/Dist/Dist_QuotaDistribution.aspx';
-$('sendToImed').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');const tab=window.open(IMED_DISTRIBUTION_FORM_URL,'_blank');await copyText(code);if(!tab)toast('پنجره IMED باز نشد؛ Popup را مجاز کن. اسکریپت کپی شده است.');else toast('IMED باز شد و اسکریپت همین سند کپی شد؛ در Console همان تب Paste و اجرا کن.')};
+async function queueImedInvoiceBridge(rows){
+ // A paired Tampermonkey userscript receives this event on GitHub Pages and
+ // stores one short-lived invoice job for the separate authenticated IMED tab.
+ const requestId=crypto.randomUUID();
+ const job={version:1,requestId,createdAt:Date.now(),rows};
+ return new Promise(resolve=>{
+  let complete=false;
+  const finish=result=>{if(complete)return;complete=true;clearTimeout(timeout);window.removeEventListener('message',listener);resolve(result)};
+  const listener=event=>{
+   if(event.source!==window||event.origin!==location.origin||event.data?.type!=='imed-manager:invoice-bridge-ack-v1'||event.data.requestId!==requestId)return;
+   finish({ok:!!event.data.ok,error:event.data.error||''});
+  };
+  const timeout=setTimeout(()=>finish({ok:false,error:'اسکریپت Tampermonkey نصب یا فعال نیست.'}),3000);
+  window.addEventListener('message',listener);
+  window.postMessage({type:'imed-manager:invoice-bridge-v1',job},location.origin);
+ });
+}
+function imedFormBridgeRows(d){
+ const prepared=makeQuotaRows(d,false,true);
+ if(prepared.errors.length)throw Error('فاکتور خطای ضروری دارد: '+prepared.errors.join(' | '));
+ let rows=prepared.rows;
+ if(selectedScriptInvoice&&String(selectedScriptInvoice.docId)===String(d.id)){
+  rows=rows.filter(r=>String(r.InvoiceNo||'')===String(selectedScriptInvoice.invoiceNo||'')&&String(r.InvoiceDate||'')===String(selectedScriptInvoice.invoiceDate||''));
+ }
+ if(!rows.length)throw Error('برای این فاکتور ردیف قابل ثبت در IMED پیدا نشد.');
+ const alloc=quotaAllocationsFor(d),used=new Set();
+ return rows.map(r=>{
+  const index=alloc.findIndex((a,i)=>!used.has(i)&&String(a.invoiceNo||'')===String(r.InvoiceNo||'')&&String(a.invoiceDate||'')===String(r.InvoiceDate||'')&&num(a.allocatedQty)===num(r.Count)&&num(a.unitPrice)===num(r.RialPrice));
+  if(index>=0)used.add(index);
+  const match=index>=0?alloc[index]:null;
+  return {...r,InventoryID:String(match?.inventoryId||'').trim()};
+ });
+}
+async function sendImedDocToBrowser(tab){
+ const docId=$('scriptDocSelect').value,d=state.imed.find(x=>String(x.id)===String(docId));
+ if(!d)throw Error('ابتدا سند توزیع را انتخاب کن.');
+ await refreshSingleFormScript();
+ const script=$('formScriptCode').value;
+ const rows=imedFormBridgeRows(d);
+ const result=await queueImedInvoiceBridge(rows);
+ if(result.ok){
+  tab.location.href=IMED_DISTRIBUTION_FORM_URL;
+  toast('فاکتور به Tampermonkey منتقل شد. در صفحه IMED پنل «شروع تکمیل فاکتور» را بزن؛ صدور نهایی دستی است.');
+ }else{
+  if(!script||!script.startsWith('/* IMED multi-product helper'))throw Error(result.error||'اسکریپت فرم آماده نیست.');
+  await copyText(script);
+  tab.location.href=IMED_DISTRIBUTION_FORM_URL;
+  toast('Tampermonkey متصل نبود؛ کد فرم کپی شد. در Console تب IMED به‌صورت دستی اجرا کن.');
+ }
+}
+$('sendToImed').onclick=async()=>{
+ const tab=window.open('about:blank','_blank');
+ if(!tab)return toast('مرورگر پنجره جدید را مسدود کرده؛ اجازه Popup را فعال کن.');
+ try{await sendImedDocToBrowser(tab)}catch(err){tab.close();toast('انتقال به IMED انجام نشد: '+err.message)}
+};
 $('scriptDocSelect').addEventListener('change',refreshSingleFormScript);
 $('allMatchPagination')?.addEventListener('click',e=>{const b=e.target.closest('[data-match-page]');if(!b)return;allMatchPage=Number(b.dataset.matchPage)||1;renderAllAutoMatches()});
 $('allMatchTable')?.addEventListener('change',e=>{const c=e.target.closest('[data-select-imed-doc]');if(!c)return;const id=String(c.dataset.selectImedDoc);if(c.checked)selectedAllMatchDocIds.add(id);else selectedAllMatchDocIds.delete(id);const status=$('allMatchSelectionStatus');if(status)status.textContent=faNum(selectedAllMatchDocIds.size)+' سند انتخاب شده است.';const send=$('sendSelectedMatchedDocToImed');if(send)send.disabled=selectedAllMatchDocIds.size!==1});
@@ -1079,13 +1133,10 @@ $('sendSelectedMatchedDocToImed')?.addEventListener('click',async()=>{
  if(selectedAllMatchDocIds.size!==1)return toast('برای ارسال آزمایشی فقط یک سند را انتخاب کن.');
  const docId=[...selectedAllMatchDocIds][0],doc=state.imed.find(d=>String(d.id)===docId);
  if(!doc)return toast('سند انتخاب‌شده در اطلاعات فعلی پیدا نشد.');
- const tab=window.open('about:blank','_blank');if(!tab)return toast('پنجره جدید باز نشد؛ اجازه Popup را فعال کن.');
+ const tab=window.open('about:blank','_blank');
+ if(!tab)return toast('پنجره جدید باز نشد؛ اجازه Popup را فعال کن.');
  $('scriptDocSelect').value=docId;
- await refreshSingleFormScript();
- const code=$('formScriptCode').value;
- if(!code||code.startsWith('برای این سند هیچ')){tab.close();return toast('برای این سند اسکریپت معتبر آماده نشد؛ وضعیت آماده‌سازی را بررسی کن.')}
- await copyText(code);tab.location.href=IMED_DISTRIBUTION_FORM_URL;
- toast('صفحه ثبت IMED باز شد و اسکریپت کپی شد؛ اجرای کد و ثبت نهایی با تأیید دستی توست.');
+ try{await sendImedDocToBrowser(tab)}catch(err){tab.close();toast('انتقال به IMED ناموفق بود: '+err.message)}
 });
 async function buildAllDocumentsBatchScript(){
  await ensureAutoMatchesReady();
