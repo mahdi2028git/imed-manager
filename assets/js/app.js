@@ -451,12 +451,31 @@ async function calculateAllAutoMatches(){
  const byInvoice=new Map();
  for(const x of sepidarIndex){const k=norm(x.s.invoiceNo);if(k){let a=byInvoice.get(k);if(!a)byInvoice.set(k,a=[]);a.push(x)}}
  const docs=[...state.imed].sort((a,b)=>String(a.distributionDate||'').localeCompare(String(b.distributionDate||'')));
- const baseHash=await matchCacheHash({matcherVersion:2,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+ const baseHash=await matchCacheHash({matcherVersion:3,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
  const remoteCache=new Map(),pendingRemote=[];
  if(cloudEnabled){try{const response=await cloudRequest('/api/match-cache?baseHash='+encodeURIComponent(baseHash));for(const row of response.data||[]){try{remoteCache.set(row.doc_key,JSON.parse(row.result_json))}catch(_){}}}catch(err){console.warn('Remote match cache unavailable; local resumable cache remains active',err)}}
  const sepidarById=new Map(sepidarIndex.map(x=>[String(x.s.id),x.s]));
- let chain=await matchCacheHash(baseHash+'|start'),reused=0,computed=0;
- for(let docIndex=0;docIndex<docs.length;docIndex++){
+ const checkpointKey='matchCheckpoint:'+baseHash;
+ const checkpointRowKey=i=>'matchCheckpointRow:'+baseHash+':'+i;
+ let chain=await matchCacheHash(baseHash+'|start'),reused=0,computed=0,startIndex=0;
+ // Restore the last durable local checkpoint so Refresh resumes at the next document.
+ try{
+   const saved=await idbGet(checkpointKey);
+   if(saved&&Number.isInteger(saved.nextIndex)&&saved.nextIndex>0&&saved.nextIndex<=docs.length&&Array.isArray(saved.freeById)){
+     const restoredRows=[];let valid=true;
+     for(let i=0;i<saved.nextIndex;i++){
+       const cachedRow=await idbGet(checkpointRowKey(i));if(!cachedRow||!Array.isArray(cachedRow.planned)){valid=false;break}
+       const planned=[];for(const p of cachedRow.planned){const source=sepidarById.get(String(p.sourceId));if(!source){valid=false;break}planned.push({s:source,q:num(p.q),score:num(p.score),signals:Array.isArray(p.signals)?p.signals:[],ircConflict:!!p.ircConflict})}if(!valid)break;
+       const d=docs[i];restoredRows.push({d,already:num(cachedRow.already),target:num(cachedRow.target),got:num(cachedRow.got),left:num(cachedRow.left),total:num(cachedRow.total),status:String(cachedRow.status||'بدون تطبیق'),planned});
+     }
+     if(valid){freeById.clear();saved.freeById.forEach(([k,v])=>freeById.set(String(k),num(v)));rows.push(...restoredRows);startIndex=saved.nextIndex;chain=String(saved.chain||chain);matchProgress((startIndex/Math.max(1,docs.length))*100,'ادامه از سند '+faNum(startIndex+1)+' از '+faNum(docs.length)+' — '+faNum(startIndex)+' سند قبلاً ذخیره شده؛ از ابتدا محاسبه نمی‌شود');}
+   }
+ }catch(err){console.warn('Could not restore matching checkpoint; falling back to saved per-document cache',err)}
+ const saveCheckpoint=async(nextIndex,currentChain)=>{
+   try{await idbPut(checkpointKey,{version:1,nextIndex,chain:currentChain,freeById:[...freeById.entries()]})}
+   catch(err){console.warn('Matching checkpoint save failed',err)}
+ };
+ for(let docIndex=startIndex;docIndex<docs.length;docIndex++){
    const d=docs[docIndex];
    const docKey=await matchCacheHash({baseHash,chain,document:d});
    const localCacheKey='matchCache:'+baseHash+':'+docKey;
@@ -469,7 +488,9 @@ async function calculateAllAutoMatches(){
        restored.forEach(p=>freeById.set(String(p.s.id),Math.max(0,(freeById.get(String(p.s.id))||0)-p.q)));
        const restoredRow={d,already:num(cached.already),target:num(cached.target),got:num(cached.got),left:num(cached.left),total:num(cached.total),status:String(cached.status||'بدون تطبیق'),planned:restored};
        rows.push(restoredRow);reused++;chain=await matchCacheHash({previous:chain,result:cached});
-       if(docIndex%4===0)matchProgress(Math.floor((docIndex/Math.max(1,docs.length))*100),'بازیابی نتیجه ذخیره‌شده سند '+faNum(docIndex+1)+' از '+faNum(docs.length)+' — بدون محاسبه مجدد');
+       try{await idbPut(checkpointRowKey(docIndex),cached)}catch(err){console.warn('Checkpoint row save failed',err)}
+       await saveCheckpoint(docIndex+1,chain);
+       if(docIndex%4===0)matchProgress(Math.floor(((docIndex+1)/Math.max(1,docs.length))*100),'بازیابی نتیجه ذخیره‌شده سند '+faNum(docIndex+1)+' از '+faNum(docs.length)+' — بدون محاسبه مجدد');
        continue;
      }
    }
@@ -524,12 +545,15 @@ async function calculateAllAutoMatches(){
    const cacheResult={already,target,got,left:Math.max(0,target-total),total,status,planned:planned.map(p=>({sourceId:String(p.s.id),q:p.q,score:p.score,signals:p.signals,ircConflict:!!p.ircConflict}))};
    chain=await matchCacheHash({previous:chain,result:cacheResult});
    try{await idbPut(localCacheKey,cacheResult)}catch(err){console.warn('Local match cache save failed',err)}
+   try{await idbPut(checkpointRowKey(docIndex),cacheResult)}catch(err){console.warn('Checkpoint row save failed',err)}
    if(cloudEnabled)pendingRemote.push({docKey,result:cacheResult});
    computed++;
    if(pendingRemote.length>=10){try{await matchCacheSaveRemote(baseHash,pendingRemote.splice(0,pendingRemote.length))}catch(err){console.warn('Remote cache save deferred; local cache is safe',err)}}
+   await saveCheckpoint(docIndex+1,chain);
    matchProgress(((docIndex+1)/Math.max(1,docs.length))*100,'ذخیره نتیجه سند '+faNum(docIndex+1)+' از '+faNum(docs.length)+' — بازیابی '+faNum(reused)+'، محاسبه جدید '+faNum(computed));
  }
  if(pendingRemote.length){try{await matchCacheSaveRemote(baseHash,pendingRemote.splice(0,pendingRemote.length))}catch(err){console.warn('Final remote match cache save failed; local cache is safe',err)}}
+ try{await idbPut(checkpointKey,{version:1,nextIndex:docs.length,chain,freeById:[...freeById.entries()],completed:true})}catch(err){console.warn('Final matching checkpoint save failed',err)}
  matchProgress(100,'پایان تطبیق — '+faNum(reused)+' نتیجه بازیابی شد و '+faNum(computed)+' نتیجه جدید محاسبه شد.');
  return rows;
 }
