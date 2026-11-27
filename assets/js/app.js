@@ -115,7 +115,7 @@ async function cloudLoadOnStartup(){const key=cloudKey();if(!key)return;cloudEna
 function persistCurrentDoc(){if(!sqliteDB)return Promise.resolve();saveQueue=saveQueue.then(async()=>{runPrepared(sqliteDB,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('current_doc',?)",[String(state.currentDoc||'')]);await persistSQLiteToBrowser();if(cloudEnabled)await cloudPushSnapshot()}).catch(err=>{console.error(err);toast('ذخیره آخرین سند ناموفق بود: '+err.message)});return saveQueue}
 function save(){refresh();saveQueue=saveQueue.then(async()=>{writeStateToSQLite();await persistSQLiteToBrowser();if(cloudEnabled)await cloudPushSnapshot()}).catch(err=>{console.error(err);toast('ذخیره محلی/ابری ناموفق بود: '+err.message)});return saveQueue}
 async function exportSQLiteFile(){await saveQueue;writeStateToSQLite();await persistSQLiteToBrowser();const bytes=sqliteDB.export();const blob=new Blob([bytes],{type:'application/vnd.sqlite3'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='imed_manager.sqlite';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('فایل SQLite دانلود شد')}
-async function initApp(){try{await loadExternalScript(SQL_JS_URL,'initSqlJs');if(!window.initSqlJs)throw new Error('کتابخانه SQLite بارگذاری نشد؛ اتصال اینترنت را بررسی کنید');SQL=await initSqlJs({locateFile:f=>`https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}`});const saved=await idbGet('main');if(saved){sqliteDB=new SQL.Database(new Uint8Array(saved));createSchema(sqliteDB);loadStateFromSQLite(sqliteDB)}else{sqliteDB=new SQL.Database();createSchema(sqliteDB);let migrated=false;try{const old=JSON.parse(localStorage.getItem(STORE)||'null');if(old&&Array.isArray(old.imed)&&Array.isArray(old.sepidar)){state.imed=old.imed;state.sepidar=old.sepidar;state.allocations=old.allocations||{};migrated=true}}catch(e){console.warn('Legacy localStorage migration skipped',e)}writeStateToSQLite();await persistSQLiteToBrowser();if(migrated)toast('اطلاعات قبلی به SQLite منتقل شد')}if(state.imed.length&&!state.imed.some(d=>String(d.id)===String(state.currentDoc)))state.currentDoc=state.imed[0].id;await persistCurrentDoc();refresh();if(state.currentDoc)openDoc(state.currentDoc);await cloudLoadOnStartup();if(state.imed.length&&state.sepidar.length){try{await renderAllAutoMatches()}catch(matchRestoreError){console.warn('Saved automatic match results could not be restored on startup',matchRestoreError);cloudStatus('بازیابی/محاسبه پیشنهادهای تطبیق ناموفق بود: '+matchRestoreError.message)}}await refreshAutoMatchButtonState()}catch(e){console.error(e);toast('راه‌اندازی پایگاه داده ناموفق بود: '+e.message)}}
+async function initApp(){try{await loadExternalScript(SQL_JS_URL,'initSqlJs');if(!window.initSqlJs)throw new Error('کتابخانه SQLite بارگذاری نشد؛ اتصال اینترنت را بررسی کنید');SQL=await initSqlJs({locateFile:f=>`https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}`});const saved=await idbGet('main');if(saved){sqliteDB=new SQL.Database(new Uint8Array(saved));createSchema(sqliteDB);loadStateFromSQLite(sqliteDB)}else{sqliteDB=new SQL.Database();createSchema(sqliteDB);let migrated=false;try{const old=JSON.parse(localStorage.getItem(STORE)||'null');if(old&&Array.isArray(old.imed)&&Array.isArray(old.sepidar)){state.imed=old.imed;state.sepidar=old.sepidar;state.allocations=old.allocations||{};migrated=true}}catch(e){console.warn('Legacy localStorage migration skipped',e)}writeStateToSQLite();await persistSQLiteToBrowser();if(migrated)toast('اطلاعات قبلی به SQLite منتقل شد')}if(state.imed.length&&!state.imed.some(d=>String(d.id)===String(state.currentDoc)))state.currentDoc=state.imed[0].id;await persistCurrentDoc();refresh();if(state.currentDoc)openDoc(state.currentDoc);await cloudLoadOnStartup();const typeIdRepair=applyKnownTypeIds();if(typeIdRepair.changed){await save();toast(faNum(typeIdRepair.changed)+' سند با نگاشت قطعی TypeID اصلاح و ذخیره شد')}if(state.imed.length&&state.sepidar.length){try{await renderAllAutoMatches()}catch(matchRestoreError){console.warn('Saved automatic match results could not be restored on startup',matchRestoreError);cloudStatus('بازیابی/محاسبه پیشنهادهای تطبیق ناموفق بود: '+matchRestoreError.message)}}await refreshAutoMatchButtonState()}catch(e){console.error(e);toast('راه‌اندازی پایگاه داده ناموفق بود: '+e.message)}}
 const titleMap={dashboard:'داشبورد',import:'ورود اطلاعات',distributions:'اسناد توزیع',sepidar:'فاکتورهای فروش سپیدار',reconcile:'تطبیق و ردیابی',inventory:'انبار مجازی IMED',xml:'تولید XML',formscript:'اسکریپت ثبت IMED',settings:'تنظیمات'};
 function goto(v){const target=$('view-'+v);if(!target){console.warn('Navigation target not found:',v);return false}document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));target.classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));const heading=$('pageTitle');if(heading)heading.textContent=titleMap[v]||'';if(v==='reconcile')refreshDocOptions();if(v==='inventory')renderInventory();if(v==='xml')refreshXmlDocs();if(v==='formscript')refreshScriptDocs();window.scrollTo({top:0,behavior:'instant'});return true}
 const navRoot=document.querySelector('.nav');
@@ -787,13 +787,46 @@ const DISTRIBUTION_TYPE_IDS=Object.freeze({
  'سازمان انتقال خون':'19',
  'انبار ذخیره استراتژیک در استان':'21'
 });
+const DISTRIBUTION_TYPE_ALIASES=Object.freeze({
+ '1':['تک نسخه ای','تک نسخه‌ای'],
+ '2':['موسسات پزشکی و مراکز درمانی','مؤسسات پزشکی و مراکز درمانی','موسسه پزشکی و مرکز درمانی','مؤسسه پزشکی و مرکز درمانی'],
+ '4':['آزمایشگاه','آزمایشگاه ها','آزمایشگاه‌ها'],
+ '5':['دندانپزشکی','دندان پزشکی'],
+ '6':['داروخانه','داروخانه ها','داروخانه‌ها'],
+ '9':['مطب'],
+ '15':['عرضه کننده','عرضه‌کننده'],
+ '17':['تک نسخه ای بیمارستانی','تک نسخه‌ای بیمارستانی'],
+ '18':['موارد خاص'],
+ '19':['سازمان انتقال خون'],
+ '21':['انبار ذخیره استراتژیک در استان','انبار ذخیره راهبردی در استان']
+});
+const VALID_DISTRIBUTION_TYPE_IDS=new Set(Object.values(DISTRIBUTION_TYPE_IDS));
 function inferTypeId(d){
- const type=norm(d.distributionType||'');
+ let type=norm(d?.distributionType||'');
  if(!type)return'';
- for(const [label,typeId] of Object.entries(DISTRIBUTION_TYPE_IDS)){
-  if(norm(label)===type)return typeId;
+ type=type.replace(/^نوعتوزیع/,'');
+ for(const [typeId,aliases] of Object.entries(DISTRIBUTION_TYPE_ALIASES)){
+  if(aliases.some(label=>norm(label)===type))return typeId;
+ }
+ const prefixed=type.match(/^(\\d{1,2})(.+)$/);
+ if(prefixed&&VALID_DISTRIBUTION_TYPE_IDS.has(prefixed[1])){
+  const suffix=prefixed[2];
+  for(const [typeId,aliases] of Object.entries(DISTRIBUTION_TYPE_ALIASES)){
+   if(typeId===prefixed[1]&&aliases.some(label=>norm(label)===suffix))return typeId;
+  }
  }
  return '';
+}
+function applyKnownTypeIds(){
+ let changed=0,unresolved=0;
+ for(const d of state.imed){
+  const current=String(d.typeId||'').trim();
+  if(current)continue;
+  const inferred=inferTypeId(d);
+  if(inferred){d.typeId=inferred;changed++}
+  else if(!String(d.distributionType||'').trim())unresolved++;
+ }
+ return{changed,unresolved};
 }
 function loadXmlDoc(docId){
  const d=state.imed.find(x=>x.id===docId);if(!d)return;
@@ -947,7 +980,7 @@ async function buildAllDocumentsBatchScript(){
   const lines=['گزارش علت آماده نشدن ثبت دسته‌ای IMED','تعداد اسناد IMED: '+state.imed.length,'تعداد فاکتورهای سپیدار: '+state.sepidar.length,'تعداد اسناد دارای پیشنهاد تطبیق: '+allAutoRows.filter(x=>(x.planned||[]).length).length,'تعداد اسناد دارای تخصیص ثبت‌شده: '+state.imed.filter(d=>allocationsFor(d.id).length).length,'','علت‌های پرتکرار:'];
   Object.entries(fieldCounts).forEach(([k,n])=>lines.push(k+': '+n));
   lines.push('','جزئیات هر سند:');
-  diagnostics.slice(0,500).forEach(({doc,match,reasons})=>lines.push('سند '+(doc.distributionNo||doc.id)+' | کالا: '+(doc.product||'')+' | TypeID: '+(doc.typeId||'')+' | IRC: '+(doc.irc||'')+' | وضعیت تطبیق: '+(match?.status||'محاسبه‌نشده')+' | پیشنهاد: '+(match?.planned?.length||0)+' | تخصیص قبلی: '+allocationsFor(doc.id).length+' | '+reasons.join(' ؛ ')));
+  diagnostics.slice(0,500).forEach(({doc,match,reasons})=>lines.push('سند '+(doc.distributionNo||doc.id)+' | کالا: '+(doc.product||'')+' | نوع توزیع: '+(doc.distributionType||'ثبت نشده')+' | TypeID: '+(doc.typeId||inferTypeId(doc)||'نامشخص')+' | IRC: '+(doc.irc||'')+' | وضعیت تطبیق: '+(match?.status||'محاسبه‌نشده')+' | پیشنهاد: '+(match?.planned?.length||0)+' | تخصیص قبلی: '+allocationsFor(doc.id).length+' | '+reasons.join(' ؛ ')));
   downloadText(lines.join('\\n'),'IMED_Batch_Diagnostics.txt','text/plain;charset=utf-8');
   throw Error('هیچ سندی آماده ثبت نیست؛ گزارش علت‌ها دانلود شد. معمولاً TypeID، تاریخ/شماره فاکتور یا نبود پیشنهاد تطبیق مانع است.');
  }
@@ -971,7 +1004,7 @@ $('sheetSelect').addEventListener('change',loadSheet);$('headerRow').addEventLis
 function loadSheet(){if(!workbook)return;let sh=workbook.Sheets[$('sheetSelect').value],matrix=XLSX.utils.sheet_to_json(sh,{header:1,defval:'',raw:false});let hr=Math.max(1,num($('headerRow').value))-1;activeMatrix=matrix.slice(hr);if(!activeMatrix.length){toast('ردیف عنوان پیدا نشد');return}buildMapping()}
 $('previewImport').addEventListener('click',()=>{let mode=$('importMode').value,maps={};$('mappingGrid').querySelectorAll('[data-map]').forEach(s=>maps[s.dataset.map]=s.value===''?-1:Number(s.value));let required=mode==='imed'?['distributionNo','quantity']:['invoiceNo','quantity'];if(required.some(k=>maps[k]<0)){toast('حداقل شماره سند/فاکتور و ستون تعداد را مشخص کنید');return}let keys=fields[mode].map(x=>x[0]);let raw=activeMatrix.slice(1).filter(r=>r.some(v=>String(v).trim()!==''));let records=raw.map((r,idx)=>{let o={_row:idx+2};keys.forEach(k=>{let col=maps[k];o[k]=col>=0?r[col]:''});o.quantity=num(o.quantity);if(mode==='sepidar')o.unitPrice=num(o.unitPrice);return o}).filter(o=>mode==='imed'?o.distributionNo||o.product:o.invoiceNo||o.product);state.preview=records;state.importMode=mode;state.importMap=maps;state.importSources=state.importSources||{};state.importSources[mode]={name:state.importName||state.importSources[mode]?.name||'منبع ذخیره‌شده',sheet:$('sheetSelect').value||'',headerRow:num($('headerRow').value)||1,matrix:activeMatrix,map:maps,savedAt:new Date().toISOString()};$('previewCount').textContent=faNum(records.length)+' ردیف';$('previewTable').innerHTML=`<div class="table-wrap"><table><thead><tr>${fields[mode].map(f=>`<th>${f[1]}</th>`).join('')}</tr></thead><tbody>${records.slice(0,8).map(o=>`<tr>${keys.map(k=>`<td>${esc(o[k]??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;$('previewArea').classList.remove('hidden')});
 $('cancelImport').onclick=()=>{$('mappingArea').classList.add('hidden');$('previewArea').classList.add('hidden');$('fileInput').value='';workbook=null;activeMatrix=[]};$('backMapping').onclick=()=>$('previewArea').classList.add('hidden');
-$('confirmImport').onclick=()=>{let mode=state.importMode,records=state.preview;if(!records.length)return;let added=0;if(mode==='imed'){records.forEach(o=>{let d={id:id(),distributionNo:String(o.distributionNo||'').trim(),distributionDate:String(o.distributionDate||'').trim(),receiver:String(o.receiver||'').trim(),product:String(o.product||'').trim(),irc:String(o.irc||'').trim(),quantity:num(o.quantity),supplier:String(o.supplier||'').trim(),distributionType:String(o.distributionType||'').trim(),typeId:String(o.typeId||'').trim(),receiverCode:String(o.receiverCode||'').trim()};let existing=state.imed.find(x=>x.distributionNo===d.distributionNo&&((d.irc&&x.irc===d.irc)||(!d.irc&&x.receiver===d.receiver&&num(x.quantity)===num(d.quantity))));if(existing){const keepId=existing.id;Object.assign(existing,d,{id:keepId});added++}else{state.imed.push(d);added++}})}else{records.forEach(o=>{let row={invoiceNo:String(o.invoiceNo||'').trim(),invoiceDate:String(o.invoiceDate||'').trim(),customer:String(o.customer||'').trim(),product:String(o.product||'').trim(),fullPersianName:String(o.product||'').trim(),irc:String(o.irc||'').trim(),quantity:num(o.quantity),unitPrice:num(o.unitPrice)};let existing=state.sepidar.find(x=>x.invoiceNo===row.invoiceNo&&x.invoiceDate===row.invoiceDate&&x.customer===row.customer&&num(x.quantity)===num(row.quantity));if(existing){Object.assign(existing,row,{id:existing.id});}else state.sepidar.push({id:id(),...row});added++})}invalidateSepidarSearchIndex();state.importSources=state.importSources||{};state.importSources[mode]={...(state.importSources[mode]||{}),name:state.importName||state.importSources[mode]?.name||'فایل واردشده',sheet:$('sheetSelect').value||'',headerRow:num($('headerRow').value)||1,matrix:activeMatrix,map:state.importMap||{},savedAt:new Date().toISOString()};save();toast(`${faNum(added)} ردیف وارد شد`);$('cancelImport').click();goto(mode==='imed'?'distributions':'sepidar')};
+$('confirmImport').onclick=()=>{let mode=state.importMode,records=state.preview;if(!records.length)return;let added=0;if(mode==='imed'){records.forEach(o=>{let d={id:id(),distributionNo:String(o.distributionNo||'').trim(),distributionDate:String(o.distributionDate||'').trim(),receiver:String(o.receiver||'').trim(),product:String(o.product||'').trim(),irc:String(o.irc||'').trim(),quantity:num(o.quantity),supplier:String(o.supplier||'').trim(),distributionType:String(o.distributionType||'').trim(),typeId:String(o.typeId||'').trim()||inferTypeId({distributionType:o.distributionType}),receiverCode:String(o.receiverCode||'').trim()};let existing=state.imed.find(x=>x.distributionNo===d.distributionNo&&((d.irc&&x.irc===d.irc)||(!d.irc&&x.receiver===d.receiver&&num(x.quantity)===num(d.quantity))));if(existing){const keepId=existing.id;Object.assign(existing,d,{id:keepId});added++}else{state.imed.push(d);added++}})}else{records.forEach(o=>{let row={invoiceNo:String(o.invoiceNo||'').trim(),invoiceDate:String(o.invoiceDate||'').trim(),customer:String(o.customer||'').trim(),product:String(o.product||'').trim(),fullPersianName:String(o.product||'').trim(),irc:String(o.irc||'').trim(),quantity:num(o.quantity),unitPrice:num(o.unitPrice)};let existing=state.sepidar.find(x=>x.invoiceNo===row.invoiceNo&&x.invoiceDate===row.invoiceDate&&x.customer===row.customer&&num(x.quantity)===num(row.quantity));if(existing){Object.assign(existing,row,{id:existing.id});}else state.sepidar.push({id:id(),...row});added++})}invalidateSepidarSearchIndex();state.importSources=state.importSources||{};state.importSources[mode]={...(state.importSources[mode]||{}),name:state.importName||state.importSources[mode]?.name||'فایل واردشده',sheet:$('sheetSelect').value||'',headerRow:num($('headerRow').value)||1,matrix:activeMatrix,map:state.importMap||{},savedAt:new Date().toISOString()};save();toast(`${faNum(added)} ردیف وارد شد`);$('cancelImport').click();goto(mode==='imed'?'distributions':'sepidar')};
 
 function toCSV(rows){return '\ufeff'+rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\r\n')}
 function downloadCSV(rows,name){let blob=new Blob([toCSV(rows)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
