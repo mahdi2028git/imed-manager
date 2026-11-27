@@ -32,10 +32,13 @@ async function verifyApiKey(request, env) {
   const auth = request.headers.get("Authorization") || "";
   const supplied = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   const expected = env.API_KEY || "";
-  if (!supplied || !expected || supplied.length !== expected.length) return false;
-  let diff = 0;
-  for (let i = 0; i < supplied.length; i++) diff |= supplied.charCodeAt(i) ^ expected.charCodeAt(i);
-  return diff === 0;
+  if (!supplied || !expected) return false;
+  const encoder = new TextEncoder();
+  const [suppliedHash, expectedHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(supplied)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected))
+  ]);
+  return crypto.subtle.timingSafeEqual(suppliedHash, expectedHash);
 }
 
 function decodeBase64Chunk(value) {
