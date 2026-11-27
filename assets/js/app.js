@@ -96,7 +96,10 @@ async function cloudPushSnapshot(){
   let binary='';
   for(let i=0;i<part.length;i++)binary+=String.fromCharCode(part[i]);
   const data=btoa(binary);
-  let chunkError=null;\n  for(let attempt=1;attempt<=4;attempt++){try{await cloudRequest('/api/state/chunk',{method:'POST',body:JSON.stringify({uploadId,index,total,data})});chunkError=null;break}catch(err){chunkError=err;if(attempt<4){cloudProgress(Math.round((index/total)*100),'ارسال بخش '+faNum(index+1)+' ناموفق بود؛ تلاش مجدد '+faNum(attempt)+' از 3…');await new Promise(resolve=>setTimeout(resolve,1200*attempt))}}}\n  if(chunkError)throw new Error('ارسال بخش '+(index+1)+' پس از ۴ تلاش ناموفق بود: '+chunkError.message);\n  const percent=Math.min(99,Math.round(((index+1)/total)*100));
+  let chunkError=null;
+  for(let attempt=1;attempt<=4;attempt++){try{await cloudRequest('/api/state/chunk',{method:'POST',body:JSON.stringify({uploadId,index,total,data})});chunkError=null;break}catch(err){chunkError=err;if(attempt<4){cloudProgress(Math.round((index/total)*100),'ارسال بخش '+faNum(index+1)+' ناموفق بود؛ تلاش مجدد '+faNum(attempt)+' از 3…');await new Promise(resolve=>setTimeout(resolve,1200*attempt))}}}
+  if(chunkError)throw new Error('ارسال بخش '+(index+1)+' پس از ۴ تلاش ناموفق بود: '+chunkError.message);
+  const percent=Math.min(99,Math.round(((index+1)/total)*100));
   cloudProgress(percent,'بخش '+faNum(index+1)+' از '+faNum(total)+' — '+faNum(Math.min(payload.length,(index+1)*chunkSize))+' از '+faNum(payload.length)+' بایت');
  }
  cloudProgress(99,'همه بخش‌ها ارسال شد؛ در حال نهایی‌سازی و ذخیره در پایگاه داده…');
