@@ -135,7 +135,7 @@ function target(doc){return num(doc?.quantity)}
 function totalAllocated(docId){return allocationsFor(docId).reduce((s,a)=>s+num(a.allocatedQty),0)}
 function docStatus(d){let t=target(d),s=totalAllocated(d.id);if(t>0&&Math.abs(s-t)<.00001&&allocationsFor(d.id).length)return'exact';if(s>t&&t>0)return'over';if(s>0)return'partial';return'none'}
 let allAutoRows=[];
-function dashboardDocStatus(d){const row=allAutoRows.find(x=>String(x.d?.id)===String(d.id));if(!row)return docStatus(d);return row.status==='بدون تطبیق'?'none':'exact'}
+function dashboardDocStatus(d){const row=allAutoRows.find(x=>String(x.d?.id)===String(d.id));if(!row)return docStatus(d);if(row.status==='کامل'||(row.planned||[]).length)return'exact';if(row.status==='ناقص'||num(row.already)>0)return'partial';return'none'}
 function statusTag(status){if(status==='exact')return'<span class="tag good">تطبیق کامل</span>';if(status==='over')return'<span class="tag bad">بیش از مقدار توزیع</span>';if(status==='partial')return'<span class="tag warn">ناقص</span>';return'<span class="tag neutral">بدون تطبیق</span>'}
 function refresh(){
  $('statDist').textContent=faNum(state.imed.length);$('statSep').textContent=faNum(state.sepidar.length);
@@ -419,7 +419,7 @@ async function calculateAllAutoMatches(){
  // Declare the callback before the first progress event; otherwise the initial
  // matchProgress call hits the temporal dead zone for syncRemoteJob.
  let syncRemoteJob=async()=>{};
- const matchProgress=(percent,detail)=>{const el=$('allMatchStats');if(el)el.innerHTML=progressMarkup('در حال تطبیق اسناد IMED با فاکتورهای سپیدار',percent,detail);const label='در حال محاسبه — '+faNum(Math.round(percent))+'٪';[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean).forEach(b=>{if(allMatchBusy)b.textContent=label});syncRemoteJob(percent,detail,percent>=100?'completed':'running').catch(()=>{});};
+ const matchProgress=(percent,detail)=>{const el=$('allMatchStats');if(el)el.innerHTML=progressMarkup('پیشرفت پردازش اسناد IMED',percent,detail);const label='در حال محاسبه — '+faNum(Math.round(percent))+'٪';[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean).forEach(b=>{if(allMatchBusy)b.textContent=label});syncRemoteJob(percent,detail,percent>=100?'completed':'running').catch(()=>{});};
  matchProgress(0,'در حال آماده‌سازی شاخص‌های کالا، IRC و موجودی مجازی…');
  await new Promise(resolve=>setTimeout(resolve,0));
  // Pre-index virtual-inventory descriptors by IRC, so documents sharing an IRC
@@ -597,7 +597,7 @@ async function renderAllAutoMatches(){
  allAutoRows=await calculateAllAutoMatches();
  refresh();
  const complete=allAutoRows.filter(x=>x.status==='کامل').length,partial=allAutoRows.filter(x=>x.status==='ناقص').length,none=allAutoRows.filter(x=>x.status==='بدون تطبیق').length;
- $('allMatchStats').innerHTML=`تعداد اسناد: <b>${faNum(allAutoRows.length)}</b> | کامل با احتساب تخصیص‌های قبلی: <b>${faNum(complete)}</b> | ناقص: <b>${faNum(partial)}</b> | بدون تطبیق: <b>${faNum(none)}</b> | پیشنهاد جدید: <b>${faNum(allAutoRows.reduce((n,x)=>n+x.planned.length,0))}</b> ردیف فاکتور | مرجع: <b>${faNum(MATCH_REFERENCE_ROWS.length)}</b> ردیف جدول تطبیق (موارد وجه افتراق نامنطبق حذف می‌شوند)`;
+ const completeRate=allAutoRows.length?Math.round(complete/allAutoRows.length*100):0;$('allMatchStats').innerHTML=`تعداد اسناد: <b>${faNum(allAutoRows.length)}</b> | نرخ اسناد کامل: <b>${faNum(completeRate)}٪</b> (${faNum(complete)}) | ناقص: <b>${faNum(partial)}</b> | بدون تطبیق: <b>${faNum(none)}</b> | پیشنهاد جدید: <b>${faNum(allAutoRows.reduce((n,x)=>n+x.planned.length,0))}</b> ردیف فاکتور | مرجع: <b>${faNum(MATCH_REFERENCE_ROWS.length)}</b> ردیف جدول تطبیق (موارد وجه افتراق نامنطبق حذف می‌شوند)`;
  const visibleRows=allAutoRows.slice(0,180);
  $('allMatchTable').innerHTML=allAutoRows.length?`${allAutoRows.length>visibleRows.length?`<div class="notice info">برای جلوگیری از هنگ مرورگر، فقط ۱۸۰ سند اول در صفحه نمایش داده می‌شود؛ خروجی CSV شامل همه ${faNum(allAutoRows.length)} سند است.</div>`:''}<div class="table-wrap"><table><thead><tr><th>شماره سند IMED</th><th>تاریخ</th><th>دریافت‌کننده</th><th>گروه کالا</th><th>نام کامل کالا و وجه افتراق IMED / IRC</th><th>تعداد هدف</th><th>تخصیص قبلی</th><th>پیشنهاد جدید</th><th>باقیمانده</th><th>وضعیت</th><th>فاکتورهای سپیدار پیشنهادی و دلایل</th></tr></thead><tbody>${visibleRows.map(x=>`<tr><td>${esc(x.d.distributionNo||'—')}</td><td>${esc(x.d.distributionDate||'—')}</td><td>${esc(x.d.receiver||'—')}</td><td>${esc(x.d.product||'—')}</td><td>${fullProductDetailsHtml(x.d)}</td><td>${faNum(x.target)}</td><td>${faNum(x.already)}</td><td>${faNum(x.got)}</td><td>${faNum(x.left)}</td><td><span class="tag ${x.status==='کامل'?'good':x.status==='بدون تطبیق'?'bad':'warn'}">${x.status}</span></td><td>${allMatchInvoiceRows(x).length?allMatchInvoiceRows(x).map(p=>`${p.isExisting?'✓ ثبت‌شده: ':'پیشنهادی: '}${esc(p.s.invoiceNo||'—')} (${esc(p.s.invoiceDate||'—')}) × ${faNum(p.q)}${p.score!==null&&p.score!==undefined?'؛ '+faNum(p.score)+' امتیاز':''}؛ ${esc((p.signals||[]).join('، '))}${p.ircConflict?' ⚠️ IRC متفاوت':''}`).join('<hr style="border:0;border-top:1px solid var(--line);margin:5px 0">'):'—'}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">سندی برای تطبیق وجود ندارد.</div>';
  $('exportAllAutoMatches').disabled=!allAutoRows.length;
