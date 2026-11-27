@@ -640,8 +640,7 @@ async function exportAllAutoMatches(){
   await ensureAutoMatchesReady();
   const xmlRows=[],rejected=[];
   for(const x of allAutoRows){
-   if(x.status!=='کامل'){rejected.push(`${x.d.distributionNo||x.d.id}: وضعیت ${x.status}`);continue}
-   const v=makeQuotaRows(x.d,true,false);
+   const v=makeQuotaRows(x.d,false,false);
    if(v.errors.length){rejected.push(`${x.d.distributionNo||x.d.id}: ${v.errors.join('؛ ')}`);continue}
    xmlRows.push(...v.rows);
   }
