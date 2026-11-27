@@ -68,9 +68,9 @@ assert.match(app, /norm\(x\.product\)===norm\(d\.product\)/, "IMED import dedupe
 
 // Incomplete matches are valid partial sales, not items requiring manual review.
 const reviewStatus = app.slice(app.indexOf("function needsManualReviewStatus"), app.indexOf("function refresh()"));
-assert.match(reviewStatus, /status==='none'\\|\\|status==='over'/, "only unmatched or overallocated documents need review");
-assert.doesNotMatch(reviewStatus, /status==='partial'/, "partial matches must not be counted as needing review");
-assert.match(app, /pending=state\\.imed\\.filter\\(d=>needsManualReviewStatus\\(dashboardDocStatus\\(d\\)\\)\\)\\.length/, "dashboard needs-review card must use the new classification");
+assert.ok(reviewStatus.includes("status==='none'||status==='over'"), "only unmatched and overallocated documents need review");
+assert.ok(!reviewStatus.includes("status==='partial'"), "partial matches must not be counted as needing review");
+assert.ok(app.includes("pending=state.imed.filter(d=>needsManualReviewStatus(dashboardDocStatus(d))).length"), "dashboard needs-review card must use the new classification");
 
 // The legacy userscript must not claim that its unverified phase two was auto-filled.
 assert.doesNotMatch(userscript, /priceDone/);
