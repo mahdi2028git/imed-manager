@@ -862,7 +862,8 @@ function refreshScriptDocs(){
 function renderScriptDocSearch(){
  const input=$('scriptDocSearch'),box=$('scriptDocSearchResults');if(!input||!box)return;
  const q=norm(input.value||'');
- const rows=state.imed.filter(d=>!q||[d.distributionNo,d.product,d.irc,d.distributionDate,d.model,d.customer].some(v=>norm(v||'').includes(q))).slice(0,80);
+ if(!q){box.innerHTML='<div class="empty">برای دیدن اسناد، شماره سند، نام کالا یا IRC را جست‌وجو کن.</div>';return}
+ const rows=state.imed.filter(d=>[d.distributionNo,d.product,d.irc,d.distributionDate,d.model,d.customer].some(v=>norm(v||'').includes(q))).slice(0,80);
  if(!rows.length){box.innerHTML='<div class="empty">موردی با این جست‌وجو پیدا نشد.</div>';return}
  box.innerHTML='<div class="smalltext" style="margin-bottom:7px">'+faNum(rows.length)+' نتیجه'+(rows.length===80?' (حداکثر ۸۰ مورد نمایش داده شده)':'')+'</div><div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>IRC</th><th>تعداد</th><th>عملیات</th></tr></thead><tbody>'+rows.map(d=>'<tr><td>'+esc(d.distributionNo||'—')+'</td><td>'+esc(d.product||'—')+'</td><td class="mono">'+esc(d.irc||'—')+'</td><td>'+faNum(d.quantity)+'</td><td><div class="actions" style="margin:0"><button class="btn small primary" data-script-select="'+esc(d.id)+'">انتخاب برای اسکریپت</button><button class="btn small" data-script-review="'+esc(d.id)+'">بررسی تطابق</button></div></td></tr>').join('')+'</tbody></table></div>';
 }
