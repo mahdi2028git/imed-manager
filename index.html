@@ -109,7 +109,7 @@
 
   <section class="view" id="view-allmatches">
     <div class="card">
-      <div class="section-head"><div><h2>جدول جامع تطبیق خودکار همه اسناد</h2><p>تطبیق آزمایشی همه اسناد با ظرفیت آزاد فاکتورهای سپیدار؛ این گزارش تخصیص‌های قبلی را تغییر نمی‌دهد.</p></div><div class="actions" style="margin:0"><button class="btn primary" id="runAllAutoMatches2">شروع محاسبه تطبیق</button><button class="btn" id="exportAllAutoMatches" disabled>خروجی CSV</button></div></div>
+      <div class="section-head"><div><h2>جدول جامع تطبیق خودکار همه اسناد</h2><p>تطبیق آزمایشی همه اسناد با ظرفیت آزاد فاکتورهای سپیدار؛ این گزارش تخصیص‌های قبلی را تغییر نمی‌دهد.</p></div><div class="actions" style="margin:0"><button class="btn primary" id="runAllAutoMatches2">شروع محاسبه تطبیق</button><button class="btn" id="exportAllAutoMatches" disabled>ساخت اکسل کلیه فاکتورها</button></div></div>
       <div id="allMatchStats" class="notice info">برای ساخت جدول، روی «محاسبه خودکار تطبیق همه اسناد» کلیک کن.</div>
       <div id="allMatchTable"><div class="empty">هنوز گزارشی ساخته نشده است.</div></div>
       <div class="card" style="margin-top:18px;box-shadow:none;background:#fbfcfe">
@@ -154,13 +154,13 @@
 
   <section class="view" id="view-formscript">
     <div class="card">
-      <div class="section-head"><div><h2>اسکریپت JavaScript برای تکمیل فرم IMED</h2><p>اسکریپت مستقیماً از تخصیص‌های ذخیره‌شده همین سند ساخته می‌شود؛ برای ساخت آن به XML نیازی نیست.</p></div></div>
-      <div class="notice info">برای ساخت اسکریپت فقط سند و تخصیص‌های ذخیره‌شده لازم است؛ این بخش مستقل از XML است. دکمه، صفحه ثبت سند IMED را باز و کد همین سند را کپی می‌کند. به‌دلیل محدودیت امنیتی مرورگر، اجرای کد در دامنه IMED باید با تأیید خودت انجام شود.</div>
+      <div class="section-head"><div><h2>اسکریپت JavaScript برای تکمیل فرم IMED</h2><p>اسکریپت از تخصیص‌های ذخیره‌شده و پیشنهادهای تأییدشده/محاسبه‌شده همین سند ساخته می‌شود؛ برای ساخت آن به XML نیازی نیست.</p></div></div>
+      <div class="notice info">برای ساخت اسکریپت، پیشنهادهای جدول تطبیق و تخصیص‌های قبلی استفاده می‌شوند. می‌توانی یک سند را جداگانه آماده کنی یا یک اسکریپت دسته‌ای برای همه اسناد بسازی. به‌دلیل محدودیت امنیتی مرورگر، اجرای کد در دامنه IMED باید با تأیید خودت انجام شود.</div>
       <div class="form-grid"><div class="field"><label>سند توزیع</label><select id="scriptDocSelect"><option value="">انتخاب سند</option></select></div><div class="field"><label>وضعیت داده آماده</label><div id="scriptReadyStatus" class="tag neutral">هنوز اعتبارسنجی نشده</div></div></div>
-      <div class="actions"><button class="btn primary" id="sendToImed">بازکردن IMED و کپی اسکریپت</button><a class="btn" href="https://register.imed.ir/SaleDistribution/Dist/Dist_QuotaDistribution.aspx" target="_blank" rel="noopener">بازکردن مستقیم صفحه ثبت سند</a><button class="btn" id="downloadFormScript">دانلود اسکریپت</button><button class="btn" id="copyFormScript">کپی کد اسکریپت</button></div>
+      <div class="actions"><button class="btn primary" id="sendToImed">ثبت سند انتخاب‌شده در IMED</button><button class="btn" id="bulkRegisterAll">ثبت سند همه فاکتورها در IMED (اسکریپت دسته‌ای)</button><a class="btn" href="https://register.imed.ir/SaleDistribution/Dist/Dist_QuotaDistribution.aspx" target="_blank" rel="noopener">بازکردن مستقیم صفحه ثبت سند</a><button class="btn" id="downloadFormScript">دانلود اسکریپت همین سند</button><button class="btn" id="copyFormScript">کپی کد اسکریپت</button></div>
       <div class="notice info">با زدن دکمه، صفحه ثبت سند IMED در تب جدید باز و اسکریپت کپی می‌شود. در تب IMED فقط یک‌بار کد را در Console جای‌گذاری و اجرا کن؛ سپس پنل کمکی مرحله‌به‌مرحله فرم را پر می‌کند. بعد از افزودن ردیف‌ها، اسکریپت را دوباره اجرا کن تا تعدادها تکمیل شوند. مرورگر اجازه نمی‌دهد یک سایت، کد را بدون افزونه یا تأیید کاربر در تبِ دامنه دیگری اجرا کند.</div>
       <div class="field" style="margin-top:14px"><label>پیش‌نمایش کد JavaScript</label><textarea class="codebox" id="formScriptCode" readonly placeholder="پس از انتخاب سند و آماده بودن اطلاعات تخصیص‌ها، کد اینجا نمایش داده می‌شود."></textarea></div>
-      <div class="notice warn">به‌دلیل تفاوت احتمالی فرم‌ها و نام فیلدها در نسخه‌های مختلف IMED، ابتدا فقط روی یک ردیف آزمایش کن. بعد از پر شدن، مقادیر را کنترل و ثبت نهایی را دستی انجام بده. این اسکریپت رمز عبور یا نشست ورود را نمی‌خواند و درخواست ثبت خودکار به سرور نمی‌فرستد.</div>
+      <div class="notice warn">اسکریپت دسته‌ای، اسناد را برای انتخاب و تکمیل یک‌به‌یک آماده می‌کند؛ به‌دلیل ساختار چندمرحله‌ای فرم IMED، ثبت نهایی هر سند باید پس از کنترل اطلاعات توسط خودت انجام شود. هیچ سندی بدون تأیید تو ارسال نمی‌شود.</div>
     </div>
   </section>
 
