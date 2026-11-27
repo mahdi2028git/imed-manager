@@ -23,49 +23,27 @@ function corsHeaders(request, env) {
     headers["Access-Control-Allow-Credentials"] = "true";
   }
   headers["Access-Control-Allow-Methods"] = "GET,POST,PATCH,DELETE,OPTIONS";
-  headers["Access-Control-Allow-Headers"] = "Content-Type,CF-Access-Jwt-Assertion";
+  headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization";
   headers["Access-Control-Max-Age"] = "86400";
   return headers;
 }
 
-// Cloudflare Access must protect this Worker hostname.
-// The Worker also validates the Access JWT before allowing data operations.
-async function verifyAccessJwt(request, env) {
-  const token = request.headers.get("Cf-Access-Jwt-Assertion");
-  if (!token || !env.ACCESS_TEAM_DOMAIN || !env.ACCESS_AUD) return false;
+// The app authenticates with the private API key stored as a Worker secret.
+async function verifyApiKey(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  const supplied = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const expected = env.API_KEY || "";
+  if (!supplied || !expected || supplied.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < supplied.length; i++) diff |= supplied.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
 
-  try {
-    const [headerPart, payloadPart, signaturePart] = token.split(".");
-    if (!headerPart || !payloadPart || !signaturePart) return false;
-
-    const decode = (part) => {
-      const padded = part.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - part.length % 4) % 4);
-      return Uint8Array.from(atob(padded), c => c.charCodeAt(0));
-    };
-
-    const header = JSON.parse(new TextDecoder().decode(decode(headerPart)));
-    const payload = JSON.parse(new TextDecoder().decode(decode(payloadPart)));
-    if (header.alg !== "RS256" || !header.kid) return false;
-
-    const team = env.ACCESS_TEAM_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    const issuer = "https://" + team;
-    if (payload.iss !== issuer || !Array.isArray(payload.aud) || !payload.aud.includes(env.ACCESS_AUD)) return false;
-    if (!payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) return false;
-
-    const certResponse = await fetch(issuer + "/cdn-cgi/access/certs");
-    if (!certResponse.ok) return false;
-    const certs = await certResponse.json();
-    const jwk = (certs.keys || []).find(key => key.kid === header.kid);
-    if (!jwk) return false;
-
-    const publicKey = await crypto.subtle.importKey(
-      "jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]
-    );
-    const signed = new TextEncoder().encode(headerPart + "." + payloadPart);
-    return await crypto.subtle.verify("RSASSA-PKCS1-v1_5", publicKey, decode(signaturePart), signed);
-  } catch {
-    return false;
-  }
+function decodeBase64Chunk(value) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 }
 
 export default {
@@ -78,11 +56,55 @@ export default {
       return json({ ok: true, service: "imed-manager-d1-api" }, 200, cors);
     }
 
-    if (!await verifyAccessJwt(request, env)) {
-      return json({ error: "Unauthorized. Configure Cloudflare Access before using the database API." }, 401, cors);
+    if (!await verifyApiKey(request, env)) {
+      return json({ error: "Unauthorized" }, 401, cors);
     }
 
     const parts = url.pathname.split("/").filter(Boolean);
+
+    // Full application snapshot: only switch the active pointer after a complete upload.
+    if (parts[0] === "api" && parts[1] === "state") {
+      try {
+        if (request.method === "GET" && parts.length === 2) {
+          const meta = await env.DB.prepare("SELECT upload_id, total_parts, updated_at FROM app_state_meta WHERE id = 1").first();
+          if (!meta) return json({ error: "No saved snapshot" }, 404, cors);
+          const all = [];
+          for (let offset = 0; offset < Number(meta.total_parts); offset += 20) {
+            const batch = await env.DB.prepare("SELECT part_index, data FROM app_state_uploads WHERE upload_id = ? ORDER BY part_index LIMIT 20 OFFSET ?").bind(meta.upload_id, offset).all();
+            all.push(...(batch.results || []));
+          }
+          if (all.length !== Number(meta.total_parts)) return json({ error: "Saved snapshot is incomplete" }, 500, cors);
+          all.sort((a, b) => Number(a.part_index) - Number(b.part_index));
+          const chunks = all.map(row => decodeBase64Chunk(row.data));
+          const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+          const joined = new Uint8Array(totalBytes);
+          let cursor = 0;
+          for (const chunk of chunks) { joined.set(chunk, cursor); cursor += chunk.length; }
+          const data = JSON.parse(new TextDecoder().decode(joined));
+          return json({ data, updatedAt: meta.updated_at }, 200, cors);
+        }
+        if (request.method === "POST" && parts[2] === "chunk") {
+          const body = await request.json();
+          const uploadId = String(body.uploadId || "");
+          const index = Number(body.index), total = Number(body.total), data = String(body.data || "");
+          if (!/^[a-zA-Z0-9-]{8,80}$/.test(uploadId) || !Number.isInteger(index) || !Number.isInteger(total) || total < 1 || total > 1000 || index < 0 || index >= total || !data || data.length > 180000) return json({ error: "Invalid upload chunk" }, 400, cors);
+          await env.DB.prepare("INSERT INTO app_state_uploads (upload_id, part_index, total_parts, data) VALUES (?, ?, ?, ?) ON CONFLICT(upload_id, part_index) DO UPDATE SET total_parts=excluded.total_parts, data=excluded.data").bind(uploadId, index, total, data).run();
+          return json({ ok: true, index, total }, 200, cors);
+        }
+        if (request.method === "POST" && parts[2] === "commit") {
+          const body = await request.json();
+          const uploadId = String(body.uploadId || ""), total = Number(body.total);
+          if (!/^[a-zA-Z0-9-]{8,80}$/.test(uploadId) || !Number.isInteger(total) || total < 1 || total > 1000) return json({ error: "Invalid upload commit" }, 400, cors);
+          const check = await env.DB.prepare("SELECT COUNT(*) AS count, MIN(total_parts) AS min_total, MAX(total_parts) AS max_total FROM app_state_uploads WHERE upload_id = ?").bind(uploadId).first();
+          if (!check || Number(check.count) !== total || Number(check.min_total) !== total || Number(check.max_total) !== total) return json({ error: "Upload is incomplete; active backup was not changed", received: Number(check?.count || 0), expected: total }, 409, cors);
+          await env.DB.prepare("INSERT INTO app_state_meta (id, upload_id, total_parts, updated_at) VALUES (1, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET upload_id=excluded.upload_id, total_parts=excluded.total_parts, updated_at=CURRENT_TIMESTAMP").bind(uploadId, total).run();
+          return json({ ok: true, parts: total }, 200, cors);
+        }
+        return json({ error: "Method not allowed" }, 405, cors);
+      } catch (error) {
+        return json({ error: "Snapshot operation failed", detail: error.message }, 500, cors);
+      }
+    }
 
     // Local-first match sync: only confirmed allocations are synchronized.
     // Source records stay in each device local SQLite database.
