@@ -114,7 +114,7 @@ async function cloudLoadOnStartup(){const key=cloudKey();if(!key)return;cloudEna
 function persistCurrentDoc(){if(!sqliteDB)return Promise.resolve();saveQueue=saveQueue.then(async()=>{runPrepared(sqliteDB,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('current_doc',?)",[String(state.currentDoc||'')]);await persistSQLiteToBrowser();if(cloudEnabled)await cloudPushSnapshot()}).catch(err=>{console.error(err);toast('ذخیره آخرین سند ناموفق بود: '+err.message)});return saveQueue}
 function save(){refresh();saveQueue=saveQueue.then(async()=>{writeStateToSQLite();await persistSQLiteToBrowser();if(cloudEnabled)await cloudPushSnapshot()}).catch(err=>{console.error(err);toast('ذخیره محلی/ابری ناموفق بود: '+err.message)});return saveQueue}
 async function exportSQLiteFile(){await saveQueue;writeStateToSQLite();await persistSQLiteToBrowser();const bytes=sqliteDB.export();const blob=new Blob([bytes],{type:'application/vnd.sqlite3'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='imed_manager.sqlite';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('فایل SQLite دانلود شد')}
-async function initApp(){try{await loadExternalScript(SQL_JS_URL,'initSqlJs');if(!window.initSqlJs)throw new Error('کتابخانه SQLite بارگذاری نشد؛ اتصال اینترنت را بررسی کنید');SQL=await initSqlJs({locateFile:f=>`https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}`});const saved=await idbGet('main');if(saved){sqliteDB=new SQL.Database(new Uint8Array(saved));createSchema(sqliteDB);loadStateFromSQLite(sqliteDB)}else{sqliteDB=new SQL.Database();createSchema(sqliteDB);let migrated=false;try{const old=JSON.parse(localStorage.getItem(STORE)||'null');if(old&&Array.isArray(old.imed)&&Array.isArray(old.sepidar)){state.imed=old.imed;state.sepidar=old.sepidar;state.allocations=old.allocations||{};migrated=true}}catch(e){console.warn('Legacy localStorage migration skipped',e)}writeStateToSQLite();await persistSQLiteToBrowser();if(migrated)toast('اطلاعات قبلی به SQLite منتقل شد')}if(state.imed.length&&!state.imed.some(d=>String(d.id)===String(state.currentDoc)))state.currentDoc=state.imed[0].id;await persistCurrentDoc();refresh();if(state.currentDoc)openDoc(state.currentDoc);await cloudLoadOnStartup()}catch(e){console.error(e);toast('راه‌اندازی پایگاه داده ناموفق بود: '+e.message)}}
+async function initApp(){try{await loadExternalScript(SQL_JS_URL,'initSqlJs');if(!window.initSqlJs)throw new Error('کتابخانه SQLite بارگذاری نشد؛ اتصال اینترنت را بررسی کنید');SQL=await initSqlJs({locateFile:f=>`https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}`});const saved=await idbGet('main');if(saved){sqliteDB=new SQL.Database(new Uint8Array(saved));createSchema(sqliteDB);loadStateFromSQLite(sqliteDB)}else{sqliteDB=new SQL.Database();createSchema(sqliteDB);let migrated=false;try{const old=JSON.parse(localStorage.getItem(STORE)||'null');if(old&&Array.isArray(old.imed)&&Array.isArray(old.sepidar)){state.imed=old.imed;state.sepidar=old.sepidar;state.allocations=old.allocations||{};migrated=true}}catch(e){console.warn('Legacy localStorage migration skipped',e)}writeStateToSQLite();await persistSQLiteToBrowser();if(migrated)toast('اطلاعات قبلی به SQLite منتقل شد')}if(state.imed.length&&!state.imed.some(d=>String(d.id)===String(state.currentDoc)))state.currentDoc=state.imed[0].id;await persistCurrentDoc();refresh();if(state.currentDoc)openDoc(state.currentDoc);await cloudLoadOnStartup();await refreshAutoMatchButtonState()}catch(e){console.error(e);toast('راه‌اندازی پایگاه داده ناموفق بود: '+e.message)}}
 const titleMap={dashboard:'داشبورد',import:'ورود اطلاعات',distributions:'اسناد توزیع',sepidar:'فاکتورهای فروش سپیدار',reconcile:'تطبیق و ردیابی',inventory:'انبار مجازی IMED',xml:'تولید XML',formscript:'اسکریپت ثبت IMED',settings:'تنظیمات'};
 function goto(v){const target=$('view-'+v);if(!target){console.warn('Navigation target not found:',v);return false}document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));target.classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));const heading=$('pageTitle');if(heading)heading.textContent=titleMap[v]||'';if(v==='reconcile')refreshDocOptions();if(v==='inventory')renderInventory();if(v==='xml')refreshXmlDocs();if(v==='formscript')refreshScriptDocs();window.scrollTo({top:0,behavior:'instant'});return true}
 const navRoot=document.querySelector('.nav');
@@ -414,7 +414,7 @@ async function calculateAllAutoMatches(){
    grams(x.s.product).forEach(g=>add(byGram,g,x));
  }
  const rows=[];
- const matchProgress=(percent,detail)=>{const el=$('allMatchStats');if(el)el.innerHTML=progressMarkup('در حال تطبیق اسناد IMED با فاکتورهای سپیدار',percent,detail)};
+ const matchProgress=(percent,detail)=>{const el=$('allMatchStats');if(el)el.innerHTML=progressMarkup('در حال تطبیق اسناد IMED با فاکتورهای سپیدار',percent,detail);const label='در حال محاسبه — '+faNum(Math.round(percent))+'٪';[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean).forEach(b=>{if(allMatchBusy)b.textContent=label})};
  matchProgress(0,'در حال آماده‌سازی شاخص‌های کالا، IRC و موجودی مجازی…');
  await new Promise(resolve=>setTimeout(resolve,0));
  // Pre-index virtual-inventory descriptors by IRC, so documents sharing an IRC
@@ -586,12 +586,23 @@ function exportAllAutoMatches(){
  downloadCSV(rows,'IMED_All_Documents_Auto_Match.csv');
 }
 let allMatchBusy=false;
+async function refreshAutoMatchButtonState(){
+ const buttons=[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean);if(!buttons.length||!state.imed.length)return;
+ try{
+  const baseHash=await matchCacheHash({matcherVersion:3,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+  const saved=await idbGet('matchCheckpoint:'+baseHash);
+  const next=Math.max(0,Math.min(state.imed.length,Number(saved?.nextIndex)||0));
+  const percent=Math.floor(next/Math.max(1,state.imed.length)*100);
+  const label=saved?.completed||next>=state.imed.length?'محاسبه مجدد':next>0?'ادامه محاسبه از '+faNum(percent)+'٪':'شروع محاسبه تطبیق';
+  buttons.forEach(b=>{if(!allMatchBusy){b.textContent=label;b.title=next>0&&!saved?.completed?'ادامه از سند '+faNum(next+1)+'؛ '+faNum(next)+' سند قبلاً ذخیره شده':''}});
+ }catch(err){console.warn('Could not refresh matching button state',err)}
+}
 async function runAllMatches(showView=true){
  if(allMatchBusy)return toast('محاسبه در حال انجام است؛ لطفاً صبر کن');
- allMatchBusy=true;const buttons=[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean);buttons.forEach(b=>{b.disabled=true;b.dataset.oldText=b.textContent;b.textContent='در حال محاسبه…'});
+ allMatchBusy=true;const buttons=[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean);buttons.forEach(b=>{b.disabled=true;b.textContent='در حال محاسبه — ۰٪'});
  try{await renderAllAutoMatches();if(showView)document.querySelector('[data-view="allmatches"]')?.click();toast('محاسبه جدول تطبیق تمام شد')}
  catch(err){console.error(err);toast('محاسبه ناموفق بود: '+(err?.message||err))}
- finally{allMatchBusy=false;buttons.forEach(b=>{b.disabled=false;b.textContent=b.dataset.oldText||'محاسبه خودکار تطبیق همه اسناد'})}
+ finally{allMatchBusy=false;buttons.forEach(b=>{b.disabled=false});await refreshAutoMatchButtonState()}
 }
 $('runAllAutoMatches').addEventListener('click',()=>runAllMatches(true));
 $('runAllAutoMatches2').addEventListener('click',()=>runAllMatches(false));
