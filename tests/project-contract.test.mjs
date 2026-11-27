@@ -49,6 +49,12 @@ assert.match(app, /const nextDB=new SQL\.Database\(bytes\)/);
 assert.match(app, /loadStateFromSQLite\(nextDB\)/);
 assert.match(app, /if\(!confirm\('پایگاه داده فعلی با فایل SQLite انتخاب‌شده جایگزین شود\؟'\)\)return/);
 
+// Re-importing invoice files must not collapse distinct product lines that share invoice/customer/quantity.
+assert.match(app, /norm\(x\.product\)===norm\(row\.product\)/, "Sepidar import dedupe must include the product identity");
+assert.match(app, /String\(x\.irc\|\|''\)===String\(row\.irc\|\|''\)/, "Sepidar import dedupe must include exact IRC");
+assert.match(app, /num\(x\.unitPrice\)===num\(row\.unitPrice\)/, "Sepidar import dedupe must preserve distinct price lines");
+assert.match(app, /norm\(x\.product\)===norm\(d\.product\)/, "IMED import dedupe must preserve product distinctions");
+
 // The legacy userscript must not claim that its unverified phase two was auto-filled.
 assert.doesNotMatch(userscript, /priceDone/);
 assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام نمی‌شود/);
