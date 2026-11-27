@@ -2,6 +2,20 @@
 
 All notable user-facing changes are recorded here. Versions follow the policy in [VERSIONING.md](VERSIONING.md).
 
+## [0.33.0] - 2026-11-28
+
+### Changed
+- Replaced all-time sales dashboard amounts with two stock-clearance-focused values: remaining positive IMED virtual inventory, and matched Sepidar invoice quantities in the queue for registration, both in **Iranian rials**.
+- IMED inventory valuation uses a valid IMED unit rate when present; otherwise it transparently estimates using the weighted unit price of Sepidar invoice lines matched to that same IRC.
+- The summary explicitly shows how many inventory records use direct IMED rates, estimated Sepidar rates, or lack a valid price. Unpriced inventory is shown as unavailable ("—"), never as an invented zero.
+- Sepidar amount uses only invoice quantities allocated or proposed against positive virtual-inventory balances, and caps planned quantities by remaining stock and source invoice availability. Years of unrelated historical sales are excluded.
+- Dashboard distinguishes the planned-sale amount from actual completed registration; counts lines still requiring ReceiverCode.
+
+### Safety
+- No currency conversion is performed and no toman label is used. Prices and values remain in rials.
+- Pricing-source fallback is an *estimate*, not a substitute for an official IMED unit price.
+- Existing XML form submission and inventory snapshots are unchanged.
+
 ## [0.32.3] - 2026-11-28
 
 ### Fixed
