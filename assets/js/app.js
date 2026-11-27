@@ -708,8 +708,12 @@ async function exportAllAutoMatches(){
   downloadText(xml,'IMED_All_Matched_Invoices.xml','application/xml;charset=utf-8');
   const summary=`${faNum(xmlRows.length)} ردیف فاکتور معتبر در XML ساخته شد؛ ${faNum(rejected.length)} سند به‌دلیل خطای اطلاعات اجباری یا نبود تخصیص معتبر کنار گذاشته شد.`;
   toast(summary);
-  if(rejected.length)console.warn('اسناد کنارگذاشته‌شده از XML:',rejected);
- }catch(err){console.error(err);toast('ساخت XML کلی ناموفق بود: '+err.message)}
+  if(rejected.length){
+   console.warn('اسناد کنارگذاشته‌شده از XML:',rejected);
+   downloadText('فهرست سندهای کنارگذاشته‌شده از XML\n'+rejected.join('\n'),'IMED_XML_Rejected_Documents.txt','text/plain;charset=utf-8');
+  }
+  return {downloaded:true,count:xmlRows.length,rejected:rejected.length};
+ }catch(err){console.error(err);toast('ساخت XML کلی ناموفق بود: '+err.message);return {downloaded:false,error:err.message}}
 }
 let allMatchBusy=false;
 async function refreshAutoMatchButtonState(){
@@ -808,8 +812,8 @@ async function downloadPositiveStockExcel(){
 $('downloadReadyExcel')?.addEventListener('click',downloadPositiveStockExcel);
 $('downloadReadyXml')?.addEventListener('click',async()=>{
  downloadCenterMessage('در حال بررسی ردیف‌های XML با مانده مثبت، کد دریافت‌کننده و InventoryID معتبر…');
- await exportAllAutoMatches();
- downloadCenterMessage('XML فقط در صورت عبور ردیف‌ها از کنترل فیلدهای ضروری دانلود می‌شود. قبل از آپلود، نتیجه و Snapshot را بازبینی کن.');
+ const result=await exportAllAutoMatches();
+ downloadCenterMessage(result?.downloaded?'XML دریافت شد: '+faNum(result.count)+' ردیف معتبر؛ '+faNum(result.rejected)+' سند کنار گذاشته شده. قبل از آپلود، Snapshot و تطبیق‌ها را بررسی کن.':'XML آماده نشد: '+(result?.error||'اطلاعات کافی یا معتبر پیدا نشد.'));
 });
 $('downloadReadyJs')?.addEventListener('click',async()=>{
  downloadCenterMessage('در حال ساخت JavaScript دسته‌ای مخصوص Console برای فاکتورهای دارای مانده مثبت…');
