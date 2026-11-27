@@ -26,6 +26,10 @@ assert.match(worker, /parts\[1\] === "matches" && parts\[2\] === "sync"/);
 assert.match(worker, /Authorization/);
 assert.match(worker, /env\.API_KEY/);
 
+assert.match(worker, /crypto\.subtle\.timingSafeEqual/, "Worker API keys must use constant-time comparison");
+assert.match(worker, /crypto\.subtle\.digest\("SHA-256"/, "Worker API key comparison must hash to a fixed length");
+assert.doesNotMatch(worker, /supplied\.length\s*!==\s*expected\.length/, "Worker API key validation must not early-return on secret length mismatch");
+
 // The old numeric-ID generic CRUD route must not expose the text-key sync table.
 const tableMap = worker.slice(worker.indexOf("const TABLES"), worker.indexOf("function json"));
 assert.doesNotMatch(tableMap, /match_allocations/);
