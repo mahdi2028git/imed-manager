@@ -83,9 +83,17 @@ assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام 
 assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک دستی خودت انجام می‌شود/);
 
 // Canonical release version, app shell, and cache-busting versions stay aligned.
-assert.equal(version.trim(), "0.31.1", "VERSION must be the canonical release version");
+assert.equal(version.trim(), "0.32.0", "VERSION must be the canonical release version");
 assert.match(html, /نسخه ۰\.۳۱\.۱/);
-assert.match(html, /styles\.css\?v=0\.31\.1/);
-assert.match(html, /app\.js\?v=0\.31\.1/);
+assert.match(html, /styles\.css\?v=0\.32\.0/);
+assert.match(html, /app\.js\?v=0\.32\.0/);
 
+// Financial fields are optional, separate across source systems, and totals are shown for review.
+assert.match(app, /imedUnitPrice/);
+assert.match(app, /imedTotalAmount/);
+assert.match(app, /function renderDist\(/);
+assert.match(app, /computedLineTotal\(a\.allocatedQty,a\.unitPrice\)/);
+assert.match(app, /RialPrice:num\(a\.unitPrice\)/, "IMED XML rial price must come from the Sepidar allocation");
+assert.match(app, /کمترین مانده کافی برای همان IRC/, "inventory candidate selection must use remaining balance");
+assert.match(html, /statFinancialCoverage/);
 console.log("IMED Manager contract checks passed.");

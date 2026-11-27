@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0" />
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%232676d8%22/%3E%3Cpath d=%22M27 12h10v15h15v10H37v15H27V37H12V27h15z%22 fill=%22white%22/%3E%3C/svg%3E" />
 <title>سامانه توسعه سلامت میهن | نسخه ۰.۳۱.۱</title>
-<link rel="stylesheet" href="assets/css/styles.css?v=0.31.1" />
+<link rel="stylesheet" href="assets/css/styles.css?v=0.32.0" />
 </head>
 <body>
 <div class="shell">
@@ -36,8 +36,9 @@
       <div class="card stat"><div><div class="label">اسناد توزیع واردشده</div><div class="value" id="statDist">۰</div></div><div class="bubble">▤</div></div>
       <div class="card stat"><div><div class="label">ردیف‌های سپیدار</div><div class="value" id="statSep">۰</div></div><div class="bubble">▥</div></div>
       <div class="card stat"><div><div class="label">تطبیق کامل</div><div class="value" id="statFull">۰</div></div><div class="bubble">✓</div></div>
-      <div class="card stat"><div><div class="label">نیازمند بررسی</div><div class="value" id="statPending">۰</div></div><div class="bubble">!</div></div>
+      <div class="card stat"><div><div class="label">نیازمند بررسی</div><div class="value" id="statPending">۰</div></div><div class="bubble">!</div></div><div class="card stat"><div><div class="label">ارزش اسناد IMED (ریال)</div><div class="value" id="statImedAmount">۰</div></div><div class="bubble">﷼</div></div><div class="card stat"><div><div class="label">ارزش ردیف‌های سپیدار (ریال)</div><div class="value" id="statSepAmount">۰</div></div><div class="bubble">﷼</div></div>
     </div>
+    <div class="smalltext" id="statFinancialCoverage">مبالغ فقط برای ردیف‌های دارای قیمت معتبر محاسبه می‌شوند؛ نرخ IMED و سپیدار جدا هستند.</div>
     <div class="grid two">
       <div class="card"><div class="section-head"><div><h2>آخرین اسناد توزیع</h2><p>نمای کلی از اسناد واردشده</p></div><button class="btn small" data-goto="distributions">مشاهده همه</button></div><div id="recentDistributions"></div></div>
       <div class="card"><div class="section-head"><div><h2>وضعیت تطبیق</h2><p>تعداد اسنادی که سهم فاکتورهایشان با مقدار توزیع برابر شده است</p></div></div><div id="matchOverview"></div></div>
@@ -184,6 +185,6 @@
 </main>
 </div>
 <div class="toast" id="toast"></div>
-<script src="assets/js/app.js?v=0.31.1"></script>
+<script src="assets/js/app.js?v=0.32.0"></script>
 </body>
 </html>
