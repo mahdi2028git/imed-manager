@@ -644,6 +644,48 @@ async function runAllMatches(showView=true){
  catch(err){console.error(err);toast('محاسبه ناموفق بود: '+(err?.message||err))}
  finally{allMatchBusy=false;buttons.forEach(b=>{b.disabled=false});await refreshAutoMatchButtonState()}
 }
+
+async function runBackgroundMatches(){
+ const buttons=[$('runBackgroundMatches'),$('runBackgroundMatches2')].filter(Boolean);
+ if(!cloudKey())return toast('برای اجرای سروری ابتدا اتصال Cloudflare را برقرار کن');
+ if(!state.imed.length||!state.sepidar.length)return toast('اطلاعات IMED و سپیدار باید در این دستگاه بارگذاری شده باشد');
+ buttons.forEach(b=>{b.disabled=true;b.textContent='در حال ارسال به سرور…'});
+ try{
+  const input={imed:state.imed,sepidar:state.sepidar,allocations:state.allocations||{},virtualInventory:state.virtualInventory||[],references:MATCH_REFERENCE_ROWS};
+  const baseHash=await matchCacheHash({matcherVersion:5,input});
+  let jobId=localStorage.getItem('imedBackgroundMatchJobId')||'';
+  const oldHash=localStorage.getItem('imedBackgroundMatchHash')||'';
+  let job=null;
+  if(jobId&&oldHash===baseHash){
+   try{const check=await cloudRequest('/api/background-matches?id='+encodeURIComponent(jobId));job=check.job}catch(_){job=null}
+  }
+  if(!job||job.status==='failed'){
+   const started=await cloudRequest('/api/background-matches',{method:'POST',body:JSON.stringify({baseHash,input})});
+   job=started.job;jobId=job.id;
+   localStorage.setItem('imedBackgroundMatchJobId',jobId);
+   localStorage.setItem('imedBackgroundMatchHash',baseHash);
+  }
+  if(!jobId)jobId=job.id;
+  if($('allMatchStats'))$('allMatchStats').innerHTML=progressMarkup('پردازش بک‌گراند در Cloudflare',job.percent||0,'شناسه کار: '+jobId+' — با بستن مرورگر، پردازش سرور ادامه پیدا می‌کند؛ نتایج فقط پیشنهاد هستند.');
+  while(job.status==='running'){
+   await new Promise(resolve=>setTimeout(resolve,2500));
+   const check=await cloudRequest('/api/background-matches?id='+encodeURIComponent(jobId));job=check.job;
+   if($('allMatchStats'))$('allMatchStats').innerHTML=progressMarkup('پردازش بک‌گراند در Cloudflare',job.percent||0,'سند '+faNum(job.cursor||0)+' از '+faNum(state.imed.length)+' — می‌توانی مرورگر را ببندی.');
+  }
+  if(job.status!=='completed')throw new Error(job.error||'پردازش سرور کامل نشد');
+  const response=await cloudRequest('/api/background-matches/results?id='+encodeURIComponent(jobId));
+  const rows=response.data||[];
+  const lookup=new Map(state.sepidar.map(x=>[String(x.id),x]));
+  const totalProposals=rows.reduce((n,x)=>n+(x.result.planned||[]).length,0);
+  $('allMatchStats').innerHTML='پردازش سرور کامل شد — '+faNum(rows.length)+' سند بررسی شد؛ '+faNum(totalProposals)+' ردیف فاکتور پیشنهادی. هیچ تخصیصی ثبت یا تغییر نکرده است.';
+  $('allMatchTable').innerHTML=rows.length?'<div class="table-wrap"><table><thead><tr><th>شماره سند IMED</th><th>تعداد هدف</th><th>تخصیص قبلی</th><th>پیشنهاد جدید</th><th>باقیمانده</th><th>وضعیت</th><th>فاکتورهای پیشنهادی</th></tr></thead><tbody>'+rows.map(x=>{const r=x.result;return '<tr><td>'+esc(r.distributionNo||r.distributionId)+'</td><td>'+faNum(r.target)+'</td><td>'+faNum(r.already)+'</td><td>'+faNum(r.got)+'</td><td>'+faNum(r.left)+'</td><td>'+esc(r.status)+'</td><td>'+(r.planned||[]).map(p=>{const v=lookup.get(String(p.sourceId));return esc(v?.invoiceNo||p.sourceId)+' × '+faNum(p.q)+'؛ '+esc((p.signals||[]).join('، '))}).join('<hr>')+'</td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty">نتیجه‌ای دریافت نشد.</div>';
+  toast('محاسبه بک‌گراند کامل شد؛ پیشنهادها ثبت نشده‌اند');
+ }catch(err){console.error(err);toast('اجرای بک‌گراند ناموفق بود: '+err.message);if($('allMatchStats'))$('allMatchStats').textContent='خطا در پردازش سرور: '+err.message}
+ finally{buttons.forEach(b=>{b.disabled=false;b.textContent='اجرای بک‌گراند روی سرور'})}
+}
+$('runBackgroundMatches')?.addEventListener('click',()=>runBackgroundMatches());
+$('runBackgroundMatches2')?.addEventListener('click',()=>runBackgroundMatches());
+
 $('runAllAutoMatches').addEventListener('click',()=>runAllMatches(true));
 $('runAllAutoMatches2').addEventListener('click',()=>runAllMatches(false));
 $('exportAllAutoMatches').addEventListener('click',exportAllAutoMatches);
