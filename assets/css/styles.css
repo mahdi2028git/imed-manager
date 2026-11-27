@@ -395,76 +395,41 @@ tbody tr:hover{background:#f5f9ff}
 }
 
 
-/* v0.25: constrain the invoice results to the available width and scroll the table itself */
-#view-formscript,
-#view-formscript .card,
-#view-formscript .form-grid,
-#view-formscript .form-grid > .field,
-#scriptDocSearchResults,
-#scriptDocSearchResults .script-doc-results-viewport {
-  min-width: 0 !important;
-  max-width: 100% !important;
-  width: 100%;
-  box-sizing: border-box;
-}
+/* v0.24: make the wide IMED script invoice table easy to swipe horizontally */
 #scriptDocSearchResults .script-table-hint {
   display: block;
   margin: 7px 2px 8px;
   color: var(--muted, #64748b);
   font-size: 12px;
 }
-#scriptDocSearchResults .script-doc-results-viewport {
-  display: block;
-  overflow: hidden;
-}
 #scriptDocSearchResults .script-doc-table-scroll {
   display: block !important;
-  position: relative;
   width: 100% !important;
-  min-width: 0 !important;
   max-width: 100% !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
+  overflow-x: scroll !important;
+  overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
   scrollbar-width: auto;
-  scrollbar-color: #64748b #e2e8f0;
+  scrollbar-color: #94a3b8 #edf1f6;
   border: 1px solid var(--line, #e2e8f0);
   border-radius: 10px;
-  box-sizing: border-box;
 }
 #scriptDocSearchResults .script-doc-table-scroll:focus {
   outline: 2px solid var(--primary, #2879dc);
   outline-offset: 2px;
 }
-#scriptDocSearchResults .script-doc-table-scroll::-webkit-scrollbar {
-  height: 12px;
-}
-#scriptDocSearchResults .script-doc-table-scroll::-webkit-scrollbar-track {
-  background: #e2e8f0;
-  border-radius: 8px;
-}
-#scriptDocSearchResults .script-doc-table-scroll::-webkit-scrollbar-thumb {
-  background: #64748b;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-}
 #scriptDocSearchResults .script-doc-table-scroll table {
   width: max-content !important;
-  min-width: 1100px !important;
-  max-width: none !important;
+  min-width: 1050px !important;
   table-layout: auto;
-  white-space: nowrap;
 }
 @media (max-width: 900px) {
-  #view-formscript .form-grid { grid-template-columns: minmax(0, 1fr) !important; }
   #scriptDocSearchResults .script-doc-table-scroll {
-    max-height: none;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
+    max-height: 65vh;
   }
   #scriptDocSearchResults .script-doc-table-scroll table {
-    min-width: 1100px !important;
+    min-width: 1050px !important;
   }
 }
