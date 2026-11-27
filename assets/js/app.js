@@ -851,13 +851,19 @@ function validateXmlDoc(d,show=true){const v=makeQuotaRows(d);if(show&&$('xmlVal
 $('resolveInventoryIds').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند انتخاب نشده');let used={};for(const a of allocationsFor(d.id)){const r=resolveStock(d,a,used);if(r.row){if(!a.inventoryId)a.inventoryId=r.row.inventoryId;used[r.row.inventoryId]=(used[r.row.inventoryId]||0)+num(a.allocatedQty)}}save();renderXmlRows();toast('پیشنهادهای یکتای InventoryID اعمال شدند؛ موارد مبهم را دستی انتخاب کن')};
 $('buildXml').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند انتخاب نشده');d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();const v=validateXmlDoc(d,true);if(!v.rows.length){$('xmlOutputPanel').style.display='none';toast('برای این سند هیچ ردیف تخصیصی یا پیشنهادی وجود ندارد');return}const xml=quotaXml(v.rows);const parsed=new DOMParser().parseFromString(xml,'application/xml');if(parsed.querySelector('parsererror'))return toast('خطای ساختار XML');$('xmlOutput').value=xml;$('xmlOutputPanel').style.display='block';state.lastXml={distributionId:d.id,rows:v.rows,xml,createdAt:new Date().toISOString()};save();refreshScriptDocs();$('xmlOutputPanel').scrollIntoView({behavior:'smooth',block:'start'});toast('XML آماده است؛ از دکمه کپی استفاده کن')};
 $('copyXml').onclick=async()=>{const el=$('xmlOutput');if(!el?.value)return toast('ابتدا XML را بساز');try{await navigator.clipboard.writeText(el.value);toast('XML کپی شد')}catch(e){el.focus();el.select();toast('متن انتخاب شد؛ Copy را بزن')}};
-function refreshScriptDocs(){
+let selectedScriptInvoice=null;
+async function refreshScriptDocs(){
  const el=$('scriptDocSelect');if(!el)return;
  const prev=el.value||'';
  el.innerHTML='<option value="">انتخاب سند</option>'+state.imed.map(d=>`<option value="${esc(d.id)}">${esc(d.distributionNo)} — ${esc(d.product)}</option>`).join('');
  if(state.imed.some(d=>d.id===prev))el.value=prev;
- renderScriptDocSearch();
- if(el.value)renderScriptReady();
+ try{
+  await ensureAutoMatchesReady();
+  renderScriptDocSearch();
+  if(el.value)renderScriptReady();
+ }catch(err){
+  $('scriptDocSearchResults').innerHTML='<div class="notice warn">'+esc(err.message||'بارگذاری تطبیق‌ها ناموفق بود')+'</div>';
+ }
 }
 function renderScriptDocSearch(){
  const input=$('scriptDocSearch'),box=$('scriptDocSearchResults');if(!input||!box)return;
@@ -873,10 +879,20 @@ function renderScriptDocSearch(){
  rows.forEach(x=>{const key=String(x.doc.id)+'|'+String(x.s.id||x.s.invoiceNo)+'|'+norm(x.s.invoiceDate);if(!unique.has(key))unique.set(key,x)});
  const list=[...unique.values()].filter(x=>!q||[x.s.invoiceNo,x.s.invoiceDate,x.s.customer,x.s.product,x.s.irc,x.doc.distributionNo].some(v=>norm(v||'').includes(q))).sort((a,b)=>dateOrderValue(b.s.invoiceDate)-dateOrderValue(a.s.invoiceDate));
  if(!list.length){box.innerHTML='<div class="empty">'+(allAutoRows.length?'فاکتور سپیداری با این جست‌وجو در تطبیق‌های ثبت‌شده یا پیشنهادی پیدا نشد.':'ابتدا تطبیق خودکار را در بخش «تطبیق و ردیابی» اجرا کن تا فاکتورهای پیدا‌شده اینجا فهرست شوند.')+'</div>';return}
- box.innerHTML='<div class="smalltext" style="margin-bottom:7px">'+faNum(list.length)+' ردیف فاکتور سپیدارِ تطبیق‌شده یا پیشنهادی</div><div class="table-wrap"><table><thead><tr><th>شماره فاکتور سپیدار</th><th>تاریخ</th><th>مشتری</th><th>کالا</th><th>تعداد تخصیص</th><th>فی قیمت</th><th>سند توزیع مرتبط</th><th>وضعیت</th><th></th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.s.invoiceNo||'—')+'</b></td><td>'+esc(x.s.invoiceDate||'—')+'</td><td>'+esc(x.s.customer||'—')+'</td><td>'+esc(x.s.product||'—')+'</td><td>'+faNum(x.q)+'</td><td>'+money(x.s.unitPrice)+'</td><td>'+esc(x.doc.distributionNo||'—')+'</td><td><span class="tag '+(x.existing?'good':'warn')+'">'+(x.existing?'تخصیص ثبت‌شده':'پیشنهاد تطبیق')+'</span></td><td><button class="btn small" data-script-review="'+esc(x.doc.id)+'">جزئیات تطبیق</button></td></tr>').join('')+'</tbody></table></div>';
+ box.innerHTML='<div class="smalltext" style="margin-bottom:7px">'+faNum(list.length)+' ردیف فاکتور سپیدارِ تطبیق‌شده یا پیشنهادی</div><div class="table-wrap"><table><thead><tr><th>شماره فاکتور سپیدار</th><th>تاریخ</th><th>مشتری</th><th>کالا</th><th>تعداد تخصیص</th><th>فی قیمت</th><th>سند توزیع مرتبط</th><th>وضعیت</th><th></th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.s.invoiceNo||'—')+'</b></td><td>'+esc(x.s.invoiceDate||'—')+'</td><td>'+esc(x.s.customer||'—')+'</td><td>'+esc(x.s.product||'—')+'</td><td>'+faNum(x.q)+'</td><td>'+money(x.s.unitPrice)+'</td><td>'+esc(x.doc.distributionNo||'—')+'</td><td><span class="tag '+(x.existing?'good':'warn')+'">'+(x.existing?'تخصیص ثبت‌شده':'پیشنهاد تطبیق')+'</span></td><td><div class="actions" style="margin:0"><button class="btn small primary" data-script-select="'+esc(x.doc.id)+'" data-script-invoice="'+esc(x.s.invoiceNo||'')+'" data-script-date="'+esc(x.s.invoiceDate||'')+'">انتخاب برای ساخت اسکریپت</button><button class="btn small" data-script-review="'+esc(x.doc.id)+'">جزئیات تطبیق</button></div></td></tr>').join('')+'</tbody></table></div>';
 }
 $('scriptDocSearch')?.addEventListener('input',renderScriptDocSearch);
 $('scriptDocSearchResults')?.addEventListener('click',e=>{
+ const select=e.target.closest('[data-script-select]');
+ if(select){
+  const docId=select.dataset.scriptSelect;
+  selectedScriptInvoice={docId,invoiceNo:select.dataset.scriptInvoice||'',invoiceDate:select.dataset.scriptDate||''};
+  $('scriptDocSelect').value=docId;
+  renderScriptReady();
+  $('scriptReadyStatus').scrollIntoView({behavior:'smooth',block:'center'});
+  toast('فاکتور سپیدار انتخاب شد؛ اسکریپت همین فاکتور آماده شد.');
+  return;
+ }
  const review=e.target.closest('[data-script-review]');if(!review)return;
  const docId=review.dataset.scriptReview;
  goto('reconcile');refreshDocOptions();$('reconcileDoc').value=docId;openDoc(docId);
@@ -994,7 +1010,19 @@ makePanel(msg);log('Phase 1 checked IRCs',checked,'missing',missing,'headerOk',h
 })();`;
 }
 
-function renderScriptReady(){const d=state.imed.find(x=>x.id===$('scriptDocSelect')?.value);if(!d)return;const v=makeQuotaRows(d,false,true);const blocked=!v.rows.length;const partial=v.total+0.00001<num(d.quantity);const warnings=[...v.errors,...v.skipped];$('scriptReadyStatus').textContent=blocked?'هیچ ردیفی برای ساخت اسکریپت آماده نیست':`${faNum(v.rows.length)} ردیف آماده | تعداد ${faNum(v.total)} از ${faNum(d.quantity)}${partial?' | تطبیق جزئی':''}${warnings.length?' | '+faNum(warnings.length)+' هشدار':''}`;$('scriptReadyStatus').className='tag '+(blocked||warnings.length?'warn':'good');$('formScriptCode').value=blocked?'برای این سند هیچ ردیف تخصیصی یا پیشنهادی پیدا نشد.':buildFormAutofillSource(d,v.rows);if(warnings.length)console.warn('IMED form script preflight:',d.distributionNo,warnings)}
+function renderScriptReady(){
+ const d=state.imed.find(x=>x.id===$('scriptDocSelect')?.value);if(!d)return;
+ const v=makeQuotaRows(d,false,true);
+ if(selectedScriptInvoice&&String(selectedScriptInvoice.docId)===String(d.id)){
+  v.rows=v.rows.filter(r=>String(r.InvoiceNo||'')===String(selectedScriptInvoice.invoiceNo||'')&&String(r.InvoiceDate||'')===String(selectedScriptInvoice.invoiceDate||''));
+  v.total=v.rows.reduce((n,r)=>n+num(r.Count),0);
+ }else selectedScriptInvoice=null;
+ const blocked=!v.rows.length,partial=v.total+0.00001<num(d.quantity),warnings=[...v.errors,...v.skipped];
+ $('scriptReadyStatus').textContent=blocked?'هیچ ردیفی برای ساخت اسکریپت آماده نیست':`${faNum(v.rows.length)} ردیف آماده | تعداد ${faNum(v.total)}${selectedScriptInvoice?' | فاکتور '+selectedScriptInvoice.invoiceNo+' | '+selectedScriptInvoice.invoiceDate:' از '+faNum(d.quantity)}${partial?' | تطبیق جزئی':''}${warnings.length?' | '+faNum(warnings.length)+' هشدار':''}`;
+ $('scriptReadyStatus').className='tag '+(blocked||warnings.length?'warn':'good');
+ $('formScriptCode').value=blocked?'برای این فاکتور هیچ ردیف تخصیصی یا پیشنهادی پیدا نشد.':buildFormAutofillSource(d,v.rows);
+ if(warnings.length)console.warn('IMED form script preflight:',d.distributionNo,warnings);
+}
 async function refreshSingleFormScript(){try{await ensureAutoMatchesReady();renderScriptReady()}catch(err){$('scriptReadyStatus').textContent=err.message;$('scriptReadyStatus').className='tag warn';$('formScriptCode').value=''}}
 $('downloadFormScript').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');downloadText(code,`IMED_Form_Autofill_${$('scriptDocSelect').value}.js`,'text/javascript;charset=utf-8');toast('اسکریپت فرم IMED دانلود شد')};
 $('copyFormScript').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');copyText(code)};
