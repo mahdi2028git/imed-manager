@@ -85,12 +85,12 @@ export default {
           if (!job) {
             const id = crypto.randomUUID();
             await env.DB.prepare("INSERT INTO background_match_jobs (id,base_hash,input_json,status) VALUES (?,?,?,'running')").bind(id,baseHash,JSON.stringify(input)).run();
-            job = await env.DB.prepare("SELECT * FROM background_match_jobs WHERE id=?").bind(id).first();
+            job = await env.DB.prepare("SELECT id,base_hash,cursor,percent,status,error,created_at,updated_at FROM background_match_jobs WHERE id=?").bind(id).first();
             await env.MATCH_QUEUE.send({jobId:id});
           } else if (job.status === "failed") {
             await env.DB.prepare("UPDATE background_match_jobs SET status='running',error='',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(job.id).run();
             await env.MATCH_QUEUE.send({jobId:job.id});
-            job = await env.DB.prepare("SELECT * FROM background_match_jobs WHERE id=?").bind(job.id).first();
+            job = await env.DB.prepare("SELECT id,base_hash,cursor,percent,status,error,created_at,updated_at FROM background_match_jobs WHERE id=?").bind(job.id).first();
           }
           return json({job,resumed:!!job.cursor},200,cors);
         }
