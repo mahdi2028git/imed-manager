@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const [worker, schema, migration, app, html, userscript, version] = await Promise.all([
+const [worker, schema, migration, app, html, userscript, bridge, version] = await Promise.all([
   read("../cloudflare/worker.js"),
   read("../cloudflare/schema.sql"),
   read("../cloudflare/migrations/0003_runtime_tables.sql"),
   read("../assets/js/app.js"),
   read("../index.html"),
   read("../tampermonkey/IMED_Grok_Tampermonkey.user.js"),
+  read("../tampermonkey/IMED_Manager_Invoice_Bridge.user.js"),
   read("../VERSION"),
 ]);
 
@@ -72,9 +73,22 @@ assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام 
 assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک دستی خودت انجام می‌شود/);
 
 // Canonical release version, app shell, and cache-busting versions stay aligned.
-assert.equal(version.trim(), "0.31.1", "VERSION must be the canonical release version");
-assert.match(html, /نسخه ۰\.۳۱\.۱/);
-assert.match(html, /styles\.css\?v=0\.31\.1/);
-assert.match(html, /app\.js\?v=0\.31\.1/);
+assert.equal(version.trim(), "0.31.2", "VERSION must be the canonical release version");
+assert.match(html, /نسخه ۰\.۳۱\.۲/);
+assert.match(html, /styles\.css\?v=0\.31\.2/);
+assert.match(html, /app\.js\?v=0\.31\.2/);
+
+
+// The new bridge must pass the selected invoice through Tampermonkey and
+// survive ASP.NET page postbacks without issuing the final IMED document.
+assert.match(app, /queueImedInvoiceBridge\(rows\)/);
+assert.match(bridge, /GM_setValue\(KEY/);
+assert.match(bridge, /phase: 'ready'/);
+assert.match(bridge, /persist\('search-wait'/);
+assert.match(bridge, /persist\('add-wait'/);
+assert.match(bridge, /exactCell\(tr, a\.InventoryID\)/);
+assert.match(bridge, /state\.selected\.some/);
+assert.match(bridge, /persist\('temp-wait'/);
+assert.doesNotMatch(bridge, /(?:final|issue|صدور).{0,60}\.click\(/i);
 
 console.log("IMED Manager contract checks passed.");
