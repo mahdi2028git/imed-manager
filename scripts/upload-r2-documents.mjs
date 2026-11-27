@@ -79,7 +79,7 @@ function signedHeaders(method, key, body, digest, contentType) {
   const canonicalHeaders = canonicalHeaderNames.map(name => {
     const v = name === "host" ? url.host : headers[Object.keys(headers).find(k => k.toLowerCase() === name)];
     return name + ":" + String(v).trim().replace(/\s+/g, " ");
-  }).join("");
+  }).join("\n");
   const signed = canonicalHeaderNames.join(";");
   const canonicalRequest = [
     method, url.pathname, "", canonicalHeaders, signed, payloadHash
