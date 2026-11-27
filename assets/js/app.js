@@ -134,13 +134,15 @@ function allocationsFor(docId){return state.allocations[docId]||[]}
 function target(doc){return num(doc?.quantity)}
 function totalAllocated(docId){return allocationsFor(docId).reduce((s,a)=>s+num(a.allocatedQty),0)}
 function docStatus(d){let t=target(d),s=totalAllocated(d.id);if(t>0&&Math.abs(s-t)<.00001&&allocationsFor(d.id).length)return'exact';if(s>t&&t>0)return'over';if(s>0)return'partial';return'none'}
+// Dashboard reflects calculated proposals without committing them to saved allocations.
+function dashboardDocStatus(d){const row=Array.isArray(allAutoRows)?allAutoRows.find(x=>String(x.d?.id)===String(d.id)):null;if(!row)return docStatus(d);if(row.status==='کامل')return'exact';if(row.status==='ناقص')return'partial';if(row.status==='بیش از مقدار')return'over';return'none'}
 function statusTag(status){if(status==='exact')return'<span class="tag good">تطبیق کامل</span>';if(status==='over')return'<span class="tag bad">بیش از مقدار توزیع</span>';if(status==='partial')return'<span class="tag warn">ناقص</span>';return'<span class="tag neutral">بدون تطبیق</span>'}
 function refresh(){
  $('statDist').textContent=faNum(state.imed.length);$('statSep').textContent=faNum(state.sepidar.length);
- const full=state.imed.filter(d=>docStatus(d)==='exact').length,pending=state.imed.length-full;
+ const full=state.imed.filter(d=>dashboardDocStatus(d)==='exact').length,pending=state.imed.length-full;
  $('statFull').textContent=faNum(full);$('statPending').textContent=faNum(pending);
- $('recentDistributions').innerHTML=state.imed.length?`<div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>تعداد</th><th>وضعیت</th></tr></thead><tbody>${state.imed.slice(-6).reverse().map(d=>`<tr><td>${esc(d.distributionNo||'—')}</td><td>${esc(d.product||'—')}</td><td>${faNum(d.quantity)}</td><td>${statusTag(docStatus(d))}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">هنوز سندی وارد نشده است.</div>';
- const counts={exact:full,partial:state.imed.filter(d=>docStatus(d)==='partial').length,over:state.imed.filter(d=>docStatus(d)==='over').length,none:state.imed.filter(d=>docStatus(d)==='none').length};
+ $('recentDistributions').innerHTML=state.imed.length?`<div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>تعداد</th><th>وضعیت</th></tr></thead><tbody>${state.imed.slice(-6).reverse().map(d=>`<tr><td>${esc(d.distributionNo||'—')}</td><td>${esc(d.product||'—')}</td><td>${faNum(d.quantity)}</td><td>${statusTag(dashboardDocStatus(d))}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">هنوز سندی وارد نشده است.</div>';
+ const counts={exact:full,partial:state.imed.filter(d=>dashboardDocStatus(d)==='partial').length,over:state.imed.filter(d=>dashboardDocStatus(d)==='over').length,none:state.imed.filter(d=>dashboardDocStatus(d)==='none').length};
  const denominator=Math.max(1,state.imed.length);
  $('matchOverview').innerHTML=state.imed.length?Object.entries({exact:'کامل',partial:'ناقص',over:'بیش از مقدار',none:'بدون تطبیق'}).map(([k,v])=>`<div style="margin:13px 0"><div style="display:flex;justify-content:space-between"><span>${v}</span><b>${faNum(counts[k])}</b></div><div class="progress"><span style="width:${counts[k]/denominator*100}%;background:${k==='exact'?'#15966c':k==='over'?'#c53b32':k==='partial'?'#d28a1e':'#9aa7b5'}"></span></div></div>`).join(''):'<div class="empty">پس از ورود داده‌ها، وضعیت اینجا نمایش داده می‌شود.</div>';
  renderDist();renderSep();refreshDocOptions();renderInventory();refreshXmlDocs();refreshScriptDocs();
@@ -593,6 +595,7 @@ function allMatchInvoiceRows(x){
 }
 async function renderAllAutoMatches(){
  allAutoRows=await calculateAllAutoMatches();
+  refresh(); // Repaint dashboard from calculated suggestions; saved allocations remain untouched.
  const complete=allAutoRows.filter(x=>x.status==='کامل').length,partial=allAutoRows.filter(x=>x.status==='ناقص').length,none=allAutoRows.filter(x=>x.status==='بدون تطبیق').length;
  $('allMatchStats').innerHTML=`تعداد اسناد: <b>${faNum(allAutoRows.length)}</b> | کامل با احتساب تخصیص‌های قبلی: <b>${faNum(complete)}</b> | ناقص: <b>${faNum(partial)}</b> | بدون تطبیق: <b>${faNum(none)}</b> | پیشنهاد جدید: <b>${faNum(allAutoRows.reduce((n,x)=>n+x.planned.length,0))}</b> ردیف فاکتور | مرجع: <b>${faNum(MATCH_REFERENCE_ROWS.length)}</b> ردیف جدول تطبیق (موارد وجه افتراق نامنطبق حذف می‌شوند)`;
  const visibleRows=allAutoRows.slice(0,180);
