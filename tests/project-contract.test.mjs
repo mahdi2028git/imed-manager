@@ -42,6 +42,9 @@ assert.match(app, /if\(v\.errors\.length\)/, "XML generation must stop when any 
 assert.match(app, /v\.skipped\.map/, "partial quantity must be reported visibly");
 assert.match(app, /فقط برای همین ردیف‌های معتبر/, "partial XML must explain its actual scope");
 
+assert.match(app, /function quotaAllocationsFor\(d\)/, "XML preparation must share the same saved and proposed allocation list");
+assert.match(app, /const alloc=quotaAllocationsFor\(d\)/, "XML UI must display automatic proposals as well as saved allocations");
+assert.match(app, /inventoryId:String\(p\.inventoryId\|\|''\)/, "manual InventoryID choices for proposals must persist");
 assert.match(app, /makeQuotaRows\(x\.d,false,false,usedInventory\)/, "bulk XML must share remaining InventoryID capacity across documents");
 assert.match(app, /sharedInventoryUsed\|\|\{\}/, "quota generation must accept a shared inventory-capacity ledger");
 // Local SQLite restore must validate a database before replacing the current handle.
