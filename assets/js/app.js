@@ -451,7 +451,7 @@ async function calculateAllAutoMatches(){
  const byInvoice=new Map();
  for(const x of sepidarIndex){const k=norm(x.s.invoiceNo);if(k){let a=byInvoice.get(k);if(!a)byInvoice.set(k,a=[]);a.push(x)}}
  const docs=[...state.imed].sort((a,b)=>String(a.distributionDate||'').localeCompare(String(b.distributionDate||'')));
- const baseHash=await matchCacheHash({sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+ const baseHash=await matchCacheHash({matcherVersion:2,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
  const remoteCache=new Map(),pendingRemote=[];
  if(cloudEnabled){try{const response=await cloudRequest('/api/match-cache?baseHash='+encodeURIComponent(baseHash));for(const row of response.data||[]){try{remoteCache.set(row.doc_key,JSON.parse(row.result_json))}catch(_){}}}catch(err){console.warn('Remote match cache unavailable; local resumable cache remains active',err)}}
  const sepidarById=new Map(sepidarIndex.map(x=>[String(x.s.id),x.s]));
