@@ -774,8 +774,36 @@ $('inventorySnapshotInput').onchange=async e=>{
 };
 $('exportInventoryCSV').onclick=()=>{const cols=[['inventoryId','کد انبار مجازی'],['entryDate','تاریخ ورود به انبار مجازی'],['irc','IRC'],['mainGroup','گروه اصلی'],['subGroup','گروه فرعی'],['persianName','نام فارسی کالا'],['persianDistinction','وجه افتراق فارسی'],['legalCompany','کمپانی قانونی'],['manufacturerCountry','کشور سازنده اصلی'],['mainSupplier','شرکت تامین کننده اصلی'],['model','مدل'],['distributedQty','تعداد توزیع'],['initialQty','تعداد کل موجودی اولیه'],['remainingQty','تعداد باقیمانده در انبار مجازی'],['supplierType','نوع تامین کننده'],['distributionIssuer','صادر کننده سند توزیع'],['declaration','اظهار'],['orderRegistration','ثبت سفارش'],['batchNo','شماره سری ساخت / بچ'],['strategicReserves','ذخایر استراتژیک'],['productionDate','تاریخ تولید'],['expiryDate','تاریخ انقضاء']];downloadCSV([cols.map(c=>c[1]),...state.virtualInventory.map(v=>cols.map(([k])=>v[k]??''))],'imed_virtual_inventory.csv')};
 function refreshXmlDocs(){const el=$('xmlDocSelect');if(!el)return;const prev=el.value||state.currentDoc;el.innerHTML='<option value="">انتخاب سند</option>'+state.imed.map(d=>`<option value="${esc(d.id)}">${esc(d.distributionNo)} — ${esc(d.product)} — ${faNum(d.quantity)}</option>`).join('');if(state.imed.some(d=>d.id===prev))el.value=prev;if(el.value)loadXmlDoc(el.value);}
-function inferTypeId(d){const x=norm(d.receiver||'');if(x.includes('داروخانه'))return'6';if(x.includes('بیمارستان')||x.includes('مرکزدرمانی')||x.includes('موسسه'))return'2';if(x.includes('آزمایشگاه'))return'4';if(x.includes('دندان'))return'5';if(x.includes('مطب'))return'9';return''}
-function loadXmlDoc(docId){const d=state.imed.find(x=>x.id===docId);if(!d)return;$('xmlTypeId').value=d.typeId||inferTypeId(d);$('xmlReceiverCode').value=d.receiverCode||'';$('xmlHeaderHint').textContent=`گیرنده: ${d.receiver||'—'} | کد نوع توزیع پیشنهادی صرفاً بر اساس نام گیرنده است؛ قبل از خروجی کنترلش کن.`;renderXmlRows();}
+const DISTRIBUTION_TYPE_IDS=Object.freeze({
+ 'تک نسخه ای':'1',
+ 'موسسات پزشکی و مراکز درمانی':'2',
+ 'آزمایشگاه':'4',
+ 'دندانپزشکی':'5',
+ 'داروخانه ها':'6',
+ 'مطب':'9',
+ 'عرضه کننده':'15',
+ 'تک نسخه ای بیمارستانی':'17',
+ 'موارد خاص':'18',
+ 'سازمان انتقال خون':'19',
+ 'انبار ذخیره استراتژیک در استان':'21'
+});
+function inferTypeId(d){
+ const type=norm(d.distributionType||'');
+ if(!type)return'';
+ for(const [label,typeId] of Object.entries(DISTRIBUTION_TYPE_IDS)){
+  if(norm(label)===type)return typeId;
+ }
+ return '';
+}
+function loadXmlDoc(docId){
+ const d=state.imed.find(x=>x.id===docId);if(!d)return;
+ const mappedTypeId=inferTypeId(d);
+ $('xmlTypeId').value=d.typeId||mappedTypeId;
+ $('xmlReceiverCode').value=d.receiverCode||'';
+ const typeSource=d.typeId?'TypeID ذخیره‌شده در سند':mappedTypeId?'نگاشت دقیق از نوع توزیع':'نوع توزیع نامشخص؛ TypeID را حدس نمی‌زنیم';
+ $('xmlHeaderHint').textContent=`گیرنده: ${d.receiver||'—'} | نوع توزیع: ${d.distributionType||'ثبت نشده'} | ${typeSource}`;
+ renderXmlRows();
+}
 $('xmlDocSelect').addEventListener('change',e=>loadXmlDoc(e.target.value));
 $('saveXmlHeader').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند توزیع را انتخاب کن');d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save();renderXmlRows();toast('مشخصات گیرنده ذخیره شد')};
 function autoSaveXmlHeader(){const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return;d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save()}$('xmlTypeId').addEventListener('change',autoSaveXmlHeader);$('xmlReceiverCode').addEventListener('change',autoSaveXmlHeader);
