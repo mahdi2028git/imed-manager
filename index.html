@@ -170,13 +170,13 @@
       <div class="notice warn">برنامه برای خواندن انبار مجازی از اسکریپتی استفاده می‌کند که در صفحه‌ی ورودشده‌ی IMED اجرا می‌شود و Snapshot را به JSON تبدیل می‌کند. اسکریپت تکمیل فرم نیز فقط فیلدها را پر می‌کند و ثبت نهایی همچنان با تأیید دستی شماست.</div>
       <div class="actions"><button class="btn primary" id="exportSqlite">دانلود پایگاه داده SQLite (.sqlite)</button><label class="btn">بازکردن / بازیابی فایل SQLite<input type="file" id="restoreSqliteInput" accept=".sqlite,.db,.sqlite3,application/vnd.sqlite3" hidden></label><button class="btn" id="exportBackup2">خروجی پشتیبان JSON</button><label class="btn">بازیابی پشتیبان JSON<input type="file" id="restoreInput" accept=".json,application/json" hidden></label><button class="btn danger" id="clearAll">پاک‌کردن همه داده‌ها</button></div>
       <div class="card" style="margin-top:16px">
-        <div class="section-head"><div><h2>اتصال به Cloudflare D1</h2><p>با اتصال ابری، اطلاعات برنامه از Cloudflare خوانده می‌شود و ذخیره‌های بعدی نیز به D1 ارسال می‌شوند.</p></div><span class="tag neutral">ذخیره ابری</span></div>
-        <div class="field"><label>کلید دسترسی خصوصی API</label><input id="cloudApiKey" type="password" autocomplete="off" placeholder="کلید خصوصی را وارد کنید" /></div>
-        <div class="actions"><button class="btn primary" id="cloudConnect">اتصال و بررسی اطلاعات ابری</button><button class="btn" id="cloudUploadLocal">ارسال اطلاعات این مرورگر به ابر</button><button class="btn" id="cloudDownload">دریافت آخرین اطلاعات از ابر</button><button class="btn" id="cloudDisconnect">قطع اتصال</button></div>
-        <div class="notice info" id="cloudSyncStatus" style="margin-top:12px">هنوز به Cloudflare متصل نشده‌ای. تا زمان اتصال، ذخیره محلی هم فعال است.</div>
-        <div class="smalltext">کلید فقط در همین مرورگر ذخیره می‌شود و داخل فایل‌های عمومی برنامه قرار نمی‌گیرد. برای اولین بار، پس از اتصال، «ارسال اطلاعات این مرورگر به ابر» را بزن تا داده‌های فعلی به D1 منتقل شوند.</div>
+        <div class="section-head"><div><h2>همگام‌سازی و پشتیبان‌گیری</h2><p>اطلاعات به‌صورت محلی ذخیره می‌شود و در صورت فعال بودن همگام‌سازی، نسخه پشتیبان ابری نیز به‌روز می‌شود.</p></div><span class="tag neutral">ذخیره امن</span></div>
+        <div class="field"><label>کد اتصال خصوصی</label><input id="cloudApiKey" type="password" autocomplete="off" placeholder="کد اتصال را وارد کنید" /></div>
+        <div class="actions"><button class="btn primary" id="cloudConnect">فعال‌سازی همگام‌سازی</button><button class="btn" id="cloudUploadLocal">پشتیبان‌گیری اکنون</button><button class="btn" id="cloudDownload">بازیابی نسخه پشتیبان</button><button class="btn" id="cloudDisconnect">حالت آفلاین</button></div>
+        <div class="notice info" id="cloudSyncStatus" style="margin-top:12px">حالت آفلاین فعال است؛ اطلاعات روی همین دستگاه ذخیره می‌شوند.</div>
+        <div class="smalltext">کد اتصال فقط در همین مرورگر نگهداری می‌شود و داخل فایل‌های عمومی برنامه قرار نمی‌گیرد. برای شروع، «فعال‌سازی همگام‌سازی» را انتخاب کن؛ برنامه پیش از جایگزینی اطلاعات، تعداد رکوردها را نشان می‌دهد.</div>
       </div>
-      <div class="notice info" style="margin-top:16px">ذخیره محلی SQLite همچنان به‌عنوان نسخه پشتیبان فعال است؛ برای خروجی مستقل، دکمه «دانلود پایگاه داده SQLite» را بزنید.</div><div class="footer-note">نسخه ۰.۲۲ — اتصال پایگاه داده ابری Cloudflare D1 و ذخیره محلی پشتیبان.</div>
+      <div class="notice info" style="margin-top:16px">ذخیره محلی SQLite همچنان به‌عنوان نسخه پشتیبان فعال است؛ برای خروجی مستقل، دکمه «دانلود پایگاه داده SQLite» را بزنید.</div><div class="footer-note">نسخه ۰.۲۳ — همگام‌سازی امن و ذخیره محلی پشتیبان.</div>
     </div>
   </section>
 </main>
