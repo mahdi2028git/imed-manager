@@ -1,3 +1,4 @@
+import { processBackgroundMatch } from "./background-matcher.js";
 const TABLES = {
   products: ["irc", "gtin", "name", "model", "manufacturer", "country", "distinction"],
   customers: ["customer_code", "name", "type_id", "customer_type", "province", "city"],
@@ -46,6 +47,11 @@ function decodeBase64Chunk(value) {
   return bytes;
 }
 
+async function ensureBackgroundMatchTables(env) {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS background_match_jobs (id TEXT PRIMARY KEY, base_hash TEXT NOT NULL UNIQUE, input_json TEXT NOT NULL, cursor INTEGER NOT NULL DEFAULT 0, percent REAL NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'running', state_json TEXT, error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS background_match_results (job_id TEXT NOT NULL, doc_index INTEGER NOT NULL, result_json TEXT NOT NULL, PRIMARY KEY(job_id, doc_index))").run();
+}
+
 export default {
   async fetch(request, env) {
     const cors = corsHeaders(request, env);
@@ -61,6 +67,51 @@ export default {
     }
 
     const parts = url.pathname.split("/").filter(Boolean);
+
+    if (parts[0] === "api" && parts[1] === "background-matches") {
+      try {
+        await ensureBackgroundMatchTables(env);
+        if (request.method === "POST" && parts.length === 2) {
+          const body = await request.json();
+          const baseHash = String(body.baseHash || "");
+          const input = body.input || {};
+          const imed = Array.isArray(input.imed) ? input.imed : [];
+          const sepidar = Array.isArray(input.sepidar) ? input.sepidar : [];
+          if (!/^[a-f0-9]{64}$/.test(baseHash) || !imed.length || !sepidar.length) return json({error:"Invalid background matching snapshot"},400,cors);
+          const bytes = new TextEncoder().encode(JSON.stringify(input)).length;
+          if (bytes > 8_000_000) return json({error:"Snapshot exceeds 8 MB; chunked upload is required",bytes},413,cors);
+          let job = await env.DB.prepare("SELECT * FROM background_match_jobs WHERE base_hash=?").bind(baseHash).first();
+          if (job && job.status === "completed") return json({job,resumed:true},200,cors);
+          if (!job) {
+            const id = crypto.randomUUID();
+            await env.DB.prepare("INSERT INTO background_match_jobs (id,base_hash,input_json,status) VALUES (?,?,?,'running')").bind(id,baseHash,JSON.stringify(input)).run();
+            job = await env.DB.prepare("SELECT * FROM background_match_jobs WHERE id=?").bind(id).first();
+            await env.MATCH_QUEUE.send({jobId:id});
+          } else if (job.status === "failed") {
+            await env.DB.prepare("UPDATE background_match_jobs SET status='running',error='',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(job.id).run();
+            await env.MATCH_QUEUE.send({jobId:job.id});
+            job = await env.DB.prepare("SELECT * FROM background_match_jobs WHERE id=?").bind(job.id).first();
+          }
+          return json({job,resumed:!!job.cursor},200,cors);
+        }
+        if (request.method === "GET" && parts.length === 2) {
+          const id = String(url.searchParams.get("id") || "");
+          if (!id) return json({error:"Missing job id"},400,cors);
+          const job = await env.DB.prepare("SELECT id,base_hash,cursor,percent,status,error,created_at,updated_at FROM background_match_jobs WHERE id=?").bind(id).first();
+          if (!job) return json({error:"Job not found"},404,cors);
+          return json({job},200,cors);
+        }
+        if (request.method === "GET" && parts.length === 3 && parts[2] === "results") {
+          const id = String(url.searchParams.get("id") || "");
+          if (!id) return json({error:"Missing job id"},400,cors);
+          const rows = await env.DB.prepare("SELECT doc_index,result_json FROM background_match_results WHERE job_id=? ORDER BY doc_index LIMIT 5000").bind(id).all();
+          return json({data:(rows.results||[]).map(x=>({doc_index:x.doc_index,result:JSON.parse(x.result_json)}))},200,cors);
+        }
+        return json({error:"Method not allowed"},405,cors);
+      } catch (error) {
+        return json({error:"Background matching operation failed",detail:error.message},500,cors);
+      }
+    }
 
     // Full application snapshot: only switch the active pointer after a complete upload.
     if (parts[0] === "api" && parts[1] === "state") {
@@ -263,6 +314,20 @@ export default {
       return json({ error: "Method not allowed" }, 405, cors);
     } catch (error) {
       return json({ error: "Database operation failed", detail: error.message }, 500, cors);
+    }
+  },
+  async queue(batch, env) {
+    for (const message of batch.messages) {
+      const jobId = String(message.body?.jobId || "");
+      if (!jobId) { message.ack(); continue; }
+      try {
+        await ensureBackgroundMatchTables(env);
+        await processBackgroundMatch(env.DB, jobId, env.MATCH_QUEUE);
+        message.ack();
+      } catch (error) {
+        await env.DB.prepare("UPDATE background_match_jobs SET status='failed',error=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(String(error?.stack || error?.message || error).slice(0,2000),jobId).run();
+        message.retry();
+      }
     }
   }
 };
