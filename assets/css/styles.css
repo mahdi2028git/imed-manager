@@ -499,3 +499,40 @@ tbody tr:hover{background:#f5f9ff}
   }
   #scriptDocSearchResults .script-doc-table-scroll table { min-width: 1100px !important; }
 }
+
+
+/* v0.25.2: keep the invoice table inside the mobile page and scroll within it */
+#view-formscript {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+}
+#view-formscript .card,
+#view-formscript .form-grid,
+#view-formscript .form-grid > .field,
+#scriptDocSearchResults,
+#scriptDocSearchResults .script-doc-results-viewport {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+#scriptDocSearchResults .script-doc-results-viewport {
+  overflow: hidden !important;
+}
+#scriptDocSearchResults .script-doc-table-scroll {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: scroll !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-x pan-y !important;
+}
+#scriptDocSearchResults .script-doc-table-scroll table {
+  width: max-content !important;
+  min-width: 1100px !important;
+  max-width: none !important;
+}
