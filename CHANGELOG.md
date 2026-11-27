@@ -2,6 +2,17 @@
 
 All notable user-facing changes are recorded here. Versions follow the policy in [VERSIONING.md](VERSIONING.md).
 
+## [0.32.1] - 2026-11-28
+
+### Fixed
+- Prevented single and bulk IMED form-script generation for IRCs with zero or missing remaining virtual inventory.
+- Prevented form-script counts exceeding the remaining positive stock in the snapshot, including across batch documents sharing one IRC.
+- Limited the current form-script picker to in-scope positive-stock distribution documents; historical sales and allocations remain stored.
+
+### Safety
+- Final submission in register.imed.ir remains manual, and no live inventory quantity is changed by this update.
+- Snapshot balances must be refreshed and validated before actual registration.
+
 ## [0.32.0] - 2026-11-28
 
 ### Added
