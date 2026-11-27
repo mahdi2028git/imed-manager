@@ -83,12 +83,12 @@ function progressMarkup(label,percent,detail=''){const p=Math.max(0,Math.min(100
 function cloudStatus(message){const el=$('cloudSyncStatus');if(el)el.textContent=message}
 function cloudProgress(percent,detail){const el=$('cloudSyncStatus');if(el)el.innerHTML=progressMarkup('در حال انتقال اطلاعات به Cloudflare',percent,detail)}
 function cloudKey(){return localStorage.getItem(CLOUD_KEY_STORAGE)||''}
-async function cloudRequest(path,options={}){const key=cloudKey();if(!key)throw new Error('ابتدا کلید دسترسی Cloudflare را وارد و اتصال را برقرار کنید');const headers={...(options.headers||{}),Authorization:'Bearer '+key};if(options.body)headers['Content-Type']='application/json';const response=await fetch(CLOUD_API+path,{...options,headers});let body={};try{body=await response.json()}catch(_){}if(!response.ok){const error=new Error(body.error||('خطای سرور: '+response.status));error.status=response.status;throw error}return body}
+async function cloudRequest(path,options={}){const key=cloudKey();if(!key)throw new Error('ابتدا کلید دسترسی Cloudflare را وارد و اتصال را برقرار کنید');const headers={...(options.headers||{}),Authorization:'Bearer '+key};if(options.body)headers['Content-Type']='application/json';const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),90000);try{const response=await fetch(CLOUD_API+path,{...options,headers,signal:controller.signal});let body={};try{body=await response.json()}catch(_){}if(!response.ok){const error=new Error(body.error||('خطای سرور: '+response.status));error.status=response.status;throw error}return body}catch(err){if(err.name==='AbortError')throw new Error('مهلت پاسخ سرور تمام شد؛ اتصال اینترنت را بررسی کنید و دوباره تلاش کنید');throw err}finally{clearTimeout(timer)}}
 function cloudSnapshot(){return{version:1,savedAt:new Date().toISOString(),imed:state.imed,sepidar:state.sepidar,allocations:state.allocations,virtualInventory:state.virtualInventory,virtualInventoryMeta:state.virtualInventoryMeta,currentDoc:state.currentDoc,importSources:state.importSources}}
 async function cloudPushSnapshot(){
  if(!cloudEnabled)return;
  const payload=new TextEncoder().encode(JSON.stringify(cloudSnapshot()));
- const chunkSize=300000,total=Math.ceil(payload.length/chunkSize);
+ const chunkSize=100000,total=Math.ceil(payload.length/chunkSize);
  const uploadId=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
  cloudProgress(0,'آماده‌سازی '+faNum(payload.length)+' بایت اطلاعات…');
  for(let index=0;index<total;index++){
@@ -96,8 +96,7 @@ async function cloudPushSnapshot(){
   let binary='';
   for(let i=0;i<part.length;i++)binary+=String.fromCharCode(part[i]);
   const data=btoa(binary);
-  await cloudRequest('/api/state/chunk',{method:'POST',body:JSON.stringify({uploadId,index,total,data})});
-  const percent=Math.min(99,Math.round(((index+1)/total)*100));
+  let chunkError=null;\n  for(let attempt=1;attempt<=4;attempt++){try{await cloudRequest('/api/state/chunk',{method:'POST',body:JSON.stringify({uploadId,index,total,data})});chunkError=null;break}catch(err){chunkError=err;if(attempt<4){cloudProgress(Math.round((index/total)*100),'ارسال بخش '+faNum(index+1)+' ناموفق بود؛ تلاش مجدد '+faNum(attempt)+' از 3…');await new Promise(resolve=>setTimeout(resolve,1200*attempt))}}}\n  if(chunkError)throw new Error('ارسال بخش '+(index+1)+' پس از ۴ تلاش ناموفق بود: '+chunkError.message);\n  const percent=Math.min(99,Math.round(((index+1)/total)*100));
   cloudProgress(percent,'بخش '+faNum(index+1)+' از '+faNum(total)+' — '+faNum(Math.min(payload.length,(index+1)*chunkSize))+' از '+faNum(payload.length)+' بایت');
  }
  cloudProgress(99,'همه بخش‌ها ارسال شد؛ در حال نهایی‌سازی و ذخیره در پایگاه داده…');
