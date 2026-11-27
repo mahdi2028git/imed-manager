@@ -78,7 +78,7 @@ function signedHeaders(method, key, body, digest, contentType) {
   const canonicalHeaderNames = ["host", ...Object.keys(headers).map(k => k.toLowerCase()).sort()];
   const canonicalHeaders = canonicalHeaderNames.map(name => {
     const v = name === "host" ? url.host : headers[Object.keys(headers).find(k => k.toLowerCase() === name)];
-    return name + ":" + String(v).trim().replace(/\s+/g, " ") + "\n";
+    return name + ":" + String(v).trim().replace(/\s+/g, " ");
   }).join("");
   const signed = canonicalHeaderNames.join(";");
   const canonicalRequest = [
@@ -97,8 +97,8 @@ function signedHeaders(method, key, body, digest, contentType) {
   return { url, headers };
 }
 
-async function request(method, key, body, digest) {
-  const signed = signedHeaders(method, key, body, digest);
+async function request(method, key, body, digest, contentType) {
+  const signed = signedHeaders(method, key, body, digest, contentType);
   return fetch(signed.url, {
     method,
     headers: signed.headers,
