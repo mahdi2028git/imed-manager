@@ -1,50 +1,59 @@
-# IMED Manager — Cloudflare D1
-
-The Cloudflare resources for this project have been created in the connected account.
+# IMED Manager — Cloudflare D1 and Worker
 
 ## Deployed resources
 
 - D1 database: `imed-manager-db`
 - Worker: `imed-manager-api`
 - Worker URL: https://imed-manager-api.mahdigithub28.workers.dev
-- Public health endpoint: https://imed-manager-api.mahdigithub28.workers.dev/api/health
+- Health endpoint: https://imed-manager-api.mahdigithub28.workers.dev/api/health
 - D1 binding: `DB`
-- GitHub Pages origin allowlist: `https://mahdi2028git.github.io`
+- Allowed browser origin: `https://mahdi2028git.github.io` (Worker variable `APP_ORIGIN`)
 
-The D1 schema has six core tables: `products`, `customers`, `imed_distributions`, `sepidar_invoices`, `sepidar_invoice_items`, and `match_allocations`.
+## Authentication (current implementation)
+
+The Worker currently validates `Authorization: Bearer <API_KEY>` against the Worker secret `API_KEY`. It does **not** currently validate Cloudflare Access JWTs. Configure the secret with:
+
+```sh
+npx wrangler secret put API_KEY --config cloudflare/wrangler.jsonc
+```
+
+The app stores the key entered in its settings in browser localStorage. Treat it as a shared client credential, not as a secret that can be hidden from a browser user. Never commit the key to Git or put it in `.env.example`. For a public multi-user deployment, replace this shared-key model with per-user authentication (for example Cloudflare Access/JWT validation) before broad rollout.
+
+The health endpoint is public. Data and snapshot endpoints require the bearer key. CORS only controls browser access; it is not an authentication boundary.
+
+## D1 schema and migrations
+
+- For a **new empty database**, initialize with `cloudflare/schema.sql`.
+- For an existing database that already has migration `0002_local_first_matches.sql`, apply the non-destructive runtime-table migration:
+
+```sh
+npx wrangler d1 execute imed-manager-db --remote --file=cloudflare/migrations/0003_runtime_tables.sql --config cloudflare/wrangler.jsonc
+```
+
+- Migration `0002_local_first_matches.sql` drops and recreates `match_allocations`; it was intended only for the previously verified empty table. **Do not rerun it against a populated database.**
+- Do not apply schema changes to production until a D1 backup has been taken and the migration target has been verified.
+
+The bootstrap schema includes the six business tables plus the runtime tables used by the current Worker: `app_state_uploads`, `app_state_meta`, `match_jobs`, and `match_suggestion_cache`.
 
 ## API routes
 
-All data routes require a valid Cloudflare Access JWT:
+All routes except `GET /api/health` require the bearer API key.
 
-- `GET /api/{table}?limit=100&offset=0`
-- `GET /api/{table}/{id}`
-- `POST /api/{table}`
-- `PATCH /api/{table}/{id}`
-- `DELETE /api/{table}/{id}`
+- `GET /api/state`
+- `POST /api/state/chunk`
+- `POST /api/state/commit`
+- `POST /api/match-jobs`, `GET /api/match-jobs?baseHash=...`, `PATCH /api/match-jobs/:id`
+- `GET /api/match-cache?baseHash=...`, `POST /api/match-cache`
+- `GET /api/matches/sync?since=<ISO timestamp>`
+- `POST /api/matches/sync` (up to 100 allocations per batch)
+- Generic CRUD: `GET /api/{table}`, `GET /api/{table}/{id}`, `POST /api/{table}`, `PATCH /api/{table}/{id}`, `DELETE /api/{table}/{id}` for `products`, `customers`, `imed_distributions`, `sepidar_invoices`, and `sepidar_invoice_items`.
 
-Allowed tables: `products`, `customers`, `imed_distributions`, `sepidar_invoices`, `sepidar_invoice_items`, `match_allocations`.
+The local-first boundary remains: the browser's SQLite database is the primary store for imported IMED/Sepidar data and virtual inventory. D1 snapshot and match-sync features are separate mechanisms; do not treat the sync endpoint as a replacement for a tested local database backup.
 
-## Remaining setup
+## Operational checks
 
-1. Configure a Cloudflare Access application and policy for the Worker hostname.
-2. Add Worker variables `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` using the values from that Access application.
-3. Configure the browser app to authenticate through Access and call this API.
-4. Migrate the existing browser-local SQLite data only after verifying the mapping and taking a backup.
-
-Until Access is configured, the health endpoint is public but data endpoints intentionally return HTTP 401. The current frontend still uses its existing browser-local SQLite storage; it has not yet been migrated to this API.
-
-Never commit API tokens, passwords, or Access secrets to this repository.
-
-
-## Local-first match sync (implementation branch)
-
-The intended data boundary is deliberately small:
-
-- The browser's existing SQLite database in IndexedDB remains the primary store for IMED distributions, Sepidar rows, imports, and virtual inventory.
-- D1 stores only synchronized match allocations.
-- Stable business keys (`distribution_key`, `sepidar_item_key`) identify source rows across devices; device-local row IDs are informational only.
-- The Worker exposes `GET /api/matches/sync?since=<ISO timestamp>` and `POST /api/matches/sync` (batches of up to 100). Requests still require Cloudflare Access.
-- `deleted_at` is a tombstone field so a future client can propagate deletions without silently losing history.
-
-Before enabling production sync, the frontend must generate deterministic business keys from imported source rows, maintain a durable local outbox/tombstones, merge remote changes into local SQLite, and handle conflicts. Do not enable writes or apply the schema migration until those client-side pieces and Cloudflare Access are configured and tested. The app's current local SQLite data must be backed up before any migration or sync rollout.
+1. Verify `GET /api/health` returns `{ "ok": true }`.
+2. Verify an unauthenticated `GET /api/state` returns HTTP 401.
+3. Verify an authenticated `GET /api/state` returns either HTTP 200 or the expected empty-state HTTP 404.
+4. Test chunk upload and commit using a disposable snapshot before enabling cloud sync on production data.
+5. Export a local `.sqlite` backup before restoring or changing devices.

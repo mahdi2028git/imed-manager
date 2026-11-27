@@ -4,7 +4,6 @@ const TABLES = {
   imed_distributions: ["document_no", "issue_date", "product_id", "customer_id", "quantity", "remaining_quantity", "source_file", "raw_json"],
   sepidar_invoices: ["invoice_no", "invoice_date", "customer_id", "document_type", "source_file", "raw_json"],
   sepidar_invoice_items: ["invoice_id", "product_id", "item_name", "quantity", "unit_price", "raw_json"],
-  match_allocations: ["distribution_id", "sepidar_item_id", "matched_quantity", "match_method", "status", "notes"]
 };
 
 function json(data, status = 200, headers = {}) {
