@@ -16,7 +16,7 @@ function json(data, status = 200, headers = {}) {
 
 function corsHeaders(request, env) {
   const origin = request.headers.get("Origin") || "";
-  const allowed = (env.APP_ORIGIN || "").split(",").map(v => v.trim()).filter(Boolean);
+  const allowed = (env.APP_ORIGIN || "https://mahdi2028git.github.io").split(",").map(v => v.trim()).filter(Boolean);
   const headers = { "Vary": "Origin" };
   if (allowed.includes(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
