@@ -454,7 +454,7 @@ async function calculateAllAutoMatches(){
  const byInvoice=new Map();
  for(const x of sepidarIndex){const k=norm(x.s.invoiceNo);if(k){let a=byInvoice.get(k);if(!a)byInvoice.set(k,a=[]);a.push(x)}}
  const docs=[...state.imed].sort((a,b)=>String(a.distributionDate||'').localeCompare(String(b.distributionDate||'')));
- const baseHash=await matchCacheHash({matcherVersion:3,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+ const baseHash=await matchCacheHash({matcherVersion:4,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
  let remoteMatchJob=null,lastRemoteJobUpdate=0;
  if(cloudEnabled){
    try{
@@ -619,7 +619,7 @@ let allMatchBusy=false;
 async function refreshAutoMatchButtonState(){
  const buttons=[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean);if(!buttons.length||!state.imed.length)return;
  try{
-  const baseHash=await matchCacheHash({matcherVersion:3,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+  const baseHash=await matchCacheHash({matcherVersion:4,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
   const saved=await idbGet('matchCheckpoint:'+baseHash);
   if(cloudEnabled){
     try{
