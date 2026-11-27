@@ -1,0 +1,27 @@
+name: Quality checks
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  syntax-and-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check browser and userscript syntax
+        run: |
+          node --check assets/js/app.js
+          node --check tampermonkey/IMED_Grok_Tampermonkey.user.js
+      - name: Check Worker module syntax
+        run: node --input-type=module --check < cloudflare/worker.js
+      - name: Run project contract tests
+        run: node tests/project-contract.test.mjs
