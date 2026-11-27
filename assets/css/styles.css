@@ -259,3 +259,177 @@ tbody tr:hover{background:#f5f9ff}
   #view-dashboard .two{gap:10px}
   #view-dashboard .two>.card{padding:11px}
 }
+
+
+/* v0.23: unified responsive layout for phones and tablets */
+@media (max-width: 900px) {
+  .shell {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100%;
+    min-height: 100dvh;
+    direction: rtl !important;
+  }
+  .sidebar {
+    position: sticky !important;
+    inset-block-start: 0;
+    z-index: 200;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    padding: 9px 12px !important;
+    gap: 8px !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--line) !important;
+    box-shadow: 0 3px 14px rgba(16,24,40,.12);
+  }
+  .brand {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: right !important;
+    flex-wrap: nowrap !important;
+    gap: 9px !important;
+    min-width: 0;
+    padding: 2px 2px 8px !important;
+  }
+  .brand-mark, .brand-logo {
+    width: 100px !important;
+    max-width: 100px !important;
+    height: auto !important;
+    max-height: 30px !important;
+    flex: 0 0 auto !important;
+  }
+  .brand b { font-size: 12px !important; line-height: 1.4; }
+  .brand small { display: block !important; font-size: 10px !important; }
+  .nav {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    gap: 6px !important;
+    padding: 0 0 3px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+  .nav button {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: auto !important;
+    min-width: max-content !important;
+    min-height: 42px !important;
+    padding: 8px 11px !important;
+    gap: 6px !important;
+    font-size: 12px !important;
+    line-height: 1.35;
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+  }
+  .nav .ico { flex: 0 0 auto !important; width: auto !important; }
+  .side-note { display: none !important; }
+  .main {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 15px 14px calc(26px + env(safe-area-inset-bottom)) !important;
+  }
+  .topbar { gap: 10px; }
+  .top-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+  .section-head { align-items: stretch; gap: 10px; }
+  .section-head > div { min-width: 0; }
+  .section-head .actions { display: flex; flex-wrap: wrap; width: 100%; }
+  .section-head .actions input { flex: 1 1 180px; width: 100%; min-width: 0 !important; }
+  .grid, .card, .view, .field { min-width: 0; }
+  .table-wrap {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .table-wrap table { min-width: 650px; }
+  input, select, textarea, button { max-width: 100%; }
+  input, select, textarea { font-size: 16px; }
+  button, .btn, select, input[type="file"] { min-height: 42px; }
+  .actions { flex-wrap: wrap; gap: 8px; }
+  .actions > * { max-width: 100%; }
+  .codebox { max-width: 100%; overflow-x: auto; }
+}
+@media (max-width: 560px) {
+  .main { padding: 11px 9px calc(24px + env(safe-area-inset-bottom)) !important; }
+  .topbar { flex-direction: column; align-items: stretch !important; }
+  .topbar h1 { font-size: 19px !important; }
+  .top-actions { width: 100%; }
+  .local-pill { font-size: 10px; }
+  .stats { grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 8px; }
+  .two, .three, .form-grid, .mapping, .split { grid-template-columns: minmax(0,1fr) !important; }
+  .card { padding: 11px !important; border-radius: 13px; }
+  .section-head { flex-direction: column; }
+  .section-head .actions { align-items: stretch; }
+  .section-head .actions > button { flex: 1 1 auto; }
+  .actions > .btn { flex: 1 1 140px; }
+  .field input, .field select, .field textarea { width: 100%; }
+  .stepper { display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 7px; }
+  .step { flex: 0 0 auto; white-space: nowrap; }
+  .kpi-row { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+  .table-wrap table { min-width: 600px; }
+}
+@media (max-width: 360px) {
+  .brand-mark, .brand-logo { width: 82px !important; max-width: 82px !important; }
+  .brand b { font-size: 11px !important; }
+  .nav button { padding-inline: 9px !important; font-size: 11px !important; }
+  .stats { grid-template-columns: 1fr 1fr !important; }
+  .stat .value { font-size: 17px !important; }
+}
+
+
+/* v0.24: make the wide IMED script invoice table easy to swipe horizontally */
+#scriptDocSearchResults .script-table-hint {
+  display: block;
+  margin: 7px 2px 8px;
+  color: var(--muted, #64748b);
+  font-size: 12px;
+}
+#scriptDocSearchResults .script-doc-table-scroll {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: scroll !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  scrollbar-width: auto;
+  scrollbar-color: #94a3b8 #edf1f6;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 10px;
+}
+#scriptDocSearchResults .script-doc-table-scroll:focus {
+  outline: 2px solid var(--primary, #2879dc);
+  outline-offset: 2px;
+}
+#scriptDocSearchResults .script-doc-table-scroll table {
+  width: max-content !important;
+  min-width: 1050px !important;
+  table-layout: auto;
+}
+@media (max-width: 900px) {
+  #scriptDocSearchResults .script-doc-table-scroll {
+    max-height: 65vh;
+  }
+  #scriptDocSearchResults .script-doc-table-scroll table {
+    min-width: 1050px !important;
+  }
+}
