@@ -468,10 +468,13 @@ async function calculateAllAutoMatches(){
        const planned=[];for(const p of cachedRow.planned){const source=sepidarById.get(String(p.sourceId));if(!source){valid=false;break}planned.push({s:source,q:num(p.q),score:num(p.score),signals:Array.isArray(p.signals)?p.signals:[],ircConflict:!!p.ircConflict})}if(!valid)break;
        const d=docs[i];restoredRows.push({d,already:num(cachedRow.already),target:num(cachedRow.target),got:num(cachedRow.got),left:num(cachedRow.left),total:num(cachedRow.total),status:String(cachedRow.status||'بدون تطبیق'),planned});
      }
-     if(valid){freeById.clear();saved.freeById.forEach(([k,v])=>freeById.set(String(k),num(v)));rows.push(...restoredRows);startIndex=saved.nextIndex;chain=String(saved.chain||chain);matchProgress((startIndex/Math.max(1,docs.length))*100,'ادامه از سند '+faNum(startIndex+1)+' از '+faNum(docs.length)+' — '+faNum(startIndex)+' سند قبلاً ذخیره شده؛ از ابتدا محاسبه نمی‌شود');}
+     if(valid){freeById.clear();saved.freeById.forEach(([k,v])=>freeById.set(String(k),num(v)));rows.push(...restoredRows);startIndex=saved.nextIndex;reused=startIndex;chain=String(saved.chain||chain);matchProgress((startIndex/Math.max(1,docs.length))*100,'ادامه از سند '+faNum(startIndex+1)+' از '+faNum(docs.length)+' — '+faNum(startIndex)+' سند قبلاً ذخیره شده؛ از ابتدا محاسبه نمی‌شود');}
    }
  }catch(err){console.warn('Could not restore matching checkpoint; falling back to saved per-document cache',err)}
  const saveCheckpoint=async(nextIndex,currentChain)=>{
+   // A full inventory snapshot is comparatively large; checkpoint every five documents.
+   // Results between checkpoints are still saved individually and replayed without matching.
+   if(nextIndex%5!==0&&nextIndex!==docs.length)return;
    try{await idbPut(checkpointKey,{version:1,nextIndex,chain:currentChain,freeById:[...freeById.entries()]})}
    catch(err){console.warn('Matching checkpoint save failed',err)}
  };
