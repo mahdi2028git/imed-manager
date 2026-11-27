@@ -166,4 +166,43 @@ const live=latestPositiveVirtualInventoryRows([
 ]);
 assert.deepEqual(Array.from(live.map(v=>v.inventoryId)),["2"]);
 
+
+// Persian Coding search must operate over the complete workbook, not its first
+// matching text row, and must reject incompatible categories and ambiguous names.
+const receiverModule=await read("../assets/js/receiver-matcher.js");
+const matcher=runInNewContext(receiverModule+"\nIMEDReceiverMatcher",{});
+const receiverRows=[
+ {code:"82081002",name:"ساسان",category:"آزمایشگاه",city:"تهران",status:"فعال"},
+ {code:"11501790",name:"ساسان",category:"مرکزدرمانی",city:"تهران",status:"فعال"},
+ {code:"99065020",name:"عرفان",category:"مرکزدرمانی",city:"تهران",status:"فعال"},
+ {code:"56918426",name:"بیمارستان عرفان نیایش",category:"مرکزدرمانی",city:"تهران",status:"فعال"},
+ {code:"37222343",name:"حضرت فاطمه الزهرا (س) مهریز",category:"مرکزدرمانی",city:"مهریز",status:"فعال"},
+ {code:"31331421",name:"حضرت فاطمه زهرا (س)",category:"مرکزدرمانی",city:"نقده",status:"فعال"},
+ {code:"10100001",name:"بیمارستان غدیر",category:"مرکزدرمانی",city:"تهران",status:"غیرفعال"},
+ {code:"10100002",name:"بیمارستان غدیر",category:"مرکزدرمانی",city:"تهران",status:"فعال"},
+ {code:"88990011",name:"صبا داروی میلاد",category:"توزیع کننده",city:"تهران",status:"فعال"}
+];
+const receiverIndex=matcher.buildIndex(receiverRows);
+assert.equal(receiverIndex.entries.length,8,"inactive codes must not be considered candidates");
+assert.equal(matcher.find(receiverIndex,"بیمارستان فوق تخصصی ساسان").code,"11501790");
+assert.equal(matcher.find(receiverIndex,"بیمارستان عرفان").code,"56918426","user-approved hospital alias must win over the different short-name clinic");
+assert.equal(matcher.find(receiverIndex,"عرفان").code,"","the short 'Erfan' name cannot silently inherit a hospital code");
+assert.equal(matcher.find(receiverIndex,"بیمارستان غدیر").code,"10100002","inactive code must not be selected");
+assert.equal(matcher.find(receiverIndex,"بیمارستان حضرت فاطمه زهرا در مهریز").candidates[0].record.code,"37222343");
+assert.notEqual(matcher.find(receiverIndex,"صبا داروی میلاد (بیمارستان عرفان)").code,"56918426");
+assert.equal(matcher.norm("  بيمارستانِ ساسان  "),matcher.norm("بیمارستان ساسان"),"Arabic/Persian variants must normalize");
+const codingExcelRows=[
+ ["Column1","Column2","Column3","Column4","Column5","Column6","Column7","Column8","Column9","Column10"],
+ ["کد دریافت کننده","نام دریافت کننده","ماهیت دریافت کننده","استان دریافت کننده","شهر دریافت کننده","شناسه ملی مرکز","نام دانشگاه","شرح آخرین تغییرات","کد جایگزین","آخرین وضعیت اعتبار کد"],
+ ["11501790","ساسان","مرکزدرمانی","تهران","تهران","","","","","فعال"]
+];
+assert.equal(matcher.fromSheet(codingExcelRows)[0].code,"11501790","header detection must support the real workbook layout");
+assert.match(app,/state\.receiverMappings/,"confirmed mappings must persist in app state");
+assert.match(app,/receiverCodingRun\(\)/);
+assert.match(app,/receiverApplySafe\(\)/);
+assert.match(app,/RECEIVER_CODING_CACHE_KEY/,"workbook should be cached locally");
+assert.match(app,/approvedReceiverCodeForCustomer\(customerNameForCoding\)/,"XML must resolve the actual invoice customer");
+assert.match(html,/id="receiverCodingFile"/);
+assert.match(html,/receiver-matcher\.js\?v=0\.32\.3/);
+
 console.log("IMED Manager contract checks passed.");
