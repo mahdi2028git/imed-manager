@@ -646,10 +646,13 @@ async function exportAllAutoMatches(){
   await ensureAutoMatchesReady();
   const xmlRows=[],rejected=[],usedInventory={};
   for(const x of allAutoRows){
-   const v=makeQuotaRows(x.d,false,false,usedInventory);
-   if(v.errors.length){rejected.push(`${x.d.distributionNo||x.d.id}: ${v.errors.join('؛ ')}`);continue}
+   const prospectiveUsed={...usedInventory};
+   const v=makeQuotaRows(x.d,false,false,prospectiveUsed);
+   if(v.errors.length){rejected.push([x.d.distributionNo||x.d.id,v.errors.join('؛ ')]);continue}
+   Object.assign(usedInventory,prospectiveUsed);
    xmlRows.push(...v.rows);
   }
+  if(rejected.length)downloadCSV([['شماره سند توزیع','دلایل حذف از XML'],...rejected],'IMED_XML_Rejected_Documents.csv');
   if(!xmlRows.length)throw Error('هیچ ردیف تخصیص‌یافته‌ای با TypeID، IRC، تعداد، فی، شماره/تاریخ فاکتور، InventoryID و اطلاعات گیرنده معتبر برای XML پیدا نشد.');
   const xml=quotaXml(xmlRows),parsed=new DOMParser().parseFromString(xml,'application/xml');
   if(parsed.querySelector('parsererror'))throw Error('ساختار XML معتبر نیست');
@@ -847,7 +850,11 @@ function loadXmlDoc(docId){
 $('xmlDocSelect').addEventListener('change',e=>loadXmlDoc(e.target.value));
 $('saveXmlHeader').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند توزیع را انتخاب کن');d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save();renderXmlRows();toast('مشخصات گیرنده ذخیره شد')};
 function autoSaveXmlHeader(){const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return;d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save()}$('xmlTypeId').addEventListener('change',autoSaveXmlHeader);$('xmlReceiverCode').addEventListener('change',autoSaveXmlHeader);
-function stockCandidates(d,a){const irc=norm(d.irc||a.irc||'');return state.virtualInventory.filter(v=>norm(v.irc)===irc&&num(v.remainingQty)>0)}
+function stockCandidates(d,a){
+ const irc=norm(String(d.irc||'').trim()||String(a.irc||'').trim());
+ if(!/^\d+$/.test(irc))return [];
+ return state.virtualInventory.filter(v=>norm(v.irc)===irc&&num(v.remainingQty)>0);
+}
 function resolveStock(d,a,used={}){const c=stockCandidates(d,a);const ok=v=>num(v.remainingQty)-num(used[v.inventoryId]||0)>=num(a.allocatedQty);if(a.inventoryId){const v=c.find(x=>String(x.inventoryId)===String(a.inventoryId));if(v&&ok(v))return{row:v,reason:'انتخاب‌شده'};return{row:null,reason:'InventoryID انتخاب‌شده موجودی کافی ندارد یا در Snapshot نیست'}}const eligible=c.filter(ok);const exact=eligible.filter(v=>Math.abs(num(v.remainingQty)-num(used[v.inventoryId]||0)-num(a.allocatedQty))<0.00001);if(exact.length===1)return{row:exact[0],reason:'تطبیق یکتای مقدار با باقیمانده'};if(exact.length>1)return{row:null,reason:'چند InventoryID با باقیمانده برابر پیدا شد؛ انتخاب دستی لازم است'};if(eligible.length===1)return{row:eligible[0],reason:'تنها InventoryID دارای موجودی کافی'};if(!eligible.length)return{row:null,reason:c.length?'موجودی باقیمانده کافی نیست':'IRC در Snapshot انبار پیدا نشد'};return{row:null,reason:'چند InventoryID موجودی کافی دارند؛ انتخاب دستی لازم است'}}
 function quotaAllocationsFor(d){
  const saved=allocationsFor(d.id);
@@ -872,9 +879,74 @@ function renderXmlRows(){
  });
  validateXmlDoc(d,false)
 }
-function makeQuotaRows(d,checkXmlTotal=true,forForm=false,sharedInventoryUsed=null){let used=sharedInventoryUsed||{},rows=[],errors=[],skipped=[];if(!d)return{rows,errors:['سندی انتخاب نشده است']};const docAllocations=quotaAllocationsFor(d);/* تطبیق ناقص به‌تنهایی مانع ساخت اسکریپت ثبت نیست؛ فقط ردیف‌های پیشنهادی با تعداد مثبت ارسال می‌شوند. */const rawTypeId=String(d.typeId||'').trim();const mappedTypeId=inferTypeId(d);const hasTypeSource=String(d.receiverNature||d.distributionType||'').trim();const typeId=rawTypeId||mappedTypeId;const receiverCode=String(d.receiverCode||'').trim();if(rawTypeId&&hasTypeSource&&mappedTypeId&&rawTypeId!==mappedTypeId)errors.push(`TypeID ذخیره‌شده (${rawTypeId}) با نوع توزیع «${d.distributionType||'—'}» و نگاشت مرجع (${mappedTypeId}) مغایرت دارد.`);for(const a of docAllocations){const r=forForm?{row:null,reason:'فیلدهای درخواستی خالی گذاشته شدند'}:resolveStock(d,a,used);const inv=r.row;const row={TypeID:typeId,IRC:String(d.irc||a.irc||''),Count:num(a.allocatedQty),RialPrice:num(a.unitPrice),InvoiceNo:String(a.invoiceNo||''),InvoiceDate:String(a.invoiceDate||''),InventoryID:forForm?'':(inv?String(inv.inventoryId):String(a.inventoryId||'')),ReceiverCode:forForm?'':receiverCode,ReceiverName:forForm?'':String(d.receiver||'')};let miss=[];const required=forForm?['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate']:['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate','InventoryID','ReceiverCode','ReceiverName'];for(const k of required){if(row[k]===''||row[k]===0||row[k]==null)miss.push(k)}if(!forForm&&!inv)miss.push('InventoryID/موجودی قابل تأیید');if(inv)used[inv.inventoryId]=(used[inv.inventoryId]||0)+row.Count;if(miss.length){const message=`فاکتور ${row.InvoiceNo||'؟'}: فیلدهای ضروری ناقص یا نامعتبر: ${[...new Set(miss)].join('، ')} (${r.reason})`;errors.push(message);continue}else rows.push(row)}const total=rows.reduce((s,x)=>s+x.Count,0);if(total>num(d.quantity)+0.00001)errors.push(`تعداد تخصیص‌یافته (${faNum(total)}) از مقدار سند IMED (${faNum(d.quantity)}) بیشتر است؛ ابتدا تخصیص اضافی را اصلاح کن.`);else if(checkXmlTotal&&total+0.00001<num(d.quantity))skipped.push(`تطبیق ناقص: تعداد تخصیص‌یافته ${faNum(total)} از مقدار سند IMED (${faNum(d.quantity)}) کمتر است؛ XML با مقدار واقعی تخصیص‌یافته ساخته می‌شود.`);if(!docAllocations.length)errors.push('هیچ فاکتور فروشی به این سند تخصیص داده نشده یا پیشنهاد تطبیقی محاسبه نشده است.');if(forForm&&!rows.length&&!errors.length)errors.push('هیچ ردیفی با فیلدهای اجباری کافی برای ارسال به فرم IMED باقی نماند.');return{rows,errors,total,skipped}}
+const QUOTA_XML_FIELDS=['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate','InventoryID','ReceiverCode','ReceiverName'];
+function quotaFieldErrors(row,required=QUOTA_XML_FIELDS){
+ return required.filter(field=>{
+  const value=row?.[field];
+  if(value==null||String(value).trim()==='')return true;
+  if((field==='Count'||field==='RialPrice')&&(!Number.isFinite(Number(value))||Number(value)<=0))return true;
+  if(field==='IRC'&&!/^\d+$/.test(latin(String(value)).trim()))return true;
+  if(field==='TypeID'&&!VALID_DISTRIBUTION_TYPE_IDS.has(String(value).trim()))return true;
+  return false;
+ });
+}
+function makeQuotaRows(d,checkXmlTotal=true,forForm=false,sharedInventoryUsed=null){
+ let used=sharedInventoryUsed||{},rows=[],errors=[],skipped=[];
+ if(!d)return{rows,errors:['سندی انتخاب نشده است']};
+ const docAllocations=quotaAllocationsFor(d);
+ /* تطبیق ناقص پذیرفته است؛ تنها فیلدهای اجباری تک‌تک ردیف‌ها باید معتبر باشند. */
+ const rawTypeId=String(d.typeId||'').trim();
+ const mappedTypeId=inferTypeId(d);
+ const hasTypeSource=String(d.receiverNature||d.distributionType||'').trim();
+ const typeId=rawTypeId||mappedTypeId;
+ const receiverCode=String(d.receiverCode||'').trim();
+ if(rawTypeId&&hasTypeSource&&mappedTypeId&&rawTypeId!==mappedTypeId)
+  errors.push(`TypeID ذخیره‌شده (${rawTypeId}) با نوع توزیع «${d.distributionType||'—'}» و نگاشت مرجع (${mappedTypeId}) مغایرت دارد.`);
+ for(const a of docAllocations){
+  const sourceIrc=String(a.irc||'').trim(),documentIrc=String(d.irc||'').trim();
+  const r=forForm?{row:null,reason:'فیلدهای درخواستی خالی گذاشته شدند'}:resolveStock(d,a,used);
+  const inv=r.row;
+  const row={
+   TypeID:String(typeId||'').trim(),
+   IRC:latin(documentIrc||sourceIrc).trim(),
+   Count:num(a.allocatedQty),
+   RialPrice:num(a.unitPrice),
+   InvoiceNo:String(a.invoiceNo||'').trim(),
+   InvoiceDate:String(a.invoiceDate||'').trim(),
+   InventoryID:forForm?'':(inv?String(inv.inventoryId||'').trim():''),
+   ReceiverCode:forForm?'':receiverCode,
+   ReceiverName:forForm?'':String(d.receiver||'').trim()
+  };
+  const required=forForm?QUOTA_XML_FIELDS.slice(0,6):QUOTA_XML_FIELDS;
+  const miss=quotaFieldErrors(row,required);
+  if(!forForm&&documentIrc&&sourceIrc&&norm(documentIrc)!==norm(sourceIrc))
+   miss.push('IRC مغایر بین سند IMED و فاکتور سپیدار');
+  if(!forForm&&!inv)miss.push('InventoryID/موجودی قابل تأیید');
+  if(miss.length){
+   errors.push(`فاکتور ${row.InvoiceNo||'؟'}: فیلدهای ضروری ناقص یا نامعتبر: ${[...new Set(miss)].join('، ')} (${r.reason})`);
+   continue;
+  }
+  rows.push(row);
+  if(inv)used[inv.inventoryId]=(used[inv.inventoryId]||0)+row.Count;
+ }
+ const total=rows.reduce((s,x)=>s+x.Count,0);
+ if(total>num(d.quantity)+0.00001)
+  errors.push(`تعداد تخصیص‌یافته (${faNum(total)}) از مقدار سند IMED (${faNum(d.quantity)}) بیشتر است؛ ابتدا تخصیص اضافی را اصلاح کن.`);
+ else if(checkXmlTotal&&total+0.00001<num(d.quantity))
+  skipped.push(`تطبیق ناقص: تعداد تخصیص‌یافته ${faNum(total)} از مقدار سند IMED (${faNum(d.quantity)}) کمتر است؛ XML با مقدار واقعی تخصیص‌یافته ساخته می‌شود.`);
+ if(!docAllocations.length)errors.push('هیچ فاکتور فروشی به این سند تخصیص داده نشده یا پیشنهاد تطبیقی محاسبه نشده است.');
+ if(forForm&&!rows.length&&!errors.length)errors.push('هیچ ردیفی با فیلدهای اجباری کافی برای ارسال به فرم IMED باقی نماند.');
+ return{rows,errors,total,skipped};
+}
 function xmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
-function quotaXml(rows){return `<?xml version="1.0" encoding="UTF-8"?>\n<QuotaList>\n${rows.map(r=>'  <Quota>\n'+Object.entries(r).map(([k,v])=>`    <${k}>${xmlEsc(v)}</${k}>`).join('\n')+'\n  </Quota>').join('\n')}\n</QuotaList>\n`}
+function quotaXml(rows){
+ if(!Array.isArray(rows)||!rows.length)throw Error('هیچ ردیف معتبری برای ساخت XML وجود ندارد.');
+ for(const [index,row] of rows.entries()){
+  const invalid=quotaFieldErrors(row);
+  if(invalid.length)throw Error(`ردیف ${index+1}: فیلدهای اجباری XML نامعتبرند: ${invalid.join('، ')}`);
+ }
+ return `<?xml version="1.0" encoding="UTF-8"?>\n<QuotaList>\n${rows.map(r=>'  <Quota>\n'+QUOTA_XML_FIELDS.map(k=>`    <${k}>${xmlEsc(r[k])}</${k}>`).join('\n')+'\n  </Quota>').join('\n')}\n</QuotaList>\n`;
+}
 function validateXmlDoc(d,show=true){
  const v=makeQuotaRows(d);
  if(show&&$('xmlValidation')){
