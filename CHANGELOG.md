@@ -9,6 +9,8 @@ All notable user-facing changes are recorded here. Versions follow the policy in
 - Displayed source and calculated rial amounts in IMED/Sepidar tables, financial dashboard, exports, XML preparation and invoice selection.
 - Reported unit-price versus supplied line-total differences without changing source fields.
 - Deterministic candidate selection from the same IRC using the smallest sufficient remaining inventory balance when multiple inventories qualify; equal exact balances remain manually reviewable.
+- Scoped new automatic invoice matching to IRCs with positive virtual-inventory remaining balances; zero-stock or absent-stock documents stay stored but are excluded from the current stock-clearance queue.
+- Capped new matching suggestions to available remaining quantity per IRC, rather than initial inventory, with updated cache keys and a separate out-of-scope dashboard status.
 
 ### Safety
 - Missing IMED prices are not silently filled from Sepidar, and the XML RialPrice continues to be sourced from Sepidar.
