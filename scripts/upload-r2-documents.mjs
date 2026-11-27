@@ -19,7 +19,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { fileURLToPath } from "node:url";
 
 const args = new Set(process.argv.slice(2));
 const valueAfter = (flag, fallback) => {
@@ -65,7 +64,7 @@ function encodedKey(key) {
   return String(key).split("/").map(encodeURIComponent).join("/");
 }
 
-function signedHeaders(method, key, body, digest) {
+function signedHeaders(method, key, body, digest, contentType) {
   const now = new Date();
   const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
   const day = amzDate.slice(0, 8);
@@ -75,7 +74,7 @@ function signedHeaders(method, key, body, digest) {
     "x-amz-content-sha256": payloadHash,
     "x-amz-date": amzDate
   };
-  if (method === "PUT") headers["x-amz-meta-sha256"] = digest;
+  if (method === "PUT") { headers["x-amz-meta-sha256"] = digest; headers["content-type"] = contentType; }
   const canonicalHeaderNames = ["host", ...Object.keys(headers).map(k => k.toLowerCase()).sort()];
   const canonicalHeaders = canonicalHeaderNames.map(name => {
     const v = name === "host" ? url.host : headers[Object.keys(headers).find(k => k.toLowerCase() === name)];
@@ -166,7 +165,7 @@ for (const item of plan) {
     throw new Error(`HEAD failed for ${item.objectKey}: HTTP ${head.status} ${await head.text()}`);
   }
 
-  const put = await request("PUT", item.objectKey, item.bytes, item.digest);
+  const put = await request("PUT", item.objectKey, item.bytes, item.digest, item.contentType);
   if (!put.ok) throw new Error(`Upload failed for ${item.objectKey}: HTTP ${put.status} ${await put.text()}`);
   console.log(`UPLOADED ${item.objectKey}`);
   uploaded++;
