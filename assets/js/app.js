@@ -1116,7 +1116,41 @@ $('exportSep').onclick=()=>downloadCSV([['شماره فاکتور','تاریخ',
 function backup(){let data={app:'سامانه توسعه سلامت میهن',version:2,exportedAt:new Date().toISOString(),imed:state.imed,sepidar:state.sepidar,allocations:state.allocations,virtualInventory:state.virtualInventory,virtualInventoryMeta:state.virtualInventoryMeta};let b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='imed_manager_backup.json';a.click();URL.revokeObjectURL(u);toast('فایل پشتیبان آماده شد')}
 if($('exportBackup'))$('exportBackup').onclick=backup;$('exportBackup2').onclick=backup;
 $('exportSqlite').onclick=exportSQLiteFile;$('exportSqliteTop').onclick=exportSQLiteFile;
-$('restoreSqliteInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(!SQL)throw Error('موتور SQLite هنوز آماده نیست');if(!confirm('پایگاه داده فعلی با فایل SQLite انتخاب‌شده جایگزین شود؟'))return;const bytes=new Uint8Array(await f.arrayBuffer());const nextDB=new SQL.Database(bytes);createSchema(nextDB);loadStateFromSQLite(nextDB);sqliteDB.close();sqliteDB=nextDB;await persistSQLiteToBrowser();refresh();toast('پایگاه داده SQLite بازیابی شد')}catch(err){console.error(err);toast('بازکردن SQLite ناموفق بود: '+err.message)}e.target.value=''};
+$('restoreSqliteInput').onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ let nextDB=null,previousState=null;
+ try{
+  if(!SQL)throw Error('موتور SQLite هنوز آماده نیست');
+  if(!confirm('پایگاه داده فعلی با فایل SQLite انتخاب‌شده جایگزین شود؟'))return;
+  await saveQueue;
+  const bytes=new Uint8Array(await f.arrayBuffer());
+  nextDB=new SQL.Database(bytes);
+  const tableResult=nextDB.exec("SELECT name FROM sqlite_master WHERE type='table'");
+  const tables=new Set((tableResult[0]?.values||[]).map(row=>String(row[0])));
+  for(const required of ['imed_distributions','sepidar_rows','allocations']){
+   if(!tables.has(required))throw Error('فایل انتخاب‌شده پایگاه داده IMED Manager نیست؛ جدول '+required+' پیدا نشد.');
+  }
+  previousState=JSON.parse(JSON.stringify(state));
+  loadStateFromSQLite(nextDB);
+  if(!Array.isArray(state.imed)||!Array.isArray(state.sepidar)||!Array.isArray(state.virtualInventory)||!state.allocations||typeof state.allocations!=='object')throw Error('ساختار داده‌های SQLite معتبر نیست');
+  if(state.imed.some(x=>!x||typeof x!=='object')||state.sepidar.some(x=>!x||typeof x!=='object'))throw Error('رکورد نامعتبر در فایل SQLite وجود دارد');
+  if(!state.currentDoc&&state.imed.length)state.currentDoc=state.imed[0].id;
+  const exported=nextDB.export();
+  const copy=exported.buffer.slice(exported.byteOffset,exported.byteOffset+exported.byteLength);
+  await idbPut('main',copy);
+  const oldDB=sqliteDB;sqliteDB=nextDB;nextDB=null;
+  if(oldDB)oldDB.close();
+  invalidateSepidarSearchIndex();
+  refresh();
+  if(state.currentDoc)openDoc(state.currentDoc);
+  toast('پایگاه داده SQLite بازیابی شد');
+ }catch(err){
+  if(previousState)Object.assign(state,previousState);
+  if(nextDB){try{nextDB.close()}catch(_){}}
+  console.error(err);
+  toast('بازکردن SQLite ناموفق بود: '+err.message);
+ }finally{e.target.value=''}
+};
 $('restoreInput').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!Array.isArray(x.imed)||!Array.isArray(x.sepidar))throw Error('ساختار فایل معتبر نیست');if(!confirm('اطلاعات فعلی با اطلاعات پشتیبان جایگزین شود؟'))return;state.imed=x.imed;state.sepidar=x.sepidar;invalidateSepidarSearchIndex();state.allocations=x.allocations||{};state.virtualInventory=x.virtualInventory||[];state.virtualInventoryMeta=x.virtualInventoryMeta||{};await save();toast('پشتیبان بازیابی شد')}catch(err){toast('بازیابی ناموفق: '+err.message)}e.target.value=''};
 $('clearAll').onclick=()=>{if(confirm('تمام اسناد، ردیف‌های سپیدار و تخصیص‌های ذخیره‌شده در این مرورگر پاک شوند؟')){state.imed=[];state.sepidar=[];invalidateSepidarSearchIndex();state.allocations={};state.virtualInventory=[];state.virtualInventoryMeta={};save();$('docPanel').classList.add('hidden');toast('اطلاعات پایگاه داده پاک شد')}};
 $('cloudConnect').onclick=async()=>{const key=$('cloudApiKey').value.trim();if(!key)return toast('کد اتصال خصوصی را وارد کن');localStorage.setItem(CLOUD_KEY_STORAGE,key);cloudEnabled=false;try{const remote=await cloudRequest('/api/state');const d=remote.data||{};const counts='IMED: '+faNum(d.imed?.length||0)+'، سپیدار: '+faNum(d.sepidar?.length||0)+'، انبار: '+faNum(d.virtualInventory?.length||0);if(confirm('نسخه ابری دریافت شد ('+counts+'). اطلاعات این دستگاه با نسخه ابری جایگزین شود؟')){await cloudApplySnapshot(d,{allowShrink:true});cloudEnabled=true;toast('اطلاعات ابری بازیابی و همگام‌سازی فعال شد')}else{cloudEnabled=false;cloudStatus('اتصال بررسی شد؛ برای جلوگیری از بازنویسی، همگام‌سازی فعلاً غیرفعال است.');toast('اطلاعات فعلی دست‌نخورده ماند')}}catch(err){if(err.status===404){if(!state.imed.length&&!state.sepidar.length&&!state.virtualInventory.length){cloudStatus('اتصال برقرار است؛ اطلاعاتی برای ارسال وجود ندارد.');return}if(confirm('هنوز نسخه‌ای در ابر وجود ندارد. اطلاعات این دستگاه برای اولین بار ذخیره شود؟')){cloudEnabled=true;try{await cloudPushSnapshot();toast('اولین نسخه پشتیبان ابری ذخیره شد')}catch(upErr){cloudEnabled=false;toast('ارسال ناموفق: '+upErr.message)}}else cloudStatus('اتصال برقرار است؛ اطلاعات ارسال نشد.')}else{cloudEnabled=false;localStorage.removeItem(CLOUD_KEY_STORAGE);cloudStatus('اتصال ناموفق: '+err.message);toast('اتصال ناموفق: '+err.message)}}};
