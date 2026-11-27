@@ -26,6 +26,10 @@ assert.match(worker, /parts\[1\] === "matches" && parts\[2\] === "sync"/);
 assert.match(worker, /Authorization/);
 assert.match(worker, /env\.API_KEY/);
 
+assert.match(worker, /crypto\.subtle\.timingSafeEqual/, "Worker API keys must use constant-time comparison");
+assert.match(worker, /crypto\.subtle\.digest\("SHA-256"/, "Worker API key comparison must hash to a fixed length");
+assert.doesNotMatch(worker, /supplied\.length\s*!==\s*expected\.length/, "Worker API key validation must not early-return on secret length mismatch");
+
 // The old numeric-ID generic CRUD route must not expose the text-key sync table.
 const tableMap = worker.slice(worker.indexOf("const TABLES"), worker.indexOf("function json"));
 assert.doesNotMatch(tableMap, /match_allocations/);
@@ -37,11 +41,30 @@ assert.match(infer, /return '2'/);
 const quota = app.slice(app.indexOf("function makeQuotaRows"), app.indexOf("function xmlEsc"));
 assert.match(quota, /تطبیق ناقص/);
 assert.match(quota, /skipped\.push/);
+assert.match(quota, /total>num\(d\.quantity\)\+0\.00001/, "XML export must reject allocation totals above the distribution quantity");
+assert.match(app, /if\(v\.errors\.length\)/, "XML generation must stop when any required row field is invalid");
+assert.match(app, /v\.skipped\.map/, "partial quantity must be reported visibly");
+assert.match(app, /فقط برای همین ردیف‌های معتبر/, "partial XML must explain its actual scope");
 
+assert.match(app, /function quotaAllocationsFor\(d\)/, "XML preparation must share the same saved and proposed allocation list");
+assert.match(app, /const alloc=quotaAllocationsFor\(d\)/, "XML UI must display automatic proposals as well as saved allocations");
+assert.match(app, /inventoryId:String\(p\.inventoryId\|\|''\)/, "manual InventoryID choices for proposals must persist");
+assert.match(app, /makeQuotaRows\(x\.d,false,false,usedInventory\)/, "bulk XML must share remaining InventoryID capacity across documents");
+assert.match(app, /sharedInventoryUsed\|\|\{\}/, "quota generation must accept a shared inventory-capacity ledger");
 // Local SQLite restore must validate a database before replacing the current handle.
-assert.match(app, /const nextDB=new SQL\.Database\(bytes\)/);
+assert.match(app, /sqlite_master WHERE type='table'/, "SQLite restore must reject unrelated databases");
+assert.match(app, /await idbPut\('main',copy\)/, "SQLite restore must persist the validated replacement before swapping the live database");
+assert.match(app, /Object\.assign\(state,previousState\)/, "SQLite restore must roll back in-memory state after a failed restore");
+assert.match(app, /nextDB=new SQL\.Database\(bytes\)/);
 assert.match(app, /loadStateFromSQLite\(nextDB\)/);
 assert.match(app, /if\(!confirm\('پایگاه داده فعلی با فایل SQLite انتخاب‌شده جایگزین شود\؟'\)\)return/);
+
+assert.match(quota, /hasTypeSource=String\(d\.receiverNature\|\|d\.distributionType\|\|''\)\.trim\(\)/, "explicit TypeID must not be rejected by the fallback when source type is absent");
+// Re-importing invoice files must not collapse distinct product lines that share invoice/customer/quantity.
+assert.match(app, /norm\(x\.product\)===norm\(row\.product\)/, "Sepidar import dedupe must include the product identity");
+assert.match(app, /String\(x\.irc\|\|''\)===String\(row\.irc\|\|''\)/, "Sepidar import dedupe must include exact IRC");
+assert.match(app, /num\(x\.unitPrice\)===num\(row\.unitPrice\)/, "Sepidar import dedupe must preserve distinct price lines");
+assert.match(app, /norm\(x\.product\)===norm\(d\.product\)/, "IMED import dedupe must preserve product distinctions");
 
 // The legacy userscript must not claim that its unverified phase two was auto-filled.
 assert.doesNotMatch(userscript, /priceDone/);
@@ -49,9 +72,9 @@ assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام 
 assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک دستی خودت انجام می‌شود/);
 
 // Canonical release version, app shell, and cache-busting versions stay aligned.
-assert.equal(version.trim(), "0.31.0", "VERSION must be the canonical release version");
-assert.match(html, /نسخه ۰\.۳۱\.۰/);
-assert.match(html, /styles\.css\?v=0\.31\.0/);
-assert.match(html, /app\.js\?v=0\.31\.0/);
+assert.equal(version.trim(), "0.31.1", "VERSION must be the canonical release version");
+assert.match(html, /نسخه ۰\.۳۱\.۱/);
+assert.match(html, /styles\.css\?v=0\.31\.1/);
+assert.match(html, /app\.js\?v=0\.31\.1/);
 
 console.log("IMED Manager contract checks passed.");
