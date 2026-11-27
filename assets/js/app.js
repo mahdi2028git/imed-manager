@@ -383,6 +383,15 @@ $('findCandidates').addEventListener('click',()=>{
  $('addChecked').onclick=async()=>{let chosen=[...$('candidateResults').querySelectorAll('[data-cand]:checked')];if(!chosen.length)return toast('هیچ ردیفی انتخاب نشده است');let arr=allocationsFor(d.id).slice();chosen.forEach(cb=>{let s=state.sepidar.find(x=>x.id===cb.dataset.cand);if(!s)return;let usedQty=arr.reduce((n,a)=>n+(String(a.sourceId)===String(s.id)?num(a.allocatedQty):0),0),free=Math.max(0,num(s.quantity)-usedQty),q=Math.max(0,Math.min(free,num($('candidateResults').querySelector(`[data-candqty="${CSS.escape(String(s.id))}"]`)?.value)));if(q>0)arr.push({id:id(),sourceId:s.id,invoiceNo:s.invoiceNo,invoiceDate:s.invoiceDate,customer:s.customer,product:s.product,irc:s.irc,allocatedQty:q,unitPrice:s.unitPrice,sourceQty:s.quantity,inventoryId:''})});state.allocations[d.id]=arr;renderAlloc();renderProgress();await save();toast('ردیف‌های انتخابی اضافه و در پایگاه داده محلی ذخیره شدند')};
 });
 
+async function matchCacheHash(value){
+ const bytes=new TextEncoder().encode(typeof value==='string'?value:JSON.stringify(value));
+ const digest=await crypto.subtle.digest('SHA-256',bytes);
+ return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function matchCacheSaveRemote(baseHash,rows){
+ if(!cloudEnabled||!rows.length)return;
+ for(let i=0;i<rows.length;i+=50)await cloudRequest('/api/match-cache',{method:'POST',body:JSON.stringify({baseHash,rows:rows.slice(i,i+50)})});
+}
 async function calculateAllAutoMatches(){
  // Build reusable indexes once. The previous version scored every Sepidar row
  // against every IMED document, even when product/IRC had no overlap.
@@ -442,8 +451,28 @@ async function calculateAllAutoMatches(){
  const byInvoice=new Map();
  for(const x of sepidarIndex){const k=norm(x.s.invoiceNo);if(k){let a=byInvoice.get(k);if(!a)byInvoice.set(k,a=[]);a.push(x)}}
  const docs=[...state.imed].sort((a,b)=>String(a.distributionDate||'').localeCompare(String(b.distributionDate||'')));
+ const baseHash=await matchCacheHash({sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+ const remoteCache=new Map(),pendingRemote=[];
+ if(cloudEnabled){try{const response=await cloudRequest('/api/match-cache?baseHash='+encodeURIComponent(baseHash));for(const row of response.data||[]){try{remoteCache.set(row.doc_key,JSON.parse(row.result_json))}catch(_){}}}catch(err){console.warn('Remote match cache unavailable; local resumable cache remains active',err)}}
+ const sepidarById=new Map(sepidarIndex.map(x=>[String(x.s.id),x.s]));
+ let chain=await matchCacheHash(baseHash+'|start'),reused=0,computed=0;
  for(let docIndex=0;docIndex<docs.length;docIndex++){
    const d=docs[docIndex];
+   const docKey=await matchCacheHash({baseHash,chain,document:d});
+   const localCacheKey='matchCache:'+baseHash+':'+docKey;
+   let cached=remoteCache.get(docKey)||null;
+   if(!cached){try{cached=await idbGet(localCacheKey)}catch(err){console.warn('Local match cache read failed',err)}}
+   if(cached&&Array.isArray(cached.planned)){
+     const restored=[];let valid=true;
+     for(const p of cached.planned){const source=sepidarById.get(String(p.sourceId)),free=freeById.get(String(p.sourceId))||0,q=num(p.q);if(!source||q<=0||q>free+0.00001){valid=false;break}restored.push({s:source,q,score:num(p.score),signals:Array.isArray(p.signals)?p.signals:[],ircConflict:!!p.ircConflict})}
+     if(valid){
+       restored.forEach(p=>freeById.set(String(p.s.id),Math.max(0,(freeById.get(String(p.s.id))||0)-p.q)));
+       const restoredRow={d,already:num(cached.already),target:num(cached.target),got:num(cached.got),left:num(cached.left),total:num(cached.total),status:String(cached.status||'بدون تطبیق'),planned:restored};
+       rows.push(restoredRow);reused++;chain=await matchCacheHash({previous:chain,result:cached});
+       if(docIndex%4===0)matchProgress(Math.floor((docIndex/Math.max(1,docs.length))*100),'بازیابی نتیجه ذخیره‌شده سند '+faNum(docIndex+1)+' از '+faNum(docs.length)+' — بدون محاسبه مجدد');
+       continue;
+     }
+   }
    if(docIndex%4===0){
      matchProgress(docs.length?Math.floor((docIndex/Math.max(1,docs.length))*100):0,'در حال بررسی سند '+faNum(docIndex+1)+' از '+faNum(docs.length));
      await new Promise(resolve=>setTimeout(resolve,0));
@@ -491,10 +520,17 @@ async function calculateAllAutoMatches(){
    }
    const got=planned.reduce((n,x)=>n+x.q,0),total=already+got;
    const status=total>=target?'کامل':total>0?'ناقص':already>0?'دارای تخصیص قبلی':'بدون تطبیق';
-   rows.push({d,already,target,got,left:Math.max(0,target-total),total,status,planned});
-   matchProgress(((docIndex+1)/Math.max(1,docs.length))*100,'پایان بررسی '+faNum(docIndex+1)+' از '+faNum(docs.length)+' سند');
+   const row={d,already,target,got,left:Math.max(0,target-total),total,status,planned};rows.push(row);
+   const cacheResult={already,target,got,left:Math.max(0,target-total),total,status,planned:planned.map(p=>({sourceId:String(p.s.id),q:p.q,score:p.score,signals:p.signals,ircConflict:!!p.ircConflict}))};
+   chain=await matchCacheHash({previous:chain,result:cacheResult});
+   try{await idbPut(localCacheKey,cacheResult)}catch(err){console.warn('Local match cache save failed',err)}
+   if(cloudEnabled)pendingRemote.push({docKey,result:cacheResult});
+   computed++;
+   if(pendingRemote.length>=10){try{await matchCacheSaveRemote(baseHash,pendingRemote.splice(0,pendingRemote.length))}catch(err){console.warn('Remote cache save deferred; local cache is safe',err)}}
+   matchProgress(((docIndex+1)/Math.max(1,docs.length))*100,'ذخیره نتیجه سند '+faNum(docIndex+1)+' از '+faNum(docs.length)+' — بازیابی '+faNum(reused)+'، محاسبه جدید '+faNum(computed));
  }
- matchProgress(100,'تطبیق تمام '+faNum(docs.length)+' سند به پایان رسید.');
+ if(pendingRemote.length){try{await matchCacheSaveRemote(baseHash,pendingRemote.splice(0,pendingRemote.length))}catch(err){console.warn('Final remote match cache save failed; local cache is safe',err)}}
+ matchProgress(100,'پایان تطبیق — '+faNum(reused)+' نتیجه بازیابی شد و '+faNum(computed)+' نتیجه جدید محاسبه شد.');
  return rows;
 }
 let allAutoRows=[];
