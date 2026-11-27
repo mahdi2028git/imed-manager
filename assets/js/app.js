@@ -79,7 +79,9 @@ function writeStateToSQLite(){if(!sqliteDB)throw new Error('SQLite database not 
  db.exec('COMMIT');
  }catch(e){try{db.exec('ROLLBACK')}catch(_){}throw e}}
 async function persistSQLiteToBrowser(){if(!sqliteDB)return;const bytes=sqliteDB.export();const copy=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);await idbPut('main',copy)}
+function progressMarkup(label,percent,detail=''){const p=Math.max(0,Math.min(100,Number(percent)||0));return '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b>'+esc(label)+'</b><b class="mono">'+Math.round(p)+'٪</b></div><div class="progress" style="height:10px;margin:9px 0 5px"><span style="width:'+p+'%;transition:width .18s ease"></span></div>'+(detail?'<div class="smalltext">'+esc(detail)+'</div>':'')}
 function cloudStatus(message){const el=$('cloudSyncStatus');if(el)el.textContent=message}
+function cloudProgress(percent,detail){const el=$('cloudSyncStatus');if(el)el.innerHTML=progressMarkup('در حال انتقال اطلاعات به Cloudflare',percent,detail)}
 function cloudKey(){return localStorage.getItem(CLOUD_KEY_STORAGE)||''}
 async function cloudRequest(path,options={}){const key=cloudKey();if(!key)throw new Error('ابتدا کلید دسترسی Cloudflare را وارد و اتصال را برقرار کنید');const headers={...(options.headers||{}),Authorization:'Bearer '+key};if(options.body)headers['Content-Type']='application/json';const response=await fetch(CLOUD_API+path,{...options,headers});let body={};try{body=await response.json()}catch(_){}if(!response.ok){const error=new Error(body.error||('خطای سرور: '+response.status));error.status=response.status;throw error}return body}
 function cloudSnapshot(){return{version:1,savedAt:new Date().toISOString(),imed:state.imed,sepidar:state.sepidar,allocations:state.allocations,virtualInventory:state.virtualInventory,virtualInventoryMeta:state.virtualInventoryMeta,currentDoc:state.currentDoc,importSources:state.importSources}}
@@ -88,14 +90,17 @@ async function cloudPushSnapshot(){
  const payload=new TextEncoder().encode(JSON.stringify(cloudSnapshot()));
  const chunkSize=300000,total=Math.ceil(payload.length/chunkSize);
  const uploadId=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+ cloudProgress(0,'آماده‌سازی '+faNum(payload.length)+' بایت اطلاعات…');
  for(let index=0;index<total;index++){
   const part=payload.subarray(index*chunkSize,Math.min((index+1)*chunkSize,payload.length));
   let binary='';
   for(let i=0;i<part.length;i++)binary+=String.fromCharCode(part[i]);
   const data=btoa(binary);
   await cloudRequest('/api/state/chunk',{method:'POST',body:JSON.stringify({uploadId,index,total,data})});
-  cloudStatus('در حال انتقال به Cloudflare: '+faNum(index+1)+' از '+faNum(total)+' بخش');
+  const percent=Math.min(99,Math.round(((index+1)/total)*100));
+  cloudProgress(percent,'بخش '+faNum(index+1)+' از '+faNum(total)+' — '+faNum(Math.min(payload.length,(index+1)*chunkSize))+' از '+faNum(payload.length)+' بایت');
  }
+ cloudProgress(99,'همه بخش‌ها ارسال شد؛ در حال نهایی‌سازی و ذخیره در پایگاه داده…');
  const result=await cloudRequest('/api/state/commit',{method:'POST',body:JSON.stringify({uploadId,total})});
  cloudStatus('انتقال کامل به Cloudflare D1 — '+faNum(result.parts)+' بخش — '+new Date().toLocaleString('fa-IR'));
  return result;
@@ -386,6 +391,9 @@ async function calculateAllAutoMatches(){
    grams(x.s.product).forEach(g=>add(byGram,g,x));
  }
  const rows=[];
+ const matchProgress=(percent,detail)=>{const el=$('allMatchStats');if(el)el.innerHTML=progressMarkup('در حال تطبیق اسناد IMED با فاکتورهای سپیدار',percent,detail)};
+ matchProgress(0,'در حال آماده‌سازی شاخص‌های کالا، IRC و موجودی مجازی…');
+ await new Promise(resolve=>setTimeout(resolve,0));
  // Pre-index virtual-inventory descriptors by IRC, so documents sharing an IRC
  // do not each rescan the entire inventory snapshot.
  const inventoryByIrc=new Map(),inventoryByToken=new Map();
@@ -422,8 +430,8 @@ async function calculateAllAutoMatches(){
  const docs=[...state.imed].sort((a,b)=>String(a.distributionDate||'').localeCompare(String(b.distributionDate||'')));
  for(let docIndex=0;docIndex<docs.length;docIndex++){
    const d=docs[docIndex];
-   if(docIndex%8===0){
-     const progress=$('allMatchStats');if(progress)progress.textContent=`در حال محاسبه: ${faNum(docIndex)} از ${faNum(docs.length)} سند…`;
+   if(docIndex%4===0){
+     matchProgress(docs.length?Math.floor((docIndex/Math.max(1,docs.length))*100):0,'در حال بررسی سند '+faNum(docIndex+1)+' از '+faNum(docs.length));
      await new Promise(resolve=>setTimeout(resolve,0));
    }
    const already=totalAllocated(d.id),target=Math.max(0,num(d.quantity)),need=Math.max(0,target-already);
@@ -450,9 +458,9 @@ async function calculateAllAutoMatches(){
      });
      // Very short/empty names cannot be safely indexed; retain the complete pool.
      const candidates=candidateMap.size?candidateMap.values():sepidarIndex.values();
-     const pool=[];let scannedCandidates=0;
+     const pool=[];let scannedCandidates=0;const candidateTotal=candidateMap.size||sepidarIndex.length;
      for(const x of candidates){
-       if(++scannedCandidates%1200===0){const progress=$('allMatchStats');if(progress)progress.textContent=`سند ${faNum(docIndex+1)} از ${faNum(docs.length)} — بررسی ${faNum(scannedCandidates)} فاکتور کاندیدا…`;await new Promise(resolve=>setTimeout(resolve,0));}
+       if(++scannedCandidates%600===0){const fraction=Math.min(.95,scannedCandidates/Math.max(1,candidateTotal));const percent=((docIndex+fraction)/Math.max(1,docs.length))*100;matchProgress(percent,'سند '+faNum(docIndex+1)+' از '+faNum(docs.length)+' — بررسی '+faNum(scannedCandidates)+' از '+faNum(candidateTotal)+' فاکتور کاندیدا');await new Promise(resolve=>setTimeout(resolve,0));}
        const s=x.s,free=freeById.get(String(s.id))||0;if(free<=0)continue;
        const ref=referenceMatch(d,s,refsByDoc);
        if(ref?.kind==='rejected')continue; // The reference table explicitly flagged this distinction as mismatched.
@@ -470,7 +478,9 @@ async function calculateAllAutoMatches(){
    const got=planned.reduce((n,x)=>n+x.q,0),total=already+got;
    const status=total>=target?'کامل':total>0?'ناقص':already>0?'دارای تخصیص قبلی':'بدون تطبیق';
    rows.push({d,already,target,got,left:Math.max(0,target-total),total,status,planned});
+   matchProgress(((docIndex+1)/Math.max(1,docs.length))*100,'پایان بررسی '+faNum(docIndex+1)+' از '+faNum(docs.length)+' سند');
  }
+ matchProgress(100,'تطبیق تمام '+faNum(docs.length)+' سند به پایان رسید.');
  return rows;
 }
 let allAutoRows=[];
