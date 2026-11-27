@@ -76,6 +76,18 @@
         <div class="actions"><button class="btn primary" id="confirmImport">ثبت نهایی اطلاعاتِ مپ‌شده</button><button class="btn" id="backMapping">بازگشت به تعیین ستون‌ها</button></div>
       </div>
     </div>
+    <div class="card" id="receiverCodingPanel" style="margin-top:16px">
+      <div class="section-head"><div><h2>پیداکردن هوشمند ReceiverCode از Coding</h2><p>فایل کامل SaleXMLReceiverListCoding را وارد کن؛ جست‌وجو روی تمام نام‌ها انجام می‌شود، نه فقط اولین نتیجه.</p></div></div>
+      <div class="field"><label for="receiverCodingFile">فایل Excel کدینگ دریافت‌کنندگان</label><input id="receiverCodingFile" type="file" accept=".xlsx,.xls,.xlsm"/></div>
+      <div class="actions">
+        <button class="btn primary" id="receiverCodingSearch" type="button">جست‌وجوی هوشمند نام مشتری‌ها</button>
+        <button class="btn" id="receiverCodingApplySafe" type="button">اعمال فقط کدهای قطعی</button>
+        <button class="btn" id="receiverCodingExport" type="button">دانلود گزارش نام‌های پیدا‌شده / مبهم</button>
+      </div>
+      <div id="receiverCodingStatus" class="smalltext" role="status" aria-live="polite">ابتدا فایل Coding را وارد کن. نتایج مبهم بدون تأیید به XML اضافه نمی‌شوند.</div>
+      <div id="receiverCodingReview" style="margin-top:12px"></div>
+      <div class="notice warn">نام‌های کوتاه، مراکز هم‌نام در شهرهای مختلف، آزمایشگاه‌ها و داروخانه‌های هم‌نام به‌طور خودکار جای بیمارستان انتخاب نمی‌شوند. برای موارد مبهم، گزینه درست را از فهرست انتخاب و تأیید کن.</div>
+    </div>
     <div class="footer-note">نکته: اگر فایل چند ردیف عنوان یا سرستون ادغام‌شده دارد، «ردیف عنوان ستون‌ها» را تغییر دهید. قبل از تأیید، حتماً ستون تعداد و تاریخ را در پیش‌نمایش کنترل کنید.</div>
   </section>
 
@@ -194,6 +206,7 @@
 </main>
 </div>
 <div class="toast" id="toast"></div>
+<script src="assets/js/receiver-matcher.js?v=0.32.3"></script>
 <script src="assets/js/app.js?v=0.32.3"></script>
 </body>
 </html>
