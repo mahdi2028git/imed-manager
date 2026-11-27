@@ -84,10 +84,10 @@ assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام 
 assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک دستی خودت انجام می‌شود/);
 
 // Canonical release version, app shell, and cache-busting versions stay aligned.
-assert.equal(version.trim(), "0.32.0", "VERSION must be the canonical release version");
-assert.match(html, /نسخه ۰\.۳۲\.۰/);
-assert.match(html, /styles\.css\?v=0\.32\.0/);
-assert.match(html, /app\.js\?v=0\.32\.0/);
+assert.equal(version.trim(), "0.32.1", "VERSION must be the canonical release version");
+assert.match(html, /نسخه ۰\.۳۲\.۱/);
+assert.match(html, /styles\.css\?v=0\.32\.1/);
+assert.match(html, /app\.js\?v=0\.32\.1/);
 
 // Financial fields are optional, separate across source systems, and totals are shown for review.
 assert.match(app, /imedUnitPrice/);
@@ -130,5 +130,15 @@ assert.equal(balances.get("IRC-D"), 12);
 assert.equal(balances.has("IRC-B"), false);
 assert.equal(balances.has("IRC-C"), false);
 assert.equal(balances.size, 2);
+
+// Stock scope must also block direct XML and form-script paths, not only the matcher.
+const quotaHotfix = app.slice(app.indexOf("function makeQuotaRows"), app.indexOf("function xmlEsc"));
+assert.match(quotaHotfix, /positiveInventoryByIrc\(state\.virtualInventory\)/);
+assert.match(quotaHotfix, /inventoryCapacity<=0/);
+assert.match(quotaHotfix, /if\(forForm&&requestedForForm>availableForForm/);
+assert.match(quotaHotfix, /used\[formIrcKey\]=/, "shared batch scripts must reserve IRC capacity");
+assert.match(app, /state\.imed\.filter\(d=>inScope\.has\(norm\(d\.irc\)\)\)/, "bulk scripts must skip out-of-scope documents");
+assert.match(app, /if\(v\.rows\.length&&!v\.errors\.length\)/, "invalid form-script documents must never be queued");
+assert.match(app, /const blocked=!v\.rows\.length\|\|v\.errors\.length>0/, "direct script must block invalid amounts");
 
 console.log("IMED Manager contract checks passed.");
