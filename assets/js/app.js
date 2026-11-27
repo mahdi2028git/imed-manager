@@ -136,7 +136,7 @@ function totalAllocated(docId){return allocationsFor(docId).reduce((s,a)=>s+num(
 function docStatus(d){let t=target(d),s=totalAllocated(d.id);if(t>0&&Math.abs(s-t)<.00001&&allocationsFor(d.id).length)return'exact';if(s>t&&t>0)return'over';if(s>0)return'partial';return'none'}
 let allAutoRows=[];
 // Dashboard reflects calculated proposals without committing them to saved allocations.
-function dashboardDocStatus(d){const row=Array.isArray(allAutoRows)?allAutoRows.find(x=>String(x.d?.id)===String(d.id)):null;if(!row)return docStatus(d);if(row.status==='کامل')return'exact';if(row.status==='ناقص')return'partial';if(row.status==='بیش از مقدار')return'over';return'none'}
+function dashboardDocStatus(d){const row=Array.isArray(allAutoRows)?allAutoRows.find(x=>String(x.d?.id)===String(d.id)):null;if(!row)return docStatus(d);return row.status==='بدون تطبیق'?'none':'exact'}
 function statusTag(status){if(status==='exact')return'<span class="tag good">تطبیق کامل</span>';if(status==='over')return'<span class="tag bad">بیش از مقدار توزیع</span>';if(status==='partial')return'<span class="tag warn">ناقص</span>';return'<span class="tag neutral">بدون تطبیق</span>'}
 function refresh(){
  $('statDist').textContent=faNum(state.imed.length);$('statSep').textContent=faNum(state.sepidar.length);
