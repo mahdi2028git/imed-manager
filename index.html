@@ -7,8 +7,8 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%232676d8%22/%3E%3Cpath d=%22M27 12h10v15h15v10H37v15H27V37H12V27h15z%22 fill=%22white%22/%3E%3C/svg%3E" />
-<title>سامانه توسعه سلامت میهن | نسخه ۰.۳۲.۳</title>
-<link rel="stylesheet" href="assets/css/styles.css?v=0.32.3" />
+<title>سامانه توسعه سلامت میهن | نسخه ۰.۳۳.۰</title>
+<link rel="stylesheet" href="assets/css/styles.css?v=0.33.0" />
 </head>
 <body>
 <div class="shell">
@@ -29,16 +29,16 @@
   <div class="side-note">Snapshot انبار از IMED دریافت می‌شود. اطلاعات و تطبیق‌ها روی همین مرورگر ذخیره می‌شوند؛ مرتب SQLite پشتیبان بگیر.</div>
 </aside>
 <main class="main">
-  <header class="topbar"><div><div class="eyebrow">سامانه کنترل اسناد، موجودی و فاکتورها</div><h1 id="pageTitle">داشبورد</h1></div><div class="top-actions"><span class="local-pill">نسخه ۰.۳۲.۳</span><span class="local-pill">● پایگاه داده SQLite محلی</span><button class="btn" id="exportSqliteTop">دانلود SQLite</button></div></header>
+  <header class="topbar"><div><div class="eyebrow">سامانه کنترل اسناد، موجودی و فاکتورها</div><h1 id="pageTitle">داشبورد</h1></div><div class="top-actions"><span class="local-pill">نسخه ۰.۳۳.۰</span><span class="local-pill">● پایگاه داده SQLite محلی</span><button class="btn" id="exportSqliteTop">دانلود SQLite</button></div></header>
 
   <section class="view active" id="view-dashboard">
     <div class="grid stats">
       <div class="card stat"><div><div class="label">اسناد توزیع واردشده</div><div class="value" id="statDist">۰</div></div><div class="bubble">▤</div></div>
       <div class="card stat"><div><div class="label">ردیف‌های سپیدار</div><div class="value" id="statSep">۰</div></div><div class="bubble">▥</div></div>
       <div class="card stat"><div><div class="label">تطبیق کامل</div><div class="value" id="statFull">۰</div></div><div class="bubble">✓</div></div>
-      <div class="card stat"><div><div class="label">نیازمند بررسی</div><div class="value" id="statPending">۰</div></div><div class="bubble">!</div></div><div class="card stat"><div><div class="label">ارزش اسناد IMED (ریال)</div><div class="value" id="statImedAmount">۰</div></div><div class="bubble">﷼</div></div><div class="card stat"><div><div class="label">ارزش ردیف‌های سپیدار (ریال)</div><div class="value" id="statSepAmount">۰</div></div><div class="bubble">﷼</div></div>
+      <div class="card stat"><div><div class="label">نیازمند بررسی</div><div class="value" id="statPending">۰</div></div><div class="bubble">!</div></div><div class="card stat"><div><div class="label">ارزش مانده انبار مجازی IMED (ریال)</div><div class="value" id="statImedAmount">۰</div></div><div class="bubble">﷼</div></div><div class="card stat"><div><div class="label">ارزش فاکتورهای سپیدار در صف ثبت (ریال)</div><div class="value" id="statSepAmount">۰</div></div><div class="bubble">﷼</div></div>
     </div>
-    <div class="smalltext" id="statFinancialCoverage">مبالغ فقط برای ردیف‌های دارای قیمت معتبر محاسبه می‌شوند؛ نرخ IMED و سپیدار جدا هستند.</div>
+    <div class="smalltext" id="statFinancialCoverage">هر دو مبلغ بر اساس موجودی مثبت و فاکتورهای تطبیق‌شده است؛ موجودی بدون نرخ معتبر، صفر فرض نمی‌شود.</div>
     <div class="card" id="downloadCenter" style="margin:16px 0">
       <div class="section-head"><div><h2>دانلود فایل‌ها</h2><p>خروجی‌ها فقط بر اساس Snapshot انبار مجازی با مانده مثبت تهیه می‌شوند.</p></div></div>
       <div class="actions">
@@ -200,13 +200,13 @@
         <div class="notice info" id="cloudSyncStatus" style="margin-top:12px">حالت آفلاین فعال است؛ اطلاعات روی همین دستگاه ذخیره می‌شوند.</div>
         <div class="smalltext">کد اتصال فقط در همین مرورگر نگهداری می‌شود و داخل فایل‌های عمومی برنامه قرار نمی‌گیرد. برای شروع، «فعال‌سازی همگام‌سازی» را انتخاب کن؛ برنامه پیش از جایگزینی اطلاعات، تعداد رکوردها را نشان می‌دهد.</div>
       </div>
-      <div class="notice info" style="margin-top:16px">ذخیره محلی SQLite همچنان به‌عنوان نسخه پشتیبان فعال است؛ برای خروجی مستقل، دکمه «دانلود پایگاه داده SQLite» را بزنید.</div><div class="footer-note">نسخه ۰.۳۲.۳ — همگام‌سازی امن و ذخیره محلی پشتیبان.</div>
+      <div class="notice info" style="margin-top:16px">ذخیره محلی SQLite همچنان به‌عنوان نسخه پشتیبان فعال است؛ برای خروجی مستقل، دکمه «دانلود پایگاه داده SQLite» را بزنید.</div><div class="footer-note">نسخه ۰.۳۳.۰ — همگام‌سازی امن و ذخیره محلی پشتیبان.</div>
     </div>
   </section>
 </main>
 </div>
 <div class="toast" id="toast"></div>
-<script src="assets/js/receiver-matcher.js?v=0.32.3"></script>
-<script src="assets/js/app.js?v=0.32.3"></script>
+<script src="assets/js/receiver-matcher.js?v=0.33.0"></script>
+<script src="assets/js/app.js?v=0.33.0"></script>
 </body>
 </html>
