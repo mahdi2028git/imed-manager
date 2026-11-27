@@ -72,8 +72,8 @@ assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام 
 assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک دستی خودت انجام می‌شود/);
 
 // Canonical release version, app shell, and cache-busting versions stay aligned.
-assert.equal(version.trim(), "0.31.0", "VERSION must be the canonical release version");
-assert.match(html, /نسخه ۰\.۳۱\.۰/);
+assert.equal(version.trim(), "0.31.1", "VERSION must be the canonical release version");
+assert.match(html, /نسخه ۰\.۳۱\.۱/);
 assert.match(html, /styles\.css\?v=0\.31\.0/);
 assert.match(html, /app\.js\?v=0\.31\.0/);
 
