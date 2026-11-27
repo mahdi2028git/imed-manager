@@ -84,8 +84,8 @@ assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام 
 assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک دستی خودت انجام می‌شود/);
 
 // Canonical release version, app shell, and cache-busting versions stay aligned.
-assert.equal(version.trim(), "0.32.3", "VERSION must be the canonical release version");
-assert.match(html, /نسخه ۰\.۳۲\.۳/);
+assert.equal(version.trim(), "0.33.0", "VERSION must be the canonical release version");
+assert.match(html, /نسخه ۰\.۳۳\.۰/);
 assert.match(html, /styles\.css\?v=0\.32\.3/);
 assert.match(html, /app\.js\?v=0\.32\.3/);
 
@@ -204,5 +204,55 @@ assert.match(app,/RECEIVER_CODING_CACHE_KEY/,"workbook should be cached locally"
 assert.match(app,/approvedReceiverCodeForCustomer\(customerNameForCoding\)/,"XML must resolve the actual invoice customer");
 assert.match(html,/id="receiverCodingFile"/);
 assert.match(html,/receiver-matcher\.js\?v=0\.32\.3/);
+
+
+// Dashboard financial cards must NOT include all historical Sepidar sales.
+assert.match(html,/ارزش مانده انبار مجازی IMED \(ریال\)/);
+assert.match(html,/ارزش فاکتورهای سپیدار در صف ثبت \(ریال\)/);
+assert.match(app,/function calculateClearanceFinancials\(\)/);
+assert.match(app,/financials\.stockValue===null\?'—'/);
+assert.match(app,/financials\.queueValue===null\?'—'/);
+assert.match(app,/برآورد با قیمت فاکتور تطبیق‌شده سپیدار/);
+const financeSrc=app.slice(app.indexOf("function calculateClearanceFinancials"),app.indexOf("function refresh(){"));
+const financeState={
+ virtualInventory:[{irc:"A",inventoryId:"1",remainingQty:10},{irc:"B",inventoryId:"2",remainingQty:5},{irc:"C",inventoryId:"3",remainingQty:0}],
+ imed:[{id:"d1",irc:"A",quantity:10,distributionDate:"1405/01/01",imedUnitPrice:100,receiver:"Hosp"},{id:"d2",irc:"B",quantity:5,distributionDate:"1405/01/02",receiver:"Hosp"}],
+ sepidar:[{id:"s1",quantity:3,unitPrice:200,customer:"Hosp"},{id:"s2",quantity:4,unitPrice:500,customer:"Hosp"},{id:"old",quantity:999,unitPrice:999999999,customer:"Old"}]
+};
+const mockAlloc={
+ d1:[{sourceId:"s1",allocatedQty:3,unitPrice:200,customer:"Hosp"}],
+ d2:[{sourceId:"s2",allocatedQty:4,unitPrice:500,customer:"Hosp"}]
+};
+const calculateClearanceFinancials=runInNewContext(
+ financeSrc+"\ncalculateClearanceFinancials",{
+ state:financeState,
+ norm:v=>String(v??"").trim().toLowerCase(),
+ num:v=>Number(v)||0,
+ hasRialAmount:v=>v!==undefined&&v!==null&&String(v).trim()!==""&&Number(v)>0,
+ positiveInventoryByIrc:rows=>new Map(rows.filter(v=>v.remainingQty>0).map(v=>[String(v.irc).toLowerCase(),Number(v.remainingQty)])),
+ latestPositiveVirtualInventoryRows:rows=>rows.filter(v=>Number(v.remainingQty)>0),
+ dateOrderValue:()=>0,
+ quotaAllocationsFor:d=>mockAlloc[d.id]||[],
+ approvedReceiverCodeForCustomer:()=>"",
+ Map
+});
+let fin=calculateClearanceFinancials();
+assert.equal(fin.stockValue,3500,"IMED remaining valuation must use IMED rate first, then clearly labeled Sepidar estimate");
+assert.equal(fin.queueValue,2600,"Sepidar value must only cover matched pending quantities, not historical sales");
+assert.equal(fin.stockCount,2,"zero-balance stock must not be priced");
+assert.equal(fin.directImed,1);
+assert.equal(fin.estimatedSepidar,1);
+assert.equal(fin.queueRows,2);
+assert.equal(fin.missingReceiver,2);
+financeState.imed.push({id:"d3",irc:"A",quantity:100,distributionDate:"1405/01/03",receiver:"Hosp"});
+financeState.sepidar.push({id:"s3",quantity:100,unitPrice:10,customer:"Hosp"});
+mockAlloc.d3=[{sourceId:"s3",allocatedQty:100,unitPrice:10}];
+fin=calculateClearanceFinancials();
+assert.equal(fin.queueValue,2670,"pending total must cap another document on same IRC to remaining stock");
+assert.equal(fin.overCapacity,93);
+financeState.imed=[];financeState.sepidar=[];financeState.virtualInventory=[{irc:"Z",inventoryId:"4",remainingQty:2}];
+fin=calculateClearanceFinancials();
+assert.equal(fin.stockValue,null,"unknown stock valuation must be unavailable, not zero");
+assert.equal(fin.queueValue,null,"no planned invoices must be unavailable, not all historical sales");
 
 console.log("IMED Manager contract checks passed.");
