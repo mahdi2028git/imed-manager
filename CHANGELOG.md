@@ -2,6 +2,17 @@
 
 All notable user-facing changes are recorded here. Versions follow the policy in [VERSIONING.md](VERSIONING.md).
 
+## [0.31.2] - 2026-11-27
+
+### Added
+- A Tampermonkey bridge that transfers the selected Sepidar invoice from GitHub Pages to IMED without copying code manually.
+- Refresh-safe IRC search, exact IRC and virtual inventory ID matching, capacity checks, lower-grid quantity and price preparation, and a guarded temporary-save action.
+- Installation instructions, live-form caveats, and safe manual fallback in IMED_BRIDGE_SETUP.md.
+
+### Safety
+- Final issuance remains manual; no live IMED account, inventory or permission state was modified during development.
+- The IMED live DOM still needs one supervised browser verification before production use; ambiguous or insufficient stock is not auto-selected.
+
 ## [0.31.1] - 2026-11-27
 
 ### Fixed
