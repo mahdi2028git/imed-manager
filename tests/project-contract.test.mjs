@@ -84,8 +84,8 @@ assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام 
 assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک دستی خودت انجام می‌شود/);
 
 // Canonical release version, app shell, and cache-busting versions stay aligned.
-assert.equal(version.trim(), "0.32.1", "VERSION must be the canonical release version");
-assert.match(html, /نسخه ۰\.۳۲\.۱/);
+assert.equal(version.trim(), "0.32.2", "VERSION must be the canonical release version");
+assert.match(html, /نسخه ۰\.۳۲\.۲/);
 assert.match(html, /styles\.css\?v=0\.32\.1/);
 assert.match(html, /app\.js\?v=0\.32\.1/);
 
@@ -140,5 +140,30 @@ assert.match(quotaHotfix, /used\[formIrcKey\]=/, "shared batch scripts must rese
 assert.match(app, /state\.imed\.filter\(d=>inScope\.has\(norm\(d\.irc\)\)\)/, "bulk scripts must skip out-of-scope documents");
 assert.match(app, /if\(v\.rows\.length&&!v\.errors\.length\)/, "invalid form-script documents must never be queued");
 assert.match(app, /const blocked=!v\.rows\.length\|\|v\.errors\.length>0/, "direct script must block invalid amounts");
+
+// The download center must expose real, connected XML/Excel/Console JS actions.
+for(const id of ["downloadReadyExcel","downloadReadyXml","downloadReadyJs"])assert.match(html,new RegExp('id="'+id+'"'));
+assert.match(app, /function downloadPositiveStockExcel\(/, "Excel export must build a real workbook");
+assert.match(app, /XLSX\.writeFile\(book,'IMED_Positive_Inventory_Matches\.xlsx'\)/);
+assert.match(app, /latestPositiveVirtualInventoryRows\(state\.virtualInventory\)/);
+assert.match(app, /function downloadCenterMessage\(/);
+assert.match(app, /\$\('downloadReadyExcel'\)\?\.addEventListener\('click',downloadPositiveStockExcel\)/);
+assert.match(app, /\$\('downloadReadyXml'\)\?\.addEventListener\('click'/);
+assert.match(app, /\$\('downloadReadyJs'\)\?\.addEventListener\('click'/);
+assert.match(app, /buildAllDocumentsBatchScript\(\)/, "JavaScript export must use the safeguarded batch script");
+assert.match(app, /IMED_XML_Rejected_Documents\.txt/, "XML export must report excluded documents");
+assert.match(app, /return \{downloaded:false,error:err\.message\}/, "XML failures must not be presented as successful downloads");
+// Positive inventory snapshots use the latest entry for each IRC and InventoryID.
+const latestSource=app.slice(app.indexOf("function latestPositiveVirtualInventoryRows"),app.indexOf("async function calculateAllAutoMatches"));
+const latestPositiveVirtualInventoryRows=runInNewContext(latestSource+"\nlatestPositiveVirtualInventoryRows",{
+ norm:v=>String(v??"").trim(),num:v=>Number(v)||0,Map
+});
+const live=latestPositiveVirtualInventoryRows([
+ {irc:"A",inventoryId:"1",remainingQty:100},
+ {irc:"A",inventoryId:"1",remainingQty:0},
+ {irc:"A",inventoryId:"2",remainingQty:4},
+ {irc:"B",inventoryId:"3",remainingQty:-5},
+]);
+assert.deepEqual(Array.from(live.map(v=>v.inventoryId)),["2"]);
 
 console.log("IMED Manager contract checks passed.");
