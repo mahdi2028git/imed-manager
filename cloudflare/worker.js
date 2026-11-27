@@ -325,8 +325,14 @@ export default {
         await processBackgroundMatch(env.DB, jobId, env.MATCH_QUEUE);
         message.ack();
       } catch (error) {
-        await env.DB.prepare("UPDATE background_match_jobs SET status='failed',error=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(String(error?.stack || error?.message || error).slice(0,2000),jobId).run();
-        message.retry();
+        const detail = String(error?.stack || error?.message || error).slice(0,2000);
+        if (Number(message.attempts || 1) >= 3) {
+          await env.DB.prepare("UPDATE background_match_jobs SET status='failed',error=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(detail,jobId).run();
+          message.ack();
+        } else {
+          await env.DB.prepare("UPDATE background_match_jobs SET error=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(detail,jobId).run();
+          message.retry();
+        }
       }
     }
   }
