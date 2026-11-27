@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const [worker, schema, migration, app, html, userscript] = await Promise.all([
+const [worker, schema, migration, app, html, userscript, version] = await Promise.all([
   read("../cloudflare/worker.js"),
   read("../cloudflare/schema.sql"),
   read("../cloudflare/migrations/0003_runtime_tables.sql"),
   read("../assets/js/app.js"),
   read("../index.html"),
   read("../tampermonkey/IMED_Grok_Tampermonkey.user.js"),
+  read("../VERSION"),
 ]);
 
 // Worker endpoints must have matching D1 bootstrap/migration tables.
@@ -47,7 +48,8 @@ assert.doesNotMatch(userscript, /priceDone/);
 assert.match(userscript, /مرحله ۲ به‌صورت خودکار انجام نمی‌شود/);
 assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک دستی خودت انجام می‌شود/);
 
-// App shell and cache-busting versions stay aligned.
+// Canonical release version, app shell, and cache-busting versions stay aligned.
+assert.equal(version.trim(), "0.31.0", "VERSION must be the canonical release version");
 assert.match(html, /نسخه ۰\.۳۱\.۰/);
 assert.match(html, /styles\.css\?v=0\.31\.0/);
 assert.match(html, /app\.js\?v=0\.31\.0/);
