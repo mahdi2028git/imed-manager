@@ -1071,7 +1071,19 @@ async function refreshSingleFormScript(){try{await ensureAutoMatchesReady();rend
 $('downloadFormScript').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');downloadText(code,`IMED_Form_Autofill_${$('scriptDocSelect').value}.js`,'text/javascript;charset=utf-8');toast('اسکریپت فرم IMED دانلود شد')};
 $('copyFormScript').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');copyText(code)};
 const IMED_DISTRIBUTION_FORM_URL='https://register.imed.ir/SaleDistribution/Dist/Dist_QuotaDistribution.aspx';
-$('sendToImed').onclick=async()=>{await refreshSingleFormScript();const code=$('formScriptCode').value;if(!code||code.startsWith('برای این سند هیچ'))return toast('برای این سند ردیف قابل ارسال وجود ندارد');const tab=window.open(IMED_DISTRIBUTION_FORM_URL,'_blank');await copyText(code);if(!tab)toast('پنجره IMED باز نشد؛ Popup را مجاز کن. اسکریپت کپی شده است.');else toast('IMED باز شد و اسکریپت همین سند کپی شد؛ در Console همان تب Paste و اجرا کن.')};
+function openImedBridgeTab(d){
+ const v=makeQuotaRows(d,false,true);
+ const rows=selectedScriptInvoice&&String(selectedScriptInvoice.docId)===String(d.id)?v.rows.filter(r=>String(r.InvoiceNo||'')===String(selectedScriptInvoice.invoiceNo||'')&&String(r.InvoiceDate||'')===String(selectedScriptInvoice.invoiceDate||'')):v.rows;
+ if(!rows.length||v.errors.length){toast('داده فاکتور معتبر نیست؛ خطاهای آماده‌سازی را اصلاح کن.');return false}
+ const payload=encodeURIComponent(JSON.stringify(rows));
+ const hash='#imed-manager-v1='+payload;
+ if(hash.length>110000){toast('تعداد ردیف‌ها زیاد است؛ از دانلود اسکریپت و اجرای دستی استفاده کن.');return false}
+ const tab=window.open(IMED_DISTRIBUTION_FORM_URL+hash,'_blank');
+ if(!tab){toast('صفحه IMED باز نشد؛ Pop-up را مجاز کن.');return false}
+ toast('فاکتور به تب IMED فرستاده شد؛ اسکریپت IMED Manager Bridge را نصب و دکمه اجرای کمک‌فرم را بزن.');
+ return true;
+}
+$('sendToImed').onclick=async()=>{await refreshSingleFormScript();const d=state.imed.find(x=>x.id===$('scriptDocSelect').value);if(!d)return toast('سند انتخاب نشده');openImedBridgeTab(d)};
 $('scriptDocSelect').addEventListener('change',refreshSingleFormScript);
 $('allMatchPagination')?.addEventListener('click',e=>{const b=e.target.closest('[data-match-page]');if(!b)return;allMatchPage=Number(b.dataset.matchPage)||1;renderAllAutoMatches()});
 $('allMatchTable')?.addEventListener('change',e=>{const c=e.target.closest('[data-select-imed-doc]');if(!c)return;const id=String(c.dataset.selectImedDoc);if(c.checked)selectedAllMatchDocIds.add(id);else selectedAllMatchDocIds.delete(id);const status=$('allMatchSelectionStatus');if(status)status.textContent=faNum(selectedAllMatchDocIds.size)+' سند انتخاب شده است.';const send=$('sendSelectedMatchedDocToImed');if(send)send.disabled=selectedAllMatchDocIds.size!==1});
@@ -1084,8 +1096,7 @@ $('sendSelectedMatchedDocToImed')?.addEventListener('click',async()=>{
  await refreshSingleFormScript();
  const code=$('formScriptCode').value;
  if(!code||code.startsWith('برای این سند هیچ')){tab.close();return toast('برای این سند اسکریپت معتبر آماده نشد؛ وضعیت آماده‌سازی را بررسی کن.')}
- await copyText(code);tab.location.href=IMED_DISTRIBUTION_FORM_URL;
- toast('صفحه ثبت IMED باز شد و اسکریپت کپی شد؛ اجرای کد و ثبت نهایی با تأیید دستی توست.');
+ tab.close();openImedBridgeTab(doc);
 });
 async function buildAllDocumentsBatchScript(){
  await ensureAutoMatchesReady();
