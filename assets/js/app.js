@@ -414,6 +414,9 @@ async function calculateAllAutoMatches(){
    grams(x.s.product).forEach(g=>add(byGram,g,x));
  }
  const rows=[];
+ // Declare the callback before the first progress event; otherwise the initial
+ // matchProgress call hits the temporal dead zone for syncRemoteJob.
+ let syncRemoteJob=async()=>{};
  const matchProgress=(percent,detail)=>{const el=$('allMatchStats');if(el)el.innerHTML=progressMarkup('در حال تطبیق اسناد IMED با فاکتورهای سپیدار',percent,detail);const label='در حال محاسبه — '+faNum(Math.round(percent))+'٪';[$('runAllAutoMatches'),$('runAllAutoMatches2')].filter(Boolean).forEach(b=>{if(allMatchBusy)b.textContent=label});syncRemoteJob(percent,detail,percent>=100?'completed':'running').catch(()=>{});};
  matchProgress(0,'در حال آماده‌سازی شاخص‌های کالا، IRC و موجودی مجازی…');
  await new Promise(resolve=>setTimeout(resolve,0));
@@ -462,7 +465,7 @@ async function calculateAllAutoMatches(){
      }
    }catch(err){console.warn('Cloud matching job could not be started; local checkpoint remains active:',err)}
  }
- const syncRemoteJob=async(percent,detail,status='running',completed=Math.round(percent/100*docs.length))=>{
+ syncRemoteJob=async(percent,detail,status='running',completed=Math.round(percent/100*docs.length))=>{
    if(!remoteMatchJob?.id||!cloudEnabled)return;
    const now=Date.now();if(status==='running'&&now-lastRemoteJobUpdate<1800)return;
    lastRemoteJobUpdate=now;
