@@ -423,6 +423,16 @@ function positiveInventoryByIrc(rows){
  for(const v of unique.values())if(v.remaining>0)balances.set(v.irc,(balances.get(v.irc)||0)+v.remaining);
  return balances;
 }
+// Use only the most recent copy of each InventoryID/IRC pair. A later zero
+// balance supersedes an earlier positive snapshot, never the other way round.
+function latestPositiveVirtualInventoryRows(rows){
+ const latest=new Map();
+ for(const v of (rows||[])){
+  const irc=norm(v.irc),inventoryId=String(v.inventoryId||'').trim();
+  if(irc&&inventoryId)latest.set(irc+'|'+inventoryId,v);
+ }
+ return [...latest.values()].filter(v=>num(v.remainingQty)>0);
+}
 async function calculateAllAutoMatches(){
  // Build reusable indexes once. The previous version scored every Sepidar row
  // against every IMED document, even when product/IRC had no overlap.
@@ -455,7 +465,7 @@ async function calculateAllAutoMatches(){
  // Pre-index virtual-inventory descriptors by IRC, so documents sharing an IRC
  // do not each rescan the entire inventory snapshot.
  const inventoryByIrc=new Map(),inventoryByToken=new Map();
- for(const v of (state.virtualInventory||[])){
+ for(const v of latestPositiveVirtualInventoryRows(state.virtualInventory)){
   if(num(v.remainingQty)<=0)continue;
    const k=norm(v.irc);if(k){let a=inventoryByIrc.get(k);if(!a)inventoryByIrc.set(k,a=[]);a.push(v)}
    // Index inventory descriptors once; avoid rescanning the full virtual inventory
@@ -889,7 +899,7 @@ function loadXmlDoc(docId){
 $('xmlDocSelect').addEventListener('change',e=>loadXmlDoc(e.target.value));
 $('saveXmlHeader').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return toast('سند توزیع را انتخاب کن');d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save();renderXmlRows();toast('مشخصات گیرنده ذخیره شد')};
 function autoSaveXmlHeader(){const d=state.imed.find(x=>x.id===$('xmlDocSelect').value);if(!d)return;d.typeId=$('xmlTypeId').value.trim();d.receiverCode=$('xmlReceiverCode').value.trim();save()}$('xmlTypeId').addEventListener('change',autoSaveXmlHeader);$('xmlReceiverCode').addEventListener('change',autoSaveXmlHeader);
-function stockCandidates(d,a){const irc=norm(d.irc||a.irc||'');return state.virtualInventory.filter(v=>norm(v.irc)===irc&&num(v.remainingQty)>0)}
+function stockCandidates(d,a){const irc=norm(d.irc||a.irc||'');return latestPositiveVirtualInventoryRows(state.virtualInventory).filter(v=>norm(v.irc)===irc)}
 function resolveStock(d,a,used={}){const c=stockCandidates(d,a);const ok=v=>num(v.remainingQty)-num(used[v.inventoryId]||0)>=num(a.allocatedQty);if(a.inventoryId){const v=c.find(x=>String(x.inventoryId)===String(a.inventoryId));if(v&&ok(v))return{row:v,reason:'انتخاب‌شده'};return{row:null,reason:'InventoryID انتخاب‌شده موجودی کافی ندارد یا در Snapshot نیست'}}const eligible=c.filter(ok);const exact=eligible.filter(v=>Math.abs(num(v.remainingQty)-num(used[v.inventoryId]||0)-num(a.allocatedQty))<0.00001);if(exact.length===1)return{row:exact[0],reason:'تطبیق یکتای مقدار با باقیمانده'};if(exact.length>1)return{row:null,reason:'چند InventoryID با باقیمانده برابر پیدا شد؛ انتخاب دستی لازم است'};if(eligible.length===1)return{row:eligible[0],reason:'تنها InventoryID دارای موجودی کافی'};if(!eligible.length)return{row:null,reason:c.length?'موجودی باقیمانده کافی نیست':'IRC در Snapshot انبار پیدا نشد'};const sorted=eligible.slice().sort((a,b)=>(num(a.remainingQty)-num(used[a.inventoryId]||0))-(num(b.remainingQty)-num(used[b.inventoryId]||0))||String(a.inventoryId).localeCompare(String(b.inventoryId)));return{row:sorted[0],reason:'کمترین مانده کافی برای همان IRC؛ از Snapshot موجودی'}}
 function quotaAllocationsFor(d){
  const saved=allocationsFor(d.id);
