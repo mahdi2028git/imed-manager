@@ -853,7 +853,7 @@ $('buildXml').onclick=()=>{const d=state.imed.find(x=>x.id===$('xmlDocSelect').v
 $('copyXml').onclick=async()=>{const el=$('xmlOutput');if(!el?.value)return toast('ابتدا XML را بساز');try{await navigator.clipboard.writeText(el.value);toast('XML کپی شد')}catch(e){el.focus();el.select();toast('متن انتخاب شد؛ Copy را بزن')}};
 function refreshScriptDocs(){
  const el=$('scriptDocSelect');if(!el)return;
- const prev=el.value||$('xmlDocSelect')?.value||state.currentDoc;
+ const prev=el.value||'';
  el.innerHTML='<option value="">انتخاب سند</option>'+state.imed.map(d=>`<option value="${esc(d.id)}">${esc(d.distributionNo)} — ${esc(d.product)}</option>`).join('');
  if(state.imed.some(d=>d.id===prev))el.value=prev;
  renderScriptDocSearch();
@@ -862,23 +862,28 @@ function refreshScriptDocs(){
 function renderScriptDocSearch(){
  const input=$('scriptDocSearch'),box=$('scriptDocSearchResults');if(!input||!box)return;
  const q=norm(input.value||'');
- if(!q){box.innerHTML='<div class="empty">برای دیدن اسناد، شماره سند، نام کالا یا IRC را جست‌وجو کن.</div>';return}
- const rows=state.imed.filter(d=>[d.distributionNo,d.product,d.irc,d.distributionDate,d.model,d.customer].some(v=>norm(v||'').includes(q))).slice(0,80);
- if(!rows.length){box.innerHTML='<div class="empty">موردی با این جست‌وجو پیدا نشد.</div>';return}
- box.innerHTML='<div class="smalltext" style="margin-bottom:7px">'+faNum(rows.length)+' نتیجه'+(rows.length===80?' (حداکثر ۸۰ مورد نمایش داده شده)':'')+'</div><div class="table-wrap"><table><thead><tr><th>شماره سند</th><th>کالا</th><th>IRC</th><th>تعداد</th><th>عملیات</th></tr></thead><tbody>'+rows.map(d=>'<tr><td>'+esc(d.distributionNo||'—')+'</td><td>'+esc(d.product||'—')+'</td><td class="mono">'+esc(d.irc||'—')+'</td><td>'+faNum(d.quantity)+'</td><td><div class="actions" style="margin:0"><button class="btn small primary" data-script-select="'+esc(d.id)+'">انتخاب برای اسکریپت</button><button class="btn small" data-script-review="'+esc(d.id)+'">بررسی تطابق</button></div></td></tr>').join('')+'</tbody></table></div>';
+ const rows=[];
+ for(const match of allAutoRows){
+  for(const item of allMatchInvoiceRows(match)){
+   const s=item.s;if(!s||!item.q||item.q<=0)continue;
+   rows.push({doc:match.d,s,q:item.q,score:item.score,signals:item.signals||[],existing:!!item.isExisting});
+  }
+ }
+ const unique=new Map();
+ rows.forEach(x=>{const key=String(x.doc.id)+'|'+String(x.s.id||x.s.invoiceNo)+'|'+norm(x.s.invoiceDate);if(!unique.has(key))unique.set(key,x)});
+ const list=[...unique.values()].filter(x=>!q||[x.s.invoiceNo,x.s.invoiceDate,x.s.customer,x.s.product,x.s.irc,x.doc.distributionNo].some(v=>norm(v||'').includes(q))).sort((a,b)=>dateOrderValue(b.s.invoiceDate)-dateOrderValue(a.s.invoiceDate));
+ if(!list.length){box.innerHTML='<div class="empty">'+(allAutoRows.length?'فاکتور سپیداری با این جست‌وجو در تطبیق‌های ثبت‌شده یا پیشنهادی پیدا نشد.':'ابتدا تطبیق خودکار را در بخش «تطبیق و ردیابی» اجرا کن تا فاکتورهای پیدا‌شده اینجا فهرست شوند.')+'</div>';return}
+ box.innerHTML='<div class="smalltext" style="margin-bottom:7px">'+faNum(list.length)+' ردیف فاکتور سپیدارِ تطبیق‌شده یا پیشنهادی</div><div class="table-wrap"><table><thead><tr><th>شماره فاکتور سپیدار</th><th>تاریخ</th><th>مشتری</th><th>کالا</th><th>تعداد تخصیص</th><th>فی قیمت</th><th>سند توزیع مرتبط</th><th>وضعیت</th><th></th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.s.invoiceNo||'—')+'</b></td><td>'+esc(x.s.invoiceDate||'—')+'</td><td>'+esc(x.s.customer||'—')+'</td><td>'+esc(x.s.product||'—')+'</td><td>'+faNum(x.q)+'</td><td>'+money(x.s.unitPrice)+'</td><td>'+esc(x.doc.distributionNo||'—')+'</td><td><span class="tag '+(x.existing?'good':'warn')+'">'+(x.existing?'تخصیص ثبت‌شده':'پیشنهاد تطبیق')+'</span></td><td><button class="btn small" data-script-review="'+esc(x.doc.id)+'">جزئیات تطبیق</button></td></tr>').join('')+'</tbody></table></div>';
 }
 $('scriptDocSearch')?.addEventListener('input',renderScriptDocSearch);
 $('scriptDocSearchResults')?.addEventListener('click',e=>{
- const select=e.target.closest('[data-script-select]'),review=e.target.closest('[data-script-review]');
- const docId=select?.dataset.scriptSelect||review?.dataset.scriptReview;if(!docId)return;
- const el=$('scriptDocSelect');el.value=docId;
- if(select){renderScriptReady();toast('سند برای ساخت اسکریپت انتخاب شد');return}
+ const review=e.target.closest('[data-script-review]');if(!review)return;
+ const docId=review.dataset.scriptReview;
  goto('reconcile');refreshDocOptions();$('reconcileDoc').value=docId;openDoc(docId);
  $('invoiceFilter').value='';$('productMatch').value='auto';
  $('findCandidates').click();
  $('candidateResults').scrollIntoView({behavior:'smooth',block:'center'});
 });
-$('scriptDocSelect').addEventListener('change',renderScriptReady);
 function buildFormAutofillSource(d,rows){
  const data=JSON.stringify(rows);
  return `/* IMED multi-product helper — distribution ${String(d.distributionNo||'')}
