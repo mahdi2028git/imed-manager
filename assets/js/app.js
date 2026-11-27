@@ -415,11 +415,12 @@ function positiveInventoryByIrc(rows){
  const unique=new Map();
  for(const v of (rows||[])){
   const irc=norm(v.irc),inventoryId=String(v.inventoryId||'').trim(),remaining=num(v.remainingQty);
-  if(!irc||!inventoryId||remaining<=0)continue;
-  unique.set(irc+'|'+inventoryId,{irc,remaining});
+  if(!irc||!inventoryId)continue;
+  // A later zero balance supersedes an older positive copy of the same record.
+  unique.set(irc+'|'+inventoryId,{irc,remaining:Math.max(0,remaining)});
  }
  const balances=new Map();
- for(const v of unique.values())balances.set(v.irc,(balances.get(v.irc)||0)+v.remaining);
+ for(const v of unique.values())if(v.remaining>0)balances.set(v.irc,(balances.get(v.irc)||0)+v.remaining);
  return balances;
 }
 async function calculateAllAutoMatches(){
