@@ -67,46 +67,6 @@
     return [...map.values()];
   })();
 
-  // Keep the IMED goods/results grid scrollable so every column and checkbox is reachable.
-  function ensureImedGridScroll() {
-    const check = document.querySelector('input[type="checkbox"][id*="GV_IRC"][id$="CHBox"]');
-    const table = check && check.closest("table");
-    if (!table) return false;
-
-    let scroller = table.parentElement;
-    if (!scroller || !scroller.classList.contains("imed-grid-scroll")) {
-      scroller = document.createElement("div");
-      scroller.className = "imed-grid-scroll";
-      scroller.style.cssText = [
-        "display:block",
-        "width:100%",
-        "max-width:100%",
-        "max-height:58vh",
-        "overflow:auto",
-        "overscroll-behavior:contain",
-        "-webkit-overflow-scrolling:touch",
-        "border:1px solid #cbd5e1",
-        "border-radius:8px",
-        "position:relative",
-        "background:#fff"
-      ].join(";");
-      table.parentNode.insertBefore(scroller, table);
-      scroller.appendChild(table);
-    }
-
-    table.style.minWidth = "max-content";
-    table.style.width = "100%";
-    table.style.borderCollapse = "separate";
-    table.style.borderSpacing = "0";
-    table.querySelectorAll("th").forEach(th => {
-      th.style.position = "sticky";
-      th.style.top = "0";
-      th.style.zIndex = "2";
-      th.style.background = th.style.background || "#f1f5f9";
-    });
-    return true;
-  }
-
   // ========== UI PANEL ==========
   function createPanel() {
     if (document.getElementById("imed-grok-panel")) return;
@@ -138,7 +98,6 @@
       <button id="imedClose" style="margin-top:8px;padding:6px 12px;background:#334155;color:#e2e8f0;border:0;border-radius:6px;cursor:pointer;">بستن پنل</button>
     `;
     document.body.appendChild(p);
-    ensureImedGridScroll();
     p.querySelector("#imedClose").onclick = () => p.remove();
     p.querySelector("#imedRun").onclick = runFill;
   }
@@ -201,7 +160,6 @@
       setValue(ircInput, irc + " ");
       ircInput.focus();
       await wait(900);
-      ensureImedGridScroll();
       let trs = [];
       const deadline = Date.now() + 3500;
       do {

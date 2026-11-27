@@ -888,7 +888,7 @@ function renderScriptDocSearch(){
  const pageSize=4,pageCount=Math.max(1,Math.ceil(list.length/pageSize));
  scriptDocSearchPage=Math.min(Math.max(1,scriptDocSearchPage),pageCount);
  const visible=list.slice((scriptDocSearchPage-1)*pageSize,scriptDocSearchPage*pageSize);
- box.innerHTML='<div class="smalltext" style="margin-bottom:7px">'+faNum(list.length)+' ردیف فاکتور سپیدارِ تطبیق‌شده یا پیشنهادی — نمایش '+faNum(visible.length)+' ردیف در هر صفحه</div><div class="smalltext script-table-hint">برای دیدن ستون‌های بعدی، جدول را به چپ و راست بکش.</div><div class="table-wrap script-doc-table-scroll" tabindex="0" role="region" aria-label="جدول فاکتورهای سپیدار؛ قابل پیمایش افقی"><table><thead><tr><th>شماره فاکتور سپیدار</th><th>تاریخ</th><th>مشتری</th><th>کالا</th><th>تعداد تخصیص</th><th>فی قیمت</th><th>سند توزیع مرتبط</th><th>وضعیت</th><th></th></tr></thead><tbody>'+visible.map(x=>'<tr><td><b>'+esc(x.s.invoiceNo||'—')+'</b></td><td>'+esc(x.s.invoiceDate||'—')+'</td><td>'+esc(x.s.customer||'—')+'</td><td>'+esc(x.s.product||'—')+'</td><td>'+faNum(x.q)+'</td><td>'+money(x.s.unitPrice)+'</td><td>'+esc(x.doc.distributionNo||'—')+'</td><td><span class="tag '+(x.existing?'good':'warn')+'">'+(x.existing?'تخصیص ثبت‌شده':'پیشنهاد تطبیق')+'</span></td><td><div class="actions" style="margin:0"><label class="smalltext" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" data-script-select="'+esc(x.doc.id)+'" data-script-invoice="'+esc(x.s.invoiceNo||'')+'" data-script-date="'+esc(x.s.invoiceDate||'')+'" '+(selectedScriptInvoice&&String(selectedScriptInvoice.docId)===String(x.doc.id)&&String(selectedScriptInvoice.invoiceNo||'')===String(x.s.invoiceNo||'')&&String(selectedScriptInvoice.invoiceDate||'')===String(x.s.invoiceDate||'')?'checked':'')+'> انتخاب برای ساخت اسکریپت</label><button class="btn small" data-script-review="'+esc(x.doc.id)+'">جزئیات تطبیق</button></div></td></tr>').join('')+'</tbody></table></div><div class="actions" id="scriptDocSearchPagination" style="justify-content:flex-end;margin-top:10px"><button class="btn small" data-script-page="'+Math.max(1,scriptDocSearchPage-1)+'" '+(scriptDocSearchPage<=1?'disabled':'')+'>قبلی</button><span class="smalltext">صفحه '+faNum(scriptDocSearchPage)+' از '+faNum(pageCount)+'</span><button class="btn small" data-script-page="'+Math.min(pageCount,scriptDocSearchPage+1)+'" '+(scriptDocSearchPage>=pageCount?'disabled':'')+'>بعدی</button></div>';
+ box.innerHTML='<div class="smalltext" style="margin-bottom:7px">'+faNum(list.length)+' ردیف فاکتور سپیدارِ تطبیق‌شده یا پیشنهادی — نمایش '+faNum(visible.length)+' ردیف در هر صفحه</div><div class="script-doc-results-viewport"><div class="smalltext script-table-hint">برای دیدن ستون‌های بعدی و چک‌باکس انتخاب، نوار افقی پایین جدول را بکش یا جدول را به چپ و راست حرکت بده.</div><div class="table-wrap script-doc-table-scroll" tabindex="0" role="region" aria-label="جدول فاکتورهای سپیدار؛ قابل پیمایش افقی"><table><thead><tr><th>شماره فاکتور سپیدار</th><th>تاریخ</th><th>مشتری</th><th>کالا</th><th>تعداد تخصیص</th><th>فی قیمت</th><th>سند توزیع مرتبط</th><th>وضعیت</th><th></th></tr></thead><tbody>'+visible.map(x=>'<tr><td><b>'+esc(x.s.invoiceNo||'—')+'</b></td><td>'+esc(x.s.invoiceDate||'—')+'</td><td>'+esc(x.s.customer||'—')+'</td><td>'+esc(x.s.product||'—')+'</td><td>'+faNum(x.q)+'</td><td>'+money(x.s.unitPrice)+'</td><td>'+esc(x.doc.distributionNo||'—')+'</td><td><span class="tag '+(x.existing?'good':'warn')+'">'+(x.existing?'تخصیص ثبت‌شده':'پیشنهاد تطبیق')+'</span></td><td><div class="actions" style="margin:0"><label class="smalltext" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" data-script-select="'+esc(x.doc.id)+'" data-script-invoice="'+esc(x.s.invoiceNo||'')+'" data-script-date="'+esc(x.s.invoiceDate||'')+'" '+(selectedScriptInvoice&&String(selectedScriptInvoice.docId)===String(x.doc.id)&&String(selectedScriptInvoice.invoiceNo||'')===String(x.s.invoiceNo||'')&&String(selectedScriptInvoice.invoiceDate||'')===String(x.s.invoiceDate||'')?'checked':'')+'> انتخاب برای ساخت اسکریپت</label><button class="btn small" data-script-review="'+esc(x.doc.id)+'">جزئیات تطبیق</button></div></td></tr>').join('')+'</tbody></table></div></div><div class="actions" id="scriptDocSearchPagination" style="justify-content:flex-end;margin-top:10px"><button class="btn small" data-script-page="'+Math.max(1,scriptDocSearchPage-1)+'" '+(scriptDocSearchPage<=1?'disabled':'')+'>قبلی</button><span class="smalltext">صفحه '+faNum(scriptDocSearchPage)+' از '+faNum(pageCount)+'</span><button class="btn small" data-script-page="'+Math.min(pageCount,scriptDocSearchPage+1)+'" '+(scriptDocSearchPage>=pageCount?'disabled':'')+'>بعدی</button></div>';
 }
 $('scriptDocSearch')?.addEventListener('input',()=>{scriptDocSearchPage=1;renderScriptDocSearch()});
 $('scriptDocSearchResults')?.addEventListener('click',e=>{const b=e.target.closest('[data-script-page]');if(!b)return;scriptDocSearchPage=Number(b.dataset.scriptPage)||1;renderScriptDocSearch()});
@@ -944,22 +944,6 @@ const log=(...x)=>console.log('[IMED helper]',...x);
 function setValue(el,v){if(!el)return false;const proto=el.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype;const setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;if(setter)setter.call(el,String(v??''));else el.value=String(v??'');el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:' ',code:'Space'}));el.dispatchEvent(new Event('change',{bubbles:true}));return true}
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function exactCellHasIrc(tr,irc){return [...tr.querySelectorAll('td')].some(td=>digits(td.textContent).replace(/\\D/g,'')===irc)}
-function enableImedGridScroll(table){
- if(!table)return;
- let scroller=table.parentElement;
- if(!scroller||scroller.dataset.imedGridScroller!=='1'){
-  scroller=document.createElement('div');
-  scroller.dataset.imedGridScroller='1';
-  scroller.dir='ltr';
-  scroller.style.cssText='display:block;width:100%;max-width:100%;max-height:55vh;overflow-x:auto;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border:1px solid #9aafc5;border-radius:8px;margin:8px 0;background:#fff;';
-  table.parentNode.insertBefore(scroller,table);
-  scroller.appendChild(table);
- }
- table.style.minWidth='max-content';
- table.style.width='max-content';
- table.style.whiteSpace='nowrap';
- table.querySelectorAll('th').forEach(th=>{th.style.position='sticky';th.style.top='0';th.style.zIndex='2';th.style.background='#eaf1f8'});
-}
 function setRadio(type){const el=document.querySelector('input[name="ctl00$MainContent$rbtnCenterTypeLevel1"][value="'+CSS.escape(type)+'"]');if(!el)return false;el.click();return true}
 function makePanel(message){let p=document.getElementById('imedMultiHelperPanel');if(!p){p=document.createElement('div');p.id='imedMultiHelperPanel';p.dir='rtl';p.style.cssText='position:fixed;z-index:2147483647;top:14px;right:14px;width:340px;max-width:calc(100vw - 36px);background:#fff;color:#172b43;border:1px solid #8ca6c4;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.22);padding:12px;font:13px Tahoma,sans-serif;line-height:1.8';document.body.appendChild(p)}p.innerHTML='<b>IMED — ثبت چندکالایی</b><div style="margin:8px 0">'+message+'</div><button id="imedMultiClose" style="padding:6px 12px">بستن</button>';p.querySelector('#imedMultiClose').onclick=()=>p.remove()}
 if(!ROWS.length){makePanel('هیچ ردیف تخصیصی در کد وجود ندارد.');return}
@@ -1030,7 +1014,6 @@ for(const irc of ircs){
    await wait(300);
  }while(Date.now()<deadline);
  if(trs.length!==1){missing.push(irc+' ('+trs.length+' ردیف پس از کلیک جست‌وجو پیدا شد)');continue}
- enableImedGridScroll(trs[0].closest('table'));
  const cb=trs[0].querySelector('input[type="checkbox"][id*="GV_IRC"][id$="CHBox"]');
  if(!cb.checked)cb.click();checked.push(irc);
 }
