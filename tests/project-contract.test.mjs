@@ -49,6 +49,7 @@ assert.match(app, /const nextDB=new SQL\.Database\(bytes\)/);
 assert.match(app, /loadStateFromSQLite\(nextDB\)/);
 assert.match(app, /if\(!confirm\('پایگاه داده فعلی با فایل SQLite انتخاب‌شده جایگزین شود\؟'\)\)return/);
 
+assert.match(quota, /hasTypeSource=String\(d\.receiverNature\|\|d\.distributionType\|\|''\)\.trim\(\)/, "explicit TypeID must not be rejected by the fallback when source type is absent");
 // Re-importing invoice files must not collapse distinct product lines that share invoice/customer/quantity.
 assert.match(app, /norm\(x\.product\)===norm\(row\.product\)/, "Sepidar import dedupe must include the product identity");
 assert.match(app, /String\(x\.irc\|\|''\)===String\(row\.irc\|\|''\)/, "Sepidar import dedupe must include exact IRC");
