@@ -883,7 +883,7 @@ function renderScriptDocSearch(){
  }
  const unique=new Map();
  rows.forEach(x=>{const key=String(x.doc.id)+'|'+String(x.s.id||x.s.invoiceNo)+'|'+norm(x.s.invoiceDate);if(!unique.has(key))unique.set(key,x)});
- const list=[...unique.values()].filter(x=>!q||[x.s.invoiceNo,x.s.invoiceDate,x.s.customer,x.s.product,x.s.irc,x.doc.distributionNo].some(v=>norm(v||'').includes(q))).sort((a,b)=>dateOrderValue(b.s.invoiceDate)-dateOrderValue(a.s.invoiceDate));
+ const list=[...unique.values()].filter(x=>!q||[x.s.invoiceNo,x.s.invoiceDate,x.s.customer,x.s.product,x.s.irc,x.doc.distributionNo].some(v=>norm(v||'').includes(q))).sort((a,b)=>dateOrderValue(a.s.invoiceDate)-dateOrderValue(b.s.invoiceDate));
  if(!list.length){scriptDocSearchPage=1;box.innerHTML='<div class="empty">'+(allAutoRows.length?'فاکتور سپیداری با این جست‌وجو در تطبیق‌های ثبت‌شده یا پیشنهادی پیدا نشد.':'ابتدا تطبیق خودکار را در بخش «تطبیق و ردیابی» اجرا کن تا فاکتورهای پیدا‌شده اینجا فهرست شوند.')+'</div>';return}
  const pageSize=5,pageCount=Math.max(1,Math.ceil(list.length/pageSize));
  scriptDocSearchPage=Math.min(Math.max(1,scriptDocSearchPage),pageCount);
