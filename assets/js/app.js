@@ -623,7 +623,7 @@ async function renderAllAutoMatches(){
  $('exportAllAutoMatches').disabled=!allAutoRows.length;
  renderUnmatchedMatches();
 }
-function getUnmatchedRows(){return allAutoRows.filter(x=>x.status!=='کامل')}
+function getUnmatchedRows(){return allAutoRows.filter(x=>x.status==='بدون تطبیق')}
 function renderUnmatchedMatches(){
  const q=norm($('unmatchedSearch')?.value||'');
  const rows=getUnmatchedRows().filter(x=>!q||norm([x.d.distributionNo,x.d.distributionDate,x.d.receiver,x.d.product,x.d.irc,x.status].join(' ')).includes(q)).sort((a,b)=>dateOrderValue(b.d?.distributionDate)-dateOrderValue(a.d?.distributionDate));
