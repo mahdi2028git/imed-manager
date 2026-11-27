@@ -202,7 +202,7 @@ function calculateClearanceFinancials(){
  let stockTotal=0,stockPriced=0,directImed=0,estimatedSepidar=0;
  for(const v of active){
   const irc=norm(v.irc),direct=imedRates.get(irc),estimate=sepRates.get(irc);
-  const rate=direct?.qty>0?direct:estimate?.qty>0?estimate:null;
+  const rate=direct?.qty>0?direct:null;
   if(!rate)continue;
   stockTotal+=num(v.remainingQty)*rate.sum/rate.qty;
   stockPriced++;if(direct?.qty>0)directImed++;else estimatedSepidar++;
@@ -222,7 +222,7 @@ function refresh(){
   if($('statSepAmount'))$('statSepAmount').textContent=financials.queueValue===null?'—':money(financials.queueValue);
   if($('statFinancialCoverage'))$('statFinancialCoverage').textContent=
    'انبار مجازی با مانده مثبت: '+faNum(financials.stockPriced)+' قلم ارزش‌گذاری‌شده از '+faNum(financials.stockCount)+
-   ' (نرخ IMED: '+faNum(financials.directImed)+'، برآورد با قیمت فاکتور تطبیق‌شده سپیدار: '+faNum(financials.estimatedSepidar)+
+   ' (نرخ معتبر IMED: '+faNum(financials.directImed)+'، قیمت سپیدار در ارزش‌گذاری موجودی استفاده نمی‌شود: '+faNum(financials.estimatedSepidar)+
    '، فاقد نرخ: '+faNum(financials.missingStockPrice)+'). '+
    'سپیدارِ در صف ثبت: '+faNum(financials.queueRows)+' ردیف، '+faNum(financials.queueQty)+
    ' عدد، از جمله '+faNum(financials.missingReceiver)+' ردیف نیازمند تکمیل ReceiverCode. '+
