@@ -37,6 +37,7 @@ assert.match(infer, /return '2'/);
 const quota = app.slice(app.indexOf("function makeQuotaRows"), app.indexOf("function xmlEsc"));
 assert.match(quota, /تطبیق ناقص/);
 assert.match(quota, /skipped\.push/);
+assert.match(quota, /total>num\(d\.quantity\)\+0\.00001/, "XML export must reject allocation totals above the distribution quantity");
 assert.match(app, /if\(v\.errors\.length\)/, "XML generation must stop when any required row field is invalid");
 assert.match(app, /v\.skipped\.map/, "partial quantity must be reported visibly");
 assert.match(app, /فقط برای همین ردیف‌های معتبر/, "partial XML must explain its actual scope");
