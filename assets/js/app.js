@@ -914,7 +914,14 @@ function renderXmlRows(){
  });
  validateXmlDoc(d,false)
 }
-function makeQuotaRows(d,checkXmlTotal=true,forForm=false,sharedInventoryUsed=null){let used=sharedInventoryUsed||{},rows=[],errors=[],skipped=[];if(!d)return{rows,errors:['سندی انتخاب نشده است']};const docAllocations=quotaAllocationsFor(d);/* تطبیق ناقص به‌تنهایی مانع ساخت اسکریپت ثبت نیست؛ فقط ردیف‌های پیشنهادی با تعداد مثبت ارسال می‌شوند. */const rawTypeId=String(d.typeId||'').trim();const mappedTypeId=inferTypeId(d);const hasTypeSource=String(d.receiverNature||d.distributionType||'').trim();const typeId=rawTypeId||mappedTypeId;const receiverCode=String(d.receiverCode||'').trim();if(rawTypeId&&hasTypeSource&&mappedTypeId&&rawTypeId!==mappedTypeId)errors.push(`TypeID ذخیره‌شده (${rawTypeId}) با نوع توزیع «${d.distributionType||'—'}» و نگاشت مرجع (${mappedTypeId}) مغایرت دارد.`);for(const a of docAllocations){const r=forForm?{row:null,reason:'فیلدهای درخواستی خالی گذاشته شدند'}:resolveStock(d,a,used);const inv=r.row;const row={TypeID:typeId,IRC:String(d.irc||a.irc||''),Count:num(a.allocatedQty),RialPrice:num(a.unitPrice),InvoiceNo:String(a.invoiceNo||''),InvoiceDate:String(a.invoiceDate||''),InventoryID:forForm?'':(inv?String(inv.inventoryId):String(a.inventoryId||'')),ReceiverCode:forForm?'':receiverCode,ReceiverName:forForm?'':String(d.receiver||'')};let miss=[];const required=forForm?['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate']:['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate','InventoryID','ReceiverCode','ReceiverName'];for(const k of required){if(row[k]===''||row[k]===0||row[k]==null)miss.push(k)}if(!forForm&&!inv)miss.push('InventoryID/موجودی قابل تأیید');if(inv)used[inv.inventoryId]=(used[inv.inventoryId]||0)+row.Count;if(miss.length){const message=`فاکتور ${row.InvoiceNo||'؟'}: فیلدهای ضروری ناقص یا نامعتبر: ${[...new Set(miss)].join('، ')} (${r.reason})`;errors.push(message);continue}else rows.push(row)}const total=rows.reduce((s,x)=>s+x.Count,0);if(total>num(d.quantity)+0.00001)errors.push(`تعداد تخصیص‌یافته (${faNum(total)}) از مقدار سند IMED (${faNum(d.quantity)}) بیشتر است؛ ابتدا تخصیص اضافی را اصلاح کن.`);else if(checkXmlTotal&&total+0.00001<num(d.quantity))skipped.push(`تطبیق ناقص: تعداد تخصیص‌یافته ${faNum(total)} از مقدار سند IMED (${faNum(d.quantity)}) کمتر است؛ XML با مقدار واقعی تخصیص‌یافته ساخته می‌شود.`);if(!docAllocations.length)errors.push('هیچ فاکتور فروشی به این سند تخصیص داده نشده یا پیشنهاد تطبیقی محاسبه نشده است.');if(forForm&&!rows.length&&!errors.length)errors.push('هیچ ردیفی با فیلدهای اجباری کافی برای ارسال به فرم IMED باقی نماند.');return{rows,errors,total,skipped}}
+function makeQuotaRows(d,checkXmlTotal=true,forForm=false,sharedInventoryUsed=null){let used=sharedInventoryUsed||{},rows=[],errors=[],skipped=[];if(!d)return{rows,errors:['سندی انتخاب نشده است'],total:0,skipped};
+ const inventoryIrc=norm(d.irc),inventoryCapacity=num(positiveInventoryByIrc(state.virtualInventory).get(inventoryIrc));
+ if(inventoryCapacity<=0)return{rows,errors:['این IRC موجودی مجازی با مانده مثبت ندارد؛ در اولویت فعلی ثبت نیست.'],total:0,skipped};
+ const docAllocations=quotaAllocationsFor(d);
+ const formIrcKey='irc:'+inventoryIrc;
+ const availableForForm=inventoryCapacity-num(used[formIrcKey]||0);
+ const requestedForForm=docAllocations.reduce((sum,a)=>sum+Math.max(0,num(a.allocatedQty)),0);
+ if(forForm&&requestedForForm>availableForForm+0.00001)return{rows,errors:['جمع تعداد فاکتور از مانده مثبت قابل استفاده این IRC بیشتر است؛ اسکریپت فرم ساخته نمی‌شود.'],total:0,skipped};/* تطبیق ناقص به‌تنهایی مانع ساخت اسکریپت ثبت نیست؛ فقط ردیف‌های پیشنهادی با تعداد مثبت ارسال می‌شوند. */const rawTypeId=String(d.typeId||'').trim();const mappedTypeId=inferTypeId(d);const hasTypeSource=String(d.receiverNature||d.distributionType||'').trim();const typeId=rawTypeId||mappedTypeId;const receiverCode=String(d.receiverCode||'').trim();if(rawTypeId&&hasTypeSource&&mappedTypeId&&rawTypeId!==mappedTypeId)errors.push(`TypeID ذخیره‌شده (${rawTypeId}) با نوع توزیع «${d.distributionType||'—'}» و نگاشت مرجع (${mappedTypeId}) مغایرت دارد.`);for(const a of docAllocations){const r=forForm?{row:null,reason:'فیلدهای درخواستی خالی گذاشته شدند'}:resolveStock(d,a,used);const inv=r.row;const row={TypeID:typeId,IRC:String(d.irc||a.irc||''),Count:num(a.allocatedQty),RialPrice:num(a.unitPrice),InvoiceNo:String(a.invoiceNo||''),InvoiceDate:String(a.invoiceDate||''),InventoryID:forForm?'':(inv?String(inv.inventoryId):String(a.inventoryId||'')),ReceiverCode:forForm?'':receiverCode,ReceiverName:forForm?'':String(d.receiver||'')};let miss=[];const required=forForm?['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate']:['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate','InventoryID','ReceiverCode','ReceiverName'];for(const k of required){if(row[k]===''||row[k]===0||row[k]==null)miss.push(k)}if(!forForm&&!inv)miss.push('InventoryID/موجودی قابل تأیید');if(inv)used[inv.inventoryId]=(used[inv.inventoryId]||0)+row.Count;if(miss.length){const message=`فاکتور ${row.InvoiceNo||'؟'}: فیلدهای ضروری ناقص یا نامعتبر: ${[...new Set(miss)].join('، ')} (${r.reason})`;errors.push(message);continue}else rows.push(row)}const total=rows.reduce((s,x)=>s+x.Count,0);if(total>num(d.quantity)+0.00001)errors.push(`تعداد تخصیص‌یافته (${faNum(total)}) از مقدار سند IMED (${faNum(d.quantity)}) بیشتر است؛ ابتدا تخصیص اضافی را اصلاح کن.`);else if(checkXmlTotal&&total+0.00001<num(d.quantity))skipped.push(`تطبیق ناقص: تعداد تخصیص‌یافته ${faNum(total)} از مقدار سند IMED (${faNum(d.quantity)}) کمتر است؛ XML با مقدار واقعی تخصیص‌یافته ساخته می‌شود.`);if(!docAllocations.length)errors.push('هیچ فاکتور فروشی به این سند تخصیص داده نشده یا پیشنهاد تطبیقی محاسبه نشده است.');if(forForm&&!rows.length&&!errors.length)errors.push('هیچ ردیفی با فیلدهای اجباری کافی برای ارسال به فرم IMED باقی نماند.');if(forForm&&!errors.length&&rows.length)used[formIrcKey]=num(used[formIrcKey]||0)+total;return{rows,errors,total,skipped}}
 function xmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
 function quotaXml(rows){return `<?xml version="1.0" encoding="UTF-8"?>\n<QuotaList>\n${rows.map(r=>'  <Quota>\n'+Object.entries(r).map(([k,v])=>`    <${k}>${xmlEsc(v)}</${k}>`).join('\n')+'\n  </Quota>').join('\n')}\n</QuotaList>\n`}
 function validateXmlDoc(d,show=true){
@@ -935,7 +942,7 @@ let scriptDocSearchPage=1;
 async function refreshScriptDocs(){
  const el=$('scriptDocSelect');if(!el)return;
  const prev=el.value||'';
- el.innerHTML='<option value="">انتخاب سند</option>'+state.imed.map(d=>`<option value="${esc(d.id)}">${esc(d.distributionNo)} — ${esc(d.product)}</option>`).join('');
+ el.innerHTML='<option value="">انتخاب سند</option>'+state.imed.filter(d=>positiveInventoryByIrc(state.virtualInventory).has(norm(d.irc))).map(d=>`<option value="${esc(d.id)}">${esc(d.distributionNo)} — ${esc(d.product)}</option>`).join('');
  if(state.imed.some(d=>d.id===prev))el.value=prev;
  try{
   await ensureAutoMatchesReady();
@@ -1104,10 +1111,10 @@ function renderScriptReady(){
   v.rows=v.rows.filter(r=>String(r.InvoiceNo||'')===String(selectedScriptInvoice.invoiceNo||'')&&String(r.InvoiceDate||'')===String(selectedScriptInvoice.invoiceDate||''));
   v.total=v.rows.reduce((n,r)=>n+num(r.Count),0);
  }else selectedScriptInvoice=null;
- const blocked=!v.rows.length,partial=v.total+0.00001<num(d.quantity),warnings=[...v.errors,...v.skipped];
+ const blocked=!v.rows.length||v.errors.length>0,partial=v.total+0.00001<num(d.quantity),warnings=[...v.errors,...v.skipped];
  $('scriptReadyStatus').textContent=blocked?'هیچ ردیفی برای ساخت اسکریپت آماده نیست':`${faNum(v.rows.length)} ردیف آماده | تعداد ${faNum(v.total)}${selectedScriptInvoice?' | فاکتور '+selectedScriptInvoice.invoiceNo+' | '+selectedScriptInvoice.invoiceDate:' از '+faNum(d.quantity)}${partial?' | تطبیق جزئی':''}${warnings.length?' | '+faNum(warnings.length)+' هشدار':''}`;
  $('scriptReadyStatus').className='tag '+(blocked||warnings.length?'warn':'good');
- $('formScriptCode').value=blocked?'برای این فاکتور هیچ ردیف تخصیصی یا پیشنهادی پیدا نشد.':buildFormAutofillSource(d,v.rows);
+ $('formScriptCode').value=blocked?'برای این سند هیچ ردیف معتبر با مانده مثبت جهت ساخت اسکریپت پیدا نشد.':buildFormAutofillSource(d,v.rows);
  if(warnings.length)console.warn('IMED form script preflight:',d.distributionNo,warnings);
 }
 async function refreshSingleFormScript(){try{await ensureAutoMatchesReady();renderScriptReady()}catch(err){$('scriptReadyStatus').textContent=err.message;$('scriptReadyStatus').className='tag warn';$('formScriptCode').value=''}}
@@ -1144,10 +1151,11 @@ $('sendSelectedMatchedDocToImed')?.addEventListener('click',async()=>{
 async function buildAllDocumentsBatchScript(){
  await ensureAutoMatchesReady();
  const jobs=[],diagnostics=[],fieldCounts={};
- for(const d of state.imed){
+ const inScope=positiveInventoryByIrc(state.virtualInventory),usedByIrc={};
+ for(const d of state.imed.filter(d=>inScope.has(norm(d.irc)))){
   const match=allAutoRows.find(x=>String(x.d?.id)===String(d.id));
-  const v=makeQuotaRows(d,false,true);
-  if(v.rows.length){
+  const v=makeQuotaRows(d,false,true,usedByIrc);
+  if(v.rows.length&&!v.errors.length){
    jobs.push({label:`سند ${d.distributionNo||d.id} — ${d.product||''} — ${v.rows.length} ردیف`,code:buildFormAutofillSource(d,v.rows)});
   }else{
    const reasons=v.errors.length?v.errors:['هیچ ردیف فاکتوری برای این سند تولید نشد'];
