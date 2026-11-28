@@ -10,6 +10,7 @@
       "database_id": "f0b49851-7dc3-425d-9d00-13469ed55ead",
     }
   ],
+  "triggers": {"crons": ["* * * * *"]},
   "vars": {
     "APP_ORIGIN": "https://mahdi2028git.github.io"
   }
