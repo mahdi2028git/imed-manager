@@ -107,8 +107,8 @@
 
   <section class="view" id="view-reconcile">
     <div class="card" style="margin-bottom:16px">
-      <div class="section-head"><div><h2>تطبیق چندفاکتوری با سند توزیع</h2><p>یک سند توزیع می‌تواند از چند فاکتور تأمین شده باشد. جمع مقدار تخصیص‌یافته باید دقیقاً با مقدار توزیع برابر شود.</p></div><span class="tag neutral">بدون فرض برابری قیمت‌ها</span></div><div class="actions" style="margin:0 0 12px"><button class="btn primary" id="runAllAutoMatches">محاسبه خودکار تطبیق همه اسناد</button><button class="btn" data-goto="allmatches">نمایش جدول جامع</button></div>
-      <div class="field" style="max-width:520px"><label>انتخاب سند توزیع</label><select id="reconcileDoc"><option value="">انتخاب کنید</option></select></div>
+      <div class="section-head"><div><h2>تطبیق چندفاکتوری با سند توزیع</h2><p>یک سند توزیع می‌تواند از چند فاکتور تأمین شده باشد. جمع مقدار تخصیص‌یافته باید دقیقاً با مقدار توزیع برابر شود.</p></div><span class="tag neutral">بدون فرض برابری قیمت‌ها</span></div><div class="actions" style="margin:0 0 12px"><button class="btn primary" id="runAllAutoMatches">محاسبه خودکار تطبیق همه اسناد</button><button class="btn" id="startServerMatchJob">شروع Job سرور (IRC دقیق)</button><button class="btn" id="checkServerMatchJob">وضعیت Job</button><button class="btn" data-goto="allmatches">نمایش جدول جامع</button></div>
+      <div class="smalltext" id="serverMatchJobStatus" role="status" aria-live="polite">Job سرور فقط پیشنهادهای مبتنی بر IRC یکسان تولید می‌کند و نیاز به تأیید دستی دارد.</div><div class="field" style="max-width:520px"><label>انتخاب سند توزیع</label><select id="reconcileDoc"><option value="">انتخاب کنید</option></select></div>
       <div id="docPanel" class="hidden" style="margin-top:15px">
         <div class="card" style="background:#f8fbff;box-shadow:none">
           <div class="doc-summary" id="docSummary"></div>
