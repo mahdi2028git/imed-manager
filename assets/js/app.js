@@ -517,13 +517,19 @@ async function calculateAllAutoMatches(){
    freeById.set(String(s.id),free);
    return {s,i,irc:norm(s.irc),tokens:productTokens(s.product),month:jalaliMonthKey(s.invoiceDate)};
  });
+ const preparationStatus=(detail)=>{const el=$('allMatchStats');if(el)el.innerHTML=progressMarkup('آماده‌سازی تطبیق',0,detail);};
+ preparationStatus('ساخت شاخص '+faNum(sepidarIndex.length)+' ردیف سپیدار…');
+ await new Promise(resolve=>setTimeout(resolve,0));
  const byIrc=new Map(),byToken=new Map(),byGram=new Map();
  const add=(map,key,item)=>{if(!key)return;let a=map.get(key);if(!a)map.set(key,a=[]);a.push(item)};
  const grams=value=>{const z=norm(value).replace(/[^\u0600-\u06ffa-z0-9]/g,'');const out=new Set();for(let n of [2,3])for(let i=0;i<=z.length-n;i++)out.add(z.slice(i,i+n));return out};
+ let indexedCount=0;
  for(const x of sepidarIndex){
    if(x.irc)add(byIrc,x.irc,x);
    x.tokens.forEach(t=>add(byToken,t,x));
    grams(x.s.product).forEach(g=>add(byGram,g,x));
+   indexedCount++;
+   if(indexedCount%250===0){preparationStatus('شاخص‌گذاری سپیدار: '+faNum(indexedCount)+' از '+faNum(sepidarIndex.length));await new Promise(resolve=>setTimeout(resolve,0));}
  }
  const rows=[];
  const remainingCapacityByIrc=positiveInventoryByIrc(state.virtualInventory);
@@ -568,7 +574,11 @@ async function calculateAllAutoMatches(){
  const byInvoice=new Map();
  for(const x of sepidarIndex){const k=norm(x.s.invoiceNo);if(k){let a=byInvoice.get(k);if(!a)byInvoice.set(k,a=[]);a.push(x)}}
  const docs=state.imed.filter(d=>remainingCapacityByIrc.has(norm(d.irc))).sort((a,b)=>dateOrderValue(a.distributionDate)-dateOrderValue(b.distributionDate));
+ matchProgress(0,'در حال محاسبه شناسه داده‌ها و بررسی کش؛ هنوز وارد پردازش اسناد نشده‌ایم…');
+ await new Promise(resolve=>setTimeout(resolve,0));
  const baseHash=await matchCacheHash({matcherVersion:5,imed:state.imed,sepidar:state.sepidar,virtualInventory:state.virtualInventory,allocations:state.allocations,references:MATCH_REFERENCE_ROWS});
+ matchProgress(0,'شاخص‌ها آماده‌اند؛ در حال بازیابی نتایج قبلی و اتصال به صف پردازش…');
+ await new Promise(resolve=>setTimeout(resolve,0));
  let remoteMatchJob=null,lastRemoteJobUpdate=0;
  if(cloudEnabled){
    try{
