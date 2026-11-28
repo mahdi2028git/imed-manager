@@ -851,7 +851,10 @@ const SERVER_MATCH_JOB_KEY='imedServerMatchJobId';
 async function showServerMatchJob(){
  const jobId=localStorage.getItem(SERVER_MATCH_JOB_KEY),target=$('serverMatchJobStatus');
  if(!jobId){target.textContent='هنوز Job سمت سرور شروع نشده است.';return}
- if(!cloudEnabled){target.textContent='برای مشاهده Job، اتصال Cloudflare را فعال کن.';return}
+ if(!cloudEnabled){
+  if(!cloudKey()){target.textContent='برای مشاهده Job، کلید اتصال Cloudflare را وارد کن.';return}
+  try{await cloudRequest('/api/health');await cloudRequest('/api/state');cloudEnabled=true}catch(err){target.textContent='اتصال Cloudflare برقرار نشد: '+err.message;return}
+ }
  const response=await cloudRequest('/api/server-match-jobs/'+encodeURIComponent(jobId));
  const job=response.job;
  target.textContent='Job '+job.id+' | '+job.status+' | '+faNum(job.completed)+' از '+faNum(job.total)+' سند'+(job.error?' | خطا: '+job.error:'');
@@ -863,7 +866,12 @@ async function showServerMatchJob(){
 $('startServerMatchJob').addEventListener('click',async()=>{
  const button=$('startServerMatchJob');button.disabled=true;
  try{
-  if(!cloudEnabled)throw new Error('ابتدا اتصال Cloudflare را فعال کن.');
+  if(!cloudEnabled){
+   if(!cloudKey())throw new Error('کلید اتصال Cloudflare در این مرورگر وارد نشده است. از بخش اتصال Cloudflare کلید را وارد کن.');
+   await cloudRequest('/api/state');
+   cloudEnabled=true;
+   cloudStatus('اتصال Cloudflare تأیید شد؛ آماده اجرای Job سمت سرور.');
+  }
   if(!state.imed.length||!state.sepidar.length||!state.virtualInventory.length)throw new Error('داده‌های IMED، سپیدار و انبار مجازی باید موجود باشند.');
   await saveQueue;await cloudPushSnapshot();
   const result=await cloudRequest('/api/server-match-jobs',{method:'POST',body:'{}'});
