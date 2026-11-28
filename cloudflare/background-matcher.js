@@ -6,6 +6,12 @@ const score = (a,b) => {const A=words(a),B=words(b);if(!A.size||!B.size)return 0
 const json = (v,status=200)=>new Response(JSON.stringify(v),{status,headers:{"content-type":"application/json; charset=utf-8"}});
 async function run(env) {
   if(!env.DB)throw Error("D1 binding DB is required");
+  // The live D1 business tables are empty while the actual app data is stored in
+  // app_state_uploads. Never report zero matches as a successful completed run.
+  const counts = await env.DB.prepare("SELECT (SELECT COUNT(*) FROM sepidar_invoice_items) AS items, (SELECT COUNT(*) FROM imed_distributions) AS distributions, (SELECT COUNT(*) FROM app_state_meta) AS snapshots").first();
+  if (!Number(counts?.items) || !Number(counts?.distributions)) {
+    throw new Error("Background matching paused: business tables have no rows; " + Number(counts?.snapshots || 0) + " snapshot(s) require a validated importer");
+  }
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS background_match_suggestions (item_id INTEGER PRIMARY KEY, invoice_no TEXT, irc TEXT, inventory_id TEXT, receiver_code TEXT, confidence REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, reason TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)").run();
   const invoices=await env.DB.prepare("SELECT i.id AS item_id, i.item_name, i.product_id, s.invoice_no, s.customer_id, p.irc AS product_irc, c.name AS customer_name, c.customer_code AS customer_code FROM sepidar_invoice_items i JOIN sepidar_invoices s ON s.id=i.invoice_id LEFT JOIN products p ON p.id=i.product_id LEFT JOIN customers c ON c.id=s.customer_id ORDER BY i.id").all();
   const stocks=await env.DB.prepare("SELECT d.id, d.product_id, d.remaining_quantity, d.raw_json, p.irc, p.name FROM imed_distributions d LEFT JOIN products p ON p.id=d.product_id").all();
