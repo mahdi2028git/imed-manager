@@ -1158,6 +1158,17 @@ function renderXmlRows(){
  });
  validateXmlDoc(d,false)
 }
+const QUOTA_XML_FIELDS=['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate','InventoryID','ReceiverCode','ReceiverName'];
+function quotaFieldErrors(row,required=QUOTA_XML_FIELDS){
+ return required.filter(field=>{
+  const value=row?.[field];
+  if(value==null||String(value).trim()==='')return true;
+  if((field==='Count'||field==='RialPrice')&&(!Number.isFinite(Number(value))||Number(value)<=0))return true;
+  if(field==='IRC'&&!/^\d+$/.test(latin(String(value)).trim()))return true;
+  if(field==='TypeID'&&!VALID_DISTRIBUTION_TYPE_IDS.has(String(value).trim()))return true;
+  return false;
+ });
+}
 function makeQuotaRows(d,checkXmlTotal=true,forForm=false,sharedInventoryUsed=null){let used=sharedInventoryUsed||{},rows=[],errors=[],skipped=[];if(!d)return{rows,errors:['سندی انتخاب نشده است'],total:0,skipped};
  const inventoryIrc=norm(d.irc),inventoryCapacity=num(positiveInventoryByIrc(state.virtualInventory).get(inventoryIrc));
  if(inventoryCapacity<=0)return{rows,errors:['این IRC موجودی مجازی با مانده مثبت ندارد؛ در اولویت فعلی ثبت نیست.'],total:0,skipped};
@@ -1171,9 +1182,16 @@ function makeQuotaRows(d,checkXmlTotal=true,forForm=false,sharedInventoryUsed=nu
  const approvedTypeId=state.receiverMappings?.[window.IMEDReceiverMatcher?.norm(customerNameForCoding)||norm(customerNameForCoding)]?.typeId||'';
  if(approvedTypeId&&rawTypeId&&String(rawTypeId)!==String(approvedTypeId))errors.push('TypeID صریح سند با ماهیت کدینگ تأییدشده این مشتری سازگار نیست؛ قبل از خروجی اصلاح شود.');
  const selectedReceiverCode=approvedReceiverCode||receiverCode;
- const row={TypeID:approvedTypeId||(approvedReceiverCode&&APPROVED_RECEIVER_CODING_ALIASES.has(norm(customerNameForCoding))?'2':typeId),IRC:String(d.irc||a.irc||''),Count:num(a.allocatedQty),RialPrice:num(a.unitPrice),InvoiceNo:String(a.invoiceNo||''),InvoiceDate:String(a.invoiceDate||''),InventoryID:forForm?'':(inv?String(inv.inventoryId):String(a.inventoryId||'')),ReceiverCode:forForm?'':selectedReceiverCode,ReceiverName:forForm?'':String(approvedReceiverCode?(a.customer||d.receiver):d.receiver||'')};let miss=[];const required=forForm?['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate']:['TypeID','IRC','Count','RialPrice','InvoiceNo','InvoiceDate','InventoryID','ReceiverCode','ReceiverName'];for(const k of required){if(row[k]===''||row[k]===0||row[k]==null)miss.push(k)}if(!forForm&&!inv)miss.push('InventoryID/موجودی قابل تأیید');if(inv)used[inv.inventoryId]=(used[inv.inventoryId]||0)+row.Count;if(miss.length){const message=`فاکتور ${row.InvoiceNo||'؟'}: فیلدهای ضروری ناقص یا نامعتبر: ${[...new Set(miss)].join('، ')} (${r.reason})`;errors.push(message);continue}else rows.push(row)}const total=rows.reduce((s,x)=>s+x.Count,0);if(total>num(d.quantity)+0.00001)errors.push(`تعداد تخصیص‌یافته (${faNum(total)}) از مقدار سند IMED (${faNum(d.quantity)}) بیشتر است؛ ابتدا تخصیص اضافی را اصلاح کن.`);else if(checkXmlTotal&&total+0.00001<num(d.quantity))skipped.push(`تطبیق ناقص: تعداد تخصیص‌یافته ${faNum(total)} از مقدار سند IMED (${faNum(d.quantity)}) کمتر است؛ XML با مقدار واقعی تخصیص‌یافته ساخته می‌شود.`);if(!docAllocations.length)errors.push('هیچ فاکتور فروشی به این سند تخصیص داده نشده یا پیشنهاد تطبیقی محاسبه نشده است.');if(forForm&&!rows.length&&!errors.length)errors.push('هیچ ردیفی با فیلدهای اجباری کافی برای ارسال به فرم IMED باقی نماند.');if(forForm&&!errors.length&&rows.length)used[formIrcKey]=num(used[formIrcKey]||0)+total;return{rows,errors,total,skipped}}
+ const row={TypeID:approvedTypeId||(approvedReceiverCode&&APPROVED_RECEIVER_CODING_ALIASES.has(norm(customerNameForCoding))?'2':typeId),IRC:String(d.irc||a.irc||''),Count:num(a.allocatedQty),RialPrice:num(a.unitPrice),InvoiceNo:String(a.invoiceNo||''),InvoiceDate:String(a.invoiceDate||''),InventoryID:forForm?'':(inv?String(inv.inventoryId):String(a.inventoryId||'')),ReceiverCode:forForm?'':selectedReceiverCode,ReceiverName:forForm?'':String(approvedReceiverCode?(a.customer||d.receiver):d.receiver||'')};const required=forForm?QUOTA_XML_FIELDS.slice(0,6):QUOTA_XML_FIELDS;let miss=quotaFieldErrors(row,required);if(d.irc&&a.irc&&norm(d.irc)!==norm(a.irc))miss.push('IRC مغایر بین سند و فاکتور');if(!forForm&&!inv)miss.push('InventoryID/موجودی قابل تأیید');if(miss.length){const message=`فاکتور ${row.InvoiceNo||'؟'}: فیلدهای ضروری ناقص یا نامعتبر: ${[...new Set(miss)].join('، ')} (${r.reason})`;errors.push(message);continue}else{rows.push(row);if(inv)used[inv.inventoryId]=(used[inv.inventoryId]||0)+row.Count}}const total=rows.reduce((s,x)=>s+x.Count,0);if(total>num(d.quantity)+0.00001)errors.push(`تعداد تخصیص‌یافته (${faNum(total)}) از مقدار سند IMED (${faNum(d.quantity)}) بیشتر است؛ ابتدا تخصیص اضافی را اصلاح کن.`);else if(checkXmlTotal&&total+0.00001<num(d.quantity))skipped.push(`تطبیق ناقص: تعداد تخصیص‌یافته ${faNum(total)} از مقدار سند IMED (${faNum(d.quantity)}) کمتر است؛ XML با مقدار واقعی تخصیص‌یافته ساخته می‌شود.`);if(!docAllocations.length)errors.push('هیچ فاکتور فروشی به این سند تخصیص داده نشده یا پیشنهاد تطبیقی محاسبه نشده است.');if(forForm&&!rows.length&&!errors.length)errors.push('هیچ ردیفی با فیلدهای اجباری کافی برای ارسال به فرم IMED باقی نماند.');if(forForm&&!errors.length&&rows.length)used[formIrcKey]=num(used[formIrcKey]||0)+total;return{rows,errors,total,skipped}}
 function xmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
-function quotaXml(rows){return `<?xml version="1.0" encoding="UTF-8"?>\n<QuotaList>\n${rows.map(r=>'  <Quota>\n'+Object.entries(r).map(([k,v])=>`    <${k}>${xmlEsc(v)}</${k}>`).join('\n')+'\n  </Quota>').join('\n')}\n</QuotaList>\n`}
+function quotaXml(rows){
+ if(!Array.isArray(rows)||!rows.length)throw Error('هیچ ردیف معتبری برای ساخت XML وجود ندارد.');
+ for(const [index,row] of rows.entries()){
+  const invalid=quotaFieldErrors(row);
+  if(invalid.length)throw Error(`ردیف ${index+1}: فیلدهای اجباری XML نامعتبرند: ${invalid.join('، ')}`);
+ }
+ return `<?xml version="1.0" encoding="UTF-8"?>\n<QuotaList>\n${rows.map(r=>'  <Quota>\n'+QUOTA_XML_FIELDS.map(k=>`    <${k}>${xmlEsc(r[k])}</${k}>`).join('\n')+'\n  </Quota>').join('\n')}\n</QuotaList>\n`;
+}
 function validateXmlDoc(d,show=true){
  const v=makeQuotaRows(d);
  if(show&&$('xmlValidation')){
