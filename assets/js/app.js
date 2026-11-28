@@ -162,27 +162,40 @@ function needsManualReviewStatus(status){return status==='none'||status==='over'
 // Only remaining positive stock and matched invoices awaiting clearance count.
 // Inventory valuation is independent of Sepidar invoices, matching and allocations.
 // IMED explanatory/distribution document prices are the only permissible price source.
+// IMED virtual-stock valuation: never consult Sepidar or matching allocations.
+// Prefer a price linked to the exact InventoryID; fall back to the same IRC.
+// Unknown prices remain unknown rather than being silently estimated.
 function calculateImedInventoryValue(){
- const rates=new Map();
+ const byInventoryId=new Map(),byIrc=new Map();
+ const priceOf=(record,quantity)=>{
+  const unit=record.imedUnitPrice??record.imedInvoiceUnitPrice??record.invoiceUnitPriceRial??record.unitPriceRial??record['فی ریالی']??record['قیمت واحد ریالی'];
+  if(hasRialAmount(unit))return num(unit);
+  const total=record.imedTotalAmount??record.imedInvoiceTotalRial??record.invoiceTotalRial;
+  return quantity>0&&hasRialAmount(total)?num(total)/quantity:null;
+ };
+ const collect=(map,key,quantity,unit)=>{
+  if(!key||quantity<=0||!hasRialAmount(unit))return;
+  const old=map.get(key)||{amount:0,quantity:0};
+  old.amount+=quantity*num(unit);old.quantity+=quantity;map.set(key,old);
+ };
  for(const d of state.imed||[]){
-  const irc=norm(d.irc),qty=num(d.quantity);
-  if(!irc||qty<=0)continue;
-  const unit=hasRialAmount(d.imedUnitPrice)?num(d.imedUnitPrice):
-   hasRialAmount(d.imedTotalAmount)?num(d.imedTotalAmount)/qty:null;
-  if(!hasRialAmount(unit))continue;
-  const previous=rates.get(irc)||{amount:0,quantity:0};
-  previous.amount+=qty*unit;previous.quantity+=qty;
-  rates.set(irc,previous);
+  const irc=norm(d.irc),inventoryId=String(d.inventoryId||d.InventoryID||'').trim();
+  const quantity=num(d.quantity);
+  const unit=priceOf(d,quantity);
+  collect(byInventoryId,inventoryId,quantity,unit);
+  collect(byIrc,irc,quantity,unit);
  }
- let stockTotal=0,stockPriced=0;
+ let stockTotal=0,stockPriced=0,missingStockPrice=0;
  const active=latestPositiveVirtualInventoryRows(state.virtualInventory);
  for(const v of active){
-  const rate=rates.get(norm(v.irc));
-  if(!rate||rate.quantity<=0)continue;
-  stockTotal+=num(v.remainingQty)*(rate.amount/rate.quantity);
-  stockPriced++;
+  const quantity=num(v.remainingQty),inventoryId=String(v.inventoryId||'').trim();
+  const direct=priceOf(v,num(v.initialQty)||quantity);
+  const linked=byInventoryId.get(inventoryId)||byIrc.get(norm(v.irc));
+  const unit=hasRialAmount(direct)?direct:linked?.quantity>0?linked.amount/linked.quantity:null;
+  if(!hasRialAmount(unit)){missingStockPrice++;continue;}
+  stockTotal+=quantity*unit;stockPriced++;
  }
- return {stockTotal,stockPriced,directImed:stockPriced,estimatedSepidar:0};
+ return {stockTotal,stockPriced,missingStockPrice,directImed:stockPriced,estimatedSepidar:0};
 }
 function calculateClearanceFinancials(){
  const active=latestPositiveVirtualInventoryRows(state.virtualInventory);
@@ -1069,7 +1082,7 @@ $('inventorySnapshotInput').onchange=async e=>{
    }
    const cleaned=rows.map(r=>{
      const rv=r.remainingQty??r.remaining_qty??r.remainQty??r.RemainingQty??r['تعداد باقیمانده در انبار مجازی']??r['موجودی باقیمانده'];
-     return{id:id(),inventoryId:String(r.inventoryId??r.InventoryID??r.inventory_id??r['کد انبار مجازی']??'').trim(),entryDate:String(r.entryDate??r.date??r['تاریخ ورود به انبار مجازی']??r['تاریخ ورود']??''),irc:latin(r.irc??r.IRC??'').replace(/\D/g,''),mainGroup:String(r.mainGroup??r['گروه اصلی']??''),subGroup:String(r.subGroup??r['گروه فرعی']??''),persianName:String(r.persianName??r.product??r.productName??r.name??r['نام فارسی کالا']??r['نام کالا']??''),product:String(r.persianName??r.product??r.productName??r.name??r['نام فارسی کالا']??r['نام کالا']??''),persianDistinction:String(r.persianDistinction??r['وجه افتراق فارسی']??''),legalCompany:String(r.legalCompany??r['کمپانی قانونی']??''),manufacturerCountry:String(r.manufacturerCountry??r['کشور سازنده اصلی']??''),mainSupplier:String(r.mainSupplier??r['شرکت تامین کننده اصلی']??''),model:String(r.model??r['مدل']??''),distributedQty:r.distributedQty==null?num(r['تعداد توزیع']):num(r.distributedQty),initialQty:r.initialQty==null?num(r['تعداد کل موجودی اولیه']):num(r.initialQty),remainingQty:rv==null||String(rv).trim()===''?NaN:num(rv),supplierType:String(r.supplierType??r['نوع تامین کننده']??''),distributionIssuer:String(r.distributionIssuer??r['صادر کننده سند توزیع']??''),declaration:String(r.declaration??r['اظهار']??''),orderRegistration:String(r.orderRegistration??r['ثبت سفارش']??''),batchNo:String(r.batchNo??r['شماره سری ساخت / بچ']??r['شماره سری ساخت']??''),strategicReserves:String(r.strategicReserves??r['ذخایر استراتژیک']??''),productionDate:String(r.productionDate??r['تاریخ تولید']??''),expiryDate:String(r.expiryDate??r['تاریخ انقضاء']??r['تاریخ انقضا']??'')};
+     return{id:id(),inventoryId:String(r.inventoryId??r.InventoryID??r.inventory_id??r['کد انبار مجازی']??'').trim(),entryDate:String(r.entryDate??r.date??r['تاریخ ورود به انبار مجازی']??r['تاریخ ورود']??''),irc:latin(r.irc??r.IRC??'').replace(/\D/g,''),mainGroup:String(r.mainGroup??r['گروه اصلی']??''),subGroup:String(r.subGroup??r['گروه فرعی']??''),persianName:String(r.persianName??r.product??r.productName??r.name??r['نام فارسی کالا']??r['نام کالا']??''),product:String(r.persianName??r.product??r.productName??r.name??r['نام فارسی کالا']??r['نام کالا']??''),persianDistinction:String(r.persianDistinction??r['وجه افتراق فارسی']??''),legalCompany:String(r.legalCompany??r['کمپانی قانونی']??''),manufacturerCountry:String(r.manufacturerCountry??r['کشور سازنده اصلی']??''),mainSupplier:String(r.mainSupplier??r['شرکت تامین کننده اصلی']??''),model:String(r.model??r['مدل']??''),distributedQty:r.distributedQty==null?num(r['تعداد توزیع']):num(r.distributedQty),initialQty:r.initialQty==null?num(r['تعداد کل موجودی اولیه']):num(r.initialQty),remainingQty:rv==null||String(rv).trim()===''?NaN:num(rv),supplierType:String(r.supplierType??r['نوع تامین کننده']??''),distributionIssuer:String(r.distributionIssuer??r['صادر کننده سند توزیع']??''),declaration:String(r.declaration??r['اظهار']??''),orderRegistration:String(r.orderRegistration??r['ثبت سفارش']??''),batchNo:String(r.batchNo??r['شماره سری ساخت / بچ']??r['شماره سری ساخت']??''),strategicReserves:String(r.strategicReserves??r['ذخایر استراتژیک']??''),productionDate:String(r.productionDate??r['تاریخ تولید']??''),expiryDate:String(r.expiryDate??r['تاریخ انقضاء']??r['تاریخ انقضا']??''),imedUnitPrice:r.imedUnitPrice??r.imedInvoiceUnitPrice??r.invoiceUnitPriceRial??r.unitPriceRial??r['فی ریالی']??r['قیمت واحد ریالی']??null,imedTotalAmount:r.imedTotalAmount??r.imedInvoiceTotalRial??r.invoiceTotalRial??null};
    }).filter(r=>r.inventoryId&&r.irc&&Number.isFinite(r.remainingQty));
    if(!cleaned.length)throw Error('ردیف معتبری با InventoryID، IRC و موجودی باقیمانده پیدا نشد؛ عنوان ستون‌ها و فایل را بررسی کن');
    if($('mergeInventorySnapshots').checked){
