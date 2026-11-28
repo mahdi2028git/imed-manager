@@ -87,7 +87,7 @@ assert.match(userscript, /ثبت نهایی همچنان فقط با کلیک د
 assert.equal(version.trim(), "0.33.0", "VERSION must be the canonical release version");
 assert.match(html, /نسخه ۰\.۳۳\.۰/);
 assert.match(html, /styles\.css\?v=0\.33\.0/);
-assert.match(html, /app\.js\?v=0\.33\.0/);
+assert.match(html, /app\\.js\\?v=0\\.33\\.1/);
 
 // Financial fields are optional, separate across source systems, and totals are shown for review.
 assert.match(app, /imedUnitPrice/);
