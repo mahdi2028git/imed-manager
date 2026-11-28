@@ -14,6 +14,31 @@ async function loadActiveSnapshot(env) {
 }
 const matchDigits=v=>String(v??"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[^0-9]/g,"");
 const matchNum=v=>{const n=Number(String(v??0).replace(/[٬,\s]/g,""));return Number.isFinite(n)?n:0};
+
+const matchNorm=v=>String(v??"").toLowerCase().replace(/[يى]/g,"ی").replace(/ك/g,"ک").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[\u200c\s\-_/،,().]/g,"").trim();
+const matchTokens=v=>new Set(String(v??"").toLowerCase().replace(/[يى]/g,"ی").replace(/ك/g,"ک").split(/[^\p{L}\p{N}]+/u).map(matchNorm).filter(x=>x.length>2));
+function serverMatchCandidate(d,s,inventoryRows){
+ const di=matchDigits(d.irc),si=matchDigits(s.irc);
+ if(di&&si&&di!==si)return null;
+ const descriptors=[d.product,d.persianName,d.persianDistinction,d.model,d.mainGroup,d.subGroup,...inventoryRows.flatMap(v=>[v.product,v.persianName,v.persianDistinction,v.model,v.mainGroup,v.subGroup,v.legalCompany,v.manufacturerCountry,v.mainSupplier])].filter(Boolean);
+ const item=[s.product,s.persianName,s.persianDistinction,s.model,s.mainGroup,s.subGroup].filter(Boolean);
+ const product=matchNorm(s.product),model=matchNorm(s.model);
+ const signals=[];let score=0;
+ if(di&&si&&di===si){score+=100;signals.push("IRC دقیق")}
+ for(const descriptor of descriptors){
+  const val=matchNorm(descriptor);if(!val)continue;
+  if(val.length>=4&&item.some(v=>matchNorm(v)===val)){score=Math.max(score,65);signals.push("نام یا وجه افتراق فارسی");break}
+ }
+ if(model&&descriptors.some(v=>matchNorm(v)===model)){score=Math.max(score,55);signals.push("مدل")}
+ const docTokens=new Set(descriptors.flatMap(v=>[...matchTokens(v)]));
+ const itemTokens=new Set(item.flatMap(v=>[...matchTokens(v)]));
+ const overlap=[...itemTokens].filter(t=>docTokens.has(t)).length;
+ if(overlap>=2){score=Math.max(score,Math.min(50,overlap*12));signals.push("مشخصات کالا")}
+ if(!score||(!di&&!si&&score<24))return null;
+ const customer=matchNorm(s.customer),receiver=matchNorm(d.receiver);
+ if(customer&&receiver&&customer===receiver){score+=15;signals.push("دریافت‌کننده")}
+ return {score,signals};
+}
 async function processServerMatchJob(env) {
  const job=await env.DB.prepare("SELECT * FROM server_match_jobs WHERE status IN ('queued','running') ORDER BY created_at LIMIT 1").first();
  if(!job)return;
@@ -25,6 +50,7 @@ async function processServerMatchJob(env) {
   const inventory=new Set((snapshot.virtualInventory||[]).filter(v=>matchNum(v.remainingQty)>0).map(v=>matchDigits(v.irc)).filter(Boolean));
   const docs=(snapshot.imed||[]).filter(d=>inventory.has(matchDigits(d.irc)));
   const byIrc=new Map();for(const s of snapshot.sepidar||[]){const irc=matchDigits(s.irc);if(!irc)continue;let a=byIrc.get(irc);if(!a){a=[];byIrc.set(irc,a)}a.push(s)}
+  const inventoryByIrc=new Map();for(const v of snapshot.virtualInventory||[]){const k=matchDigits(v.irc);if(!k)continue;const a=inventoryByIrc.get(k)||[];a.push(v);inventoryByIrc.set(k,a)}
   const used=new Map();for(const allocations of Object.values(snapshot.allocations||{}))for(const a of allocations||[])used.set(String(a.sourceId),(used.get(String(a.sourceId))||0)+matchNum(a.allocatedQty));
   // Rebuild consumption from previously persisted suggestions, ensuring restart parity.
   const earlier=await env.DB.prepare("SELECT result_json FROM server_match_results WHERE job_id=? ORDER BY doc_index").bind(job.id).all();
@@ -35,10 +61,11 @@ async function processServerMatchJob(env) {
    const already=existing.reduce((n,a)=>n+matchNum(a.allocatedQty),0);
    let need=Math.max(0,matchNum(d.quantity)-already),planned=[];
    // Only unambiguous exact IRC, no fuzzy product guesses or automatic confirmation.
-   for(const s of byIrc.get(irc)||[]){
+   const ranked=(snapshot.sepidar||[]).map(s=>({s,match:serverMatchCandidate(d,s,inventoryByIrc.get(irc)||[])})).filter(x=>x.match).sort((a,b)=>b.match.score-a.match.score);
+   for(const {s,match} of ranked){
     if(!need)break;const free=Math.max(0,matchNum(s.quantity)-(used.get(String(s.id))||0));
     if(!free)continue;const qty=Math.min(need,free);
-    planned.push({sourceId:String(s.id),invoiceNo:String(s.invoiceNo||""),quantity:qty,unitPrice:matchNum(s.unitPrice),matchMethod:"exact-irc-review"});
+    planned.push({sourceId:String(s.id),invoiceNo:String(s.invoiceNo||""),quantity:qty,unitPrice:matchNum(s.unitPrice),matchMethod:"server-scored-review",score:match.score,signals:match.signals});
     used.set(String(s.id),(used.get(String(s.id))||0)+qty);need-=qty;
    }
    const result={distributionId:String(d.id),distributionNo:String(d.distributionNo||""),irc,quantity:matchNum(d.quantity),already,planned,remaining:need,status:need===0?"suggested-complete":planned.length?"suggested-partial":"unmatched",requiresReview:true};
