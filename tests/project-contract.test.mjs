@@ -256,3 +256,33 @@ assert.equal(fin.stockValue,null,"unknown stock valuation must be unavailable, n
 assert.equal(fin.queueValue,null,"no planned invoices must be unavailable, not all historical sales");
 
 console.log("IMED Manager contract checks passed.");
+
+// All nine fields in each Quota XML row are mandatory: no blank, invalid IRC,
+// nonpositive quantity/price, or unknown TypeID may leak into the serializer.
+const fieldsSource=app.slice(app.indexOf("const QUOTA_XML_FIELDS="),app.indexOf("function makeQuotaRows("));
+const serializerSource=app.slice(app.indexOf("function xmlEsc("),app.indexOf("function validateXmlDoc("));
+assert.ok(fieldsSource.startsWith("const QUOTA_XML_FIELDS="),"XML required-field validation is missing");
+assert.ok(serializerSource.startsWith("function xmlEsc("),"XML serializer is missing");
+const {quotaXml,quotaFieldErrors}=runInNewContext(fieldsSource+"\n"+serializerSource+"\n({quotaXml,quotaFieldErrors})",{
+ latin: s=>String(s??"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)),
+ VALID_DISTRIBUTION_TYPE_IDS:new Set(["1","2","4","5","6","9","15","17","18","19","21"]),
+});
+const validQuota={TypeID:"2",IRC:"4747326544788685",Count:3,RialPrice:250000,InvoiceNo:"43",InvoiceDate:"1404/07/23",InventoryID:"inventory-01",ReceiverCode:"receiver-01",ReceiverName:"مرکز درمانی"};
+const validXml=quotaXml([validQuota]);
+assert.match(validXml,/<QuotaList>/);
+for(const field of Object.keys(validQuota)){
+ assert.ok(validXml.includes("<"+field+">"),"XML missing required element "+field);
+ const blank={...validQuota,[field]:"  "};
+ assert.ok(quotaFieldErrors(blank).includes(field),"blank "+field+" must be rejected");
+ assert.throws(()=>quotaXml([blank]),/فیلدهای اجباری XML نامعتبرند/,field+" should block XML creation");
+}
+for(const field of ["Count","RialPrice"]){
+ assert.ok(quotaFieldErrors({...validQuota,[field]:-1}).includes(field),"negative "+field+" must be rejected");
+ assert.ok(quotaFieldErrors({...validQuota,[field]:0}).includes(field),"zero "+field+" must be rejected");
+}
+assert.ok(quotaFieldErrors({...validQuota,IRC:"ABC"}).includes("IRC"),"nonnumeric IRC must be rejected");
+assert.ok(quotaFieldErrors({...validQuota,TypeID:"999"}).includes("TypeID"),"unknown TypeID must be rejected");
+assert.throws(()=>quotaXml([]),/هیچ ردیف معتبری/);
+assert.ok(app.includes('norm(d.irc)!==norm(a.irc)'), 'conflicting IRC must block export');
+assert.match(app,/IMED_XML_Rejected_Documents\.csv/,"rejected XML documents require an exception report");
+
