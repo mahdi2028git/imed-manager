@@ -212,8 +212,8 @@ assert.match(html,/ارزش فاکتورهای سپیدار در صف ثبت \(�
 assert.match(app,/function calculateClearanceFinancials\(\)/);
 assert.match(app,/financials\.stockValue===null\?'—'/);
 assert.match(app,/financials\.queueValue===null\?'—'/);
-assert.match(app,/برآورد با قیمت فاکتور تطبیق‌شده سپیدار/);
-const financeSrc=app.slice(app.indexOf("function calculateClearanceFinancials"),app.indexOf("function refresh(){"));
+assert.match(app,/function calculateImedInventoryValue\(\)/);
+const financeSrc=app.slice(app.indexOf("function calculateImedInventoryValue"),app.indexOf("function refresh(){"));
 const financeState={
  virtualInventory:[{irc:"A",inventoryId:"1",remainingQty:10},{irc:"B",inventoryId:"2",remainingQty:5},{irc:"C",inventoryId:"3",remainingQty:0}],
  imed:[{id:"d1",irc:"A",quantity:10,distributionDate:"1405/01/01",imedUnitPrice:100,receiver:"Hosp"},{id:"d2",irc:"B",quantity:5,distributionDate:"1405/01/02",receiver:"Hosp"}],
@@ -237,11 +237,11 @@ const calculateClearanceFinancials=runInNewContext(
  Map
 });
 let fin=calculateClearanceFinancials();
-assert.equal(fin.stockValue,3500,"IMED remaining valuation must use IMED rate first, then clearly labeled Sepidar estimate");
+assert.equal(fin.stockValue,1000,"IMED remaining valuation must use IMED-only invoice prices, never Sepidar estimates");
 assert.equal(fin.queueValue,2600,"Sepidar value must only cover matched pending quantities, not historical sales");
 assert.equal(fin.stockCount,2,"zero-balance stock must not be priced");
 assert.equal(fin.directImed,1);
-assert.equal(fin.estimatedSepidar,1);
+assert.equal(fin.estimatedSepidar,0);
 assert.equal(fin.queueRows,2);
 assert.equal(fin.missingReceiver,2);
 financeState.imed.push({id:"d3",irc:"A",quantity:100,distributionDate:"1405/01/03",receiver:"Hosp"});
