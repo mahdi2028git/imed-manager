@@ -160,6 +160,30 @@ function dashboardDocStatus(d){if(!activePositiveIrcs.has(norm(d.irc)))return'ou
 function statusTag(status){if(status==='out-of-scope')return'<span class="tag neutral">خارج از تطبیق: مانده صفر/ناموجود</span>';if(status==='exact')return'<span class="tag good">تطبیق کامل</span>';if(status==='over')return'<span class="tag bad">بیش از مقدار توزیع</span>';if(status==='partial')return'<span class="tag warn">ناقص</span>';return'<span class="tag neutral">بدون تطبیق</span>'}
 function needsManualReviewStatus(status){return status==='none'||status==='over'}
 // Only remaining positive stock and matched invoices awaiting clearance count.
+// Inventory valuation is independent of Sepidar invoices, matching and allocations.
+// IMED explanatory/distribution document prices are the only permissible price source.
+function calculateImedInventoryValue(){
+ const rates=new Map();
+ for(const d of state.imed||[]){
+  const irc=norm(d.irc),qty=num(d.quantity);
+  if(!irc||qty<=0)continue;
+  const unit=hasRialAmount(d.imedUnitPrice)?num(d.imedUnitPrice):
+   hasRialAmount(d.imedTotalAmount)?num(d.imedTotalAmount)/qty:null;
+  if(!hasRialAmount(unit))continue;
+  const previous=rates.get(irc)||{amount:0,quantity:0};
+  previous.amount+=qty*unit;previous.quantity+=qty;
+  rates.set(irc,previous);
+ }
+ let stockTotal=0,stockPriced=0;
+ const active=latestPositiveVirtualInventoryRows(state.virtualInventory);
+ for(const v of active){
+  const rate=rates.get(norm(v.irc));
+  if(!rate||rate.quantity<=0)continue;
+  stockTotal+=num(v.remainingQty)*(rate.amount/rate.quantity);
+  stockPriced++;
+ }
+ return {stockTotal,stockPriced,directImed:stockPriced,estimatedSepidar:0};
+}
 function calculateClearanceFinancials(){
  const active=latestPositiveVirtualInventoryRows(state.virtualInventory);
  const capacity=positiveInventoryByIrc(state.virtualInventory);
@@ -199,14 +223,8 @@ function calculateClearanceFinancials(){
    queueRows++;queueQty+=qty;overCapacity+=requested-qty;
   }
  }
- let stockTotal=0,stockPriced=0,directImed=0,estimatedSepidar=0;
- for(const v of active){
-  const irc=norm(v.irc),direct=imedRates.get(irc),estimate=sepRates.get(irc);
-  const rate=direct?.qty>0?direct:null;
-  if(!rate)continue;
-  stockTotal+=num(v.remainingQty)*rate.sum/rate.qty;
-  stockPriced++;if(direct?.qty>0)directImed++;else estimatedSepidar++;
- }
+ const stock=calculateImedInventoryValue();
+ const {stockTotal,stockPriced,directImed,estimatedSepidar}=stock;
  return {stockValue:stockPriced?stockTotal:null,stockPriced,stockCount:active.length,
   directImed,estimatedSepidar,missingStockPrice:active.length-stockPriced,
   queueValue:queuePriced?queueTotal:null,queueRows,queuePriced,queueQty,
@@ -222,7 +240,7 @@ function refresh(){
   if($('statSepAmount'))$('statSepAmount').textContent=financials.queueValue===null?'—':money(financials.queueValue);
   if($('statFinancialCoverage'))$('statFinancialCoverage').textContent=
    'انبار مجازی با مانده مثبت: '+faNum(financials.stockPriced)+' قلم ارزش‌گذاری‌شده از '+faNum(financials.stockCount)+
-   ' (نرخ معتبر IMED: '+faNum(financials.directImed)+'، قیمت سپیدار در ارزش‌گذاری موجودی استفاده نمی‌شود: '+faNum(financials.estimatedSepidar)+
+   ' (نرخ اسناد IMED: '+faNum(financials.directImed)+
    '، فاقد نرخ: '+faNum(financials.missingStockPrice)+'). '+
    'سپیدارِ در صف ثبت: '+faNum(financials.queueRows)+' ردیف، '+faNum(financials.queueQty)+
    ' عدد، از جمله '+faNum(financials.missingReceiver)+' ردیف نیازمند تکمیل ReceiverCode. '+
