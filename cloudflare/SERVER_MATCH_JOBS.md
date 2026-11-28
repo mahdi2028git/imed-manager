@@ -1,6 +1,6 @@
 # Background matching jobs (experimental)
 
-This feature is **not yet deployed or end-to-end verified**. The existing full browser matcher remains the authoritative workflow. The server matcher only produces **review-only, exact-IRC suggestions**. It does not implement fuzzy product/reference/date rules, cannot confirm allocations, and never submits IMED documents.
+This feature is **not yet deployed or end-to-end verified**. The existing full browser matcher remains the authoritative workflow. The server matcher only produces **review-only, scored IRC, Persian descriptor, model and product-attribute suggestions**. It does not implement fuzzy product/reference/date rules, cannot confirm allocations, and never submits IMED documents.
 
 ## Deployment prerequisites
 
@@ -12,7 +12,7 @@ This feature is **not yet deployed or end-to-end verified**. The existing full b
 
 ## Current limitations
 
-- This server implementation deliberately refuses ambiguous matches and only matches rows whose IRC is explicitly present in both datasets, constrained to positive virtual inventory IRCs. This is **not parity with the existing full browser matcher**.
+- This server implementation deliberately refuses ambiguous matches and rejects conflicting explicit IRCs and uses Persian descriptors, model and product attributes when exact IRC matching is unavailable, constrained to positive virtual inventory IRCs. This is **not parity with the existing full browser matcher**.
 - The snapshot must remain unchanged during a job; a change marks it failed rather than using inconsistent input. A new job can then be started.
 - Each scheduled invocation processes 10 IMED rows, approximately 10 per minute; no guarantees on scheduling delay.
 - No automatic allocations. Review suggestions before manually applying anything.
