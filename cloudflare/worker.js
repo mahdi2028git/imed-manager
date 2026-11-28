@@ -115,8 +115,7 @@ async function verifyApiKey(request, env) {
     crypto.subtle.digest("SHA-256", encoder.encode(supplied)),
     crypto.subtle.digest("SHA-256", encoder.encode(expected))
   ]);
-  const a=new Uint8Array(suppliedHash),b=new Uint8Array(expectedHash);
-  let diff=0;for(let i=0;i<a.length;i++)diff|=a[i]^b[i];return diff===0;
+  return crypto.subtle.timingSafeEqual(suppliedHash, expectedHash);
 }
 
 function decodeBase64Chunk(value) {
