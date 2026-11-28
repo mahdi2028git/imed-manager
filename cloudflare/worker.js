@@ -61,7 +61,7 @@ async function processServerMatchJob(env) {
    const already=existing.reduce((n,a)=>n+matchNum(a.allocatedQty),0);
    let need=Math.max(0,matchNum(d.quantity)-already),planned=[];
    // Only unambiguous exact IRC, no fuzzy product guesses or automatic confirmation.
-   const ranked=(snapshot.sepidar||[]).map(s=>({s,match:serverMatchCandidate(d,s,inventoryByIrc.get(irc)||[])})).filter(x=>x.match).sort((a,b)=>b.match.score-a.match.score);
+   const ranked=(byIrc.get(irc)||[]).map(s=>({s,match:serverMatchCandidate(d,s,inventoryByIrc.get(irc)||[])})).filter(x=>x.match).sort((a,b)=>b.match.score-a.match.score);
    for(const {s,match} of ranked){
     if(!need)break;const free=Math.max(0,matchNum(s.quantity)-(used.get(String(s.id))||0));
     if(!free)continue;const qty=Math.min(need,free);
@@ -115,7 +115,8 @@ async function verifyApiKey(request, env) {
     crypto.subtle.digest("SHA-256", encoder.encode(supplied)),
     crypto.subtle.digest("SHA-256", encoder.encode(expected))
   ]);
-  return crypto.subtle.timingSafeEqual(suppliedHash, expectedHash);
+  const a=new Uint8Array(suppliedHash),b=new Uint8Array(expectedHash);
+  let diff=0;for(let i=0;i<a.length;i++)diff|=a[i]^b[i];return diff===0;
 }
 
 function decodeBase64Chunk(value) {
