@@ -846,6 +846,35 @@ async function runAllMatches(showView=true){
  catch(err){console.error(err);toast('محاسبه ناموفق بود: '+(err?.message||err))}
  finally{allMatchBusy=false;buttons.forEach(b=>{b.disabled=false});await refreshAutoMatchButtonState()}
 }
+
+const SERVER_MATCH_JOB_KEY='imedServerMatchJobId';
+async function showServerMatchJob(){
+ const jobId=localStorage.getItem(SERVER_MATCH_JOB_KEY),target=$('serverMatchJobStatus');
+ if(!jobId){target.textContent='هنوز Job سمت سرور شروع نشده است.';return}
+ if(!cloudEnabled){target.textContent='برای مشاهده Job، اتصال Cloudflare را فعال کن.';return}
+ const response=await cloudRequest('/api/server-match-jobs/'+encodeURIComponent(jobId));
+ const job=response.job;
+ target.textContent='Job '+job.id+' | '+job.status+' | '+faNum(job.completed)+' از '+faNum(job.total)+' سند'+(job.error?' | خطا: '+job.error:'');
+ if(job.status==='completed'){
+  const result=await cloudRequest('/api/server-match-jobs/'+encodeURIComponent(jobId)+'/results?offset=0');
+  target.textContent+=' | '+faNum(result.results.length)+' نتیجه اول آماده بررسی است؛ هیچ تخصیصی خودکار ثبت نشده.';
+ }
+}
+$('startServerMatchJob').addEventListener('click',async()=>{
+ const button=$('startServerMatchJob');button.disabled=true;
+ try{
+  if(!cloudEnabled)throw new Error('ابتدا اتصال Cloudflare را فعال کن.');
+  if(!state.imed.length||!state.sepidar.length||!state.virtualInventory.length)throw new Error('داده‌های IMED، سپیدار و انبار مجازی باید موجود باشند.');
+  await saveQueue;await cloudPushSnapshot();
+  const result=await cloudRequest('/api/server-match-jobs',{method:'POST',body:'{}'});
+  localStorage.setItem(SERVER_MATCH_JOB_KEY,result.job.id);
+  await showServerMatchJob();
+  toast('Job سمت سرور ثبت شد. بعد از بستن مرورگر هم زمان‌بندی سرور ادامه می‌دهد.');
+ }catch(err){toast('شروع Job ناموفق بود: '+err.message)}
+ finally{button.disabled=false}
+});
+$('checkServerMatchJob').addEventListener('click',()=>showServerMatchJob().catch(err=>toast(err.message)));
+
 $('runAllAutoMatches').addEventListener('click',()=>runAllMatches(true));
 $('runAllAutoMatches2').addEventListener('click',()=>runAllMatches(false));
 $('exportAllAutoMatches').addEventListener('click',exportAllAutoMatches);

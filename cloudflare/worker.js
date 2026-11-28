@@ -1,3 +1,80 @@
+
+/* Server-owned resumable matching: conservative IRC-only suggestions.
+ * Suggestions are never confirmed allocations. Cron advances jobs without browsers.
+ */
+async function loadActiveSnapshot(env) {
+ const meta=await env.DB.prepare("SELECT upload_id,total_parts FROM app_state_meta WHERE id=1").first();
+ if(!meta) throw new Error("No cloud snapshot. Sync application data first.");
+ const parts=await env.DB.prepare("SELECT part_index,data FROM app_state_uploads WHERE upload_id=? ORDER BY part_index").bind(meta.upload_id).all();
+ if((parts.results||[]).length!==Number(meta.total_parts))throw new Error("Incomplete cloud snapshot");
+ const decoder=new TextDecoder();let arrays=[],size=0;
+ for(const p of parts.results){const binary=atob(p.data),bytes=Uint8Array.from(binary,ch=>ch.charCodeAt(0));arrays.push(bytes);size+=bytes.length}
+ const joined=new Uint8Array(size);let offset=0;for(const bytes of arrays){joined.set(bytes,offset);offset+=bytes.length}
+ return {snapshot:JSON.parse(decoder.decode(joined)),uploadId:meta.upload_id};
+}
+const matchDigits=v=>String(v??"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[^0-9]/g,"");
+const matchNum=v=>{const n=Number(String(v??0).replace(/[٬,\s]/g,""));return Number.isFinite(n)?n:0};
+
+const matchNorm=v=>String(v??"").toLowerCase().replace(/[يى]/g,"ی").replace(/ك/g,"ک").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[\u200c\s\-_/،,().]/g,"").trim();
+const matchTokens=v=>new Set(String(v??"").toLowerCase().replace(/[يى]/g,"ی").replace(/ك/g,"ک").split(/[^\p{L}\p{N}]+/u).map(matchNorm).filter(x=>x.length>2));
+function serverMatchCandidate(d,s,inventoryRows){
+ const di=matchDigits(d.irc),si=matchDigits(s.irc);
+ if(di&&si&&di!==si)return null;
+ const descriptors=[d.product,d.persianName,d.persianDistinction,d.model,d.mainGroup,d.subGroup,...inventoryRows.flatMap(v=>[v.product,v.persianName,v.persianDistinction,v.model,v.mainGroup,v.subGroup,v.legalCompany,v.manufacturerCountry,v.mainSupplier])].filter(Boolean);
+ const item=[s.product,s.persianName,s.persianDistinction,s.model,s.mainGroup,s.subGroup].filter(Boolean);
+ const product=matchNorm(s.product),model=matchNorm(s.model);
+ const signals=[];let score=0;
+ if(di&&si&&di===si){score+=100;signals.push("IRC دقیق")}
+ for(const descriptor of descriptors){
+  const val=matchNorm(descriptor);if(!val)continue;
+  if(val.length>=4&&item.some(v=>matchNorm(v)===val)){score=Math.max(score,65);signals.push("نام یا وجه افتراق فارسی");break}
+ }
+ if(model&&descriptors.some(v=>matchNorm(v)===model)){score=Math.max(score,55);signals.push("مدل")}
+ const docTokens=new Set(descriptors.flatMap(v=>[...matchTokens(v)]));
+ const itemTokens=new Set(item.flatMap(v=>[...matchTokens(v)]));
+ const overlap=[...itemTokens].filter(t=>docTokens.has(t)).length;
+ if(overlap>=2){score=Math.max(score,Math.min(50,overlap*12));signals.push("مشخصات کالا")}
+ if(!score||(!di&&!si&&score<24))return null;
+ const customer=matchNorm(s.customer),receiver=matchNorm(d.receiver);
+ if(customer&&receiver&&customer===receiver){score+=15;signals.push("دریافت‌کننده")}
+ return {score,signals};
+}
+async function processServerMatchJob(env) {
+ const job=await env.DB.prepare("SELECT * FROM server_match_jobs WHERE status IN ('queued','running') ORDER BY created_at LIMIT 1").first();
+ if(!job)return;
+ const claimed=await env.DB.prepare("UPDATE server_match_jobs SET status='running',lease_until=datetime('now','+45 seconds'),updated_at=CURRENT_TIMESTAMP WHERE id=? AND (lease_until IS NULL OR lease_until < CURRENT_TIMESTAMP)").bind(job.id).run();
+ if(!claimed.meta?.changes)return;
+ try{
+  const {snapshot,uploadId}=await loadActiveSnapshot(env);
+  if(uploadId!==job.snapshot_upload_id)throw new Error("Cloud snapshot changed; restart job with new snapshot");
+  const inventory=new Set((snapshot.virtualInventory||[]).filter(v=>matchNum(v.remainingQty)>0).map(v=>matchDigits(v.irc)).filter(Boolean));
+  const docs=(snapshot.imed||[]).filter(d=>inventory.has(matchDigits(d.irc)));
+  const byIrc=new Map();for(const s of snapshot.sepidar||[]){const irc=matchDigits(s.irc);if(!irc)continue;let a=byIrc.get(irc);if(!a){a=[];byIrc.set(irc,a)}a.push(s)}
+  const inventoryByIrc=new Map();for(const v of snapshot.virtualInventory||[]){const k=matchDigits(v.irc);if(!k)continue;const a=inventoryByIrc.get(k)||[];a.push(v);inventoryByIrc.set(k,a)}
+  const used=new Map();for(const allocations of Object.values(snapshot.allocations||{}))for(const a of allocations||[])used.set(String(a.sourceId),(used.get(String(a.sourceId))||0)+matchNum(a.allocatedQty));
+  // Rebuild consumption from previously persisted suggestions, ensuring restart parity.
+  const earlier=await env.DB.prepare("SELECT result_json FROM server_match_results WHERE job_id=? ORDER BY doc_index").bind(job.id).all();
+  for(const row of earlier.results||[])for(const p of JSON.parse(row.result_json).planned||[])used.set(String(p.sourceId),(used.get(String(p.sourceId))||0)+matchNum(p.quantity));
+  const start=Math.max(0,Number(job.completed)||0),end=Math.min(start+10,docs.length);
+  for(let i=start;i<end;i++){
+   const d=docs[i],irc=matchDigits(d.irc),existing=(snapshot.allocations||{})[d.id]||[];
+   const already=existing.reduce((n,a)=>n+matchNum(a.allocatedQty),0);
+   let need=Math.max(0,matchNum(d.quantity)-already),planned=[];
+   // Only unambiguous exact IRC, no fuzzy product guesses or automatic confirmation.
+   const ranked=(snapshot.sepidar||[]).map(s=>({s,match:serverMatchCandidate(d,s,inventoryByIrc.get(irc)||[])})).filter(x=>x.match).sort((a,b)=>b.match.score-a.match.score);
+   for(const {s,match} of ranked){
+    if(!need)break;const free=Math.max(0,matchNum(s.quantity)-(used.get(String(s.id))||0));
+    if(!free)continue;const qty=Math.min(need,free);
+    planned.push({sourceId:String(s.id),invoiceNo:String(s.invoiceNo||""),quantity:qty,unitPrice:matchNum(s.unitPrice),matchMethod:"server-scored-review",score:match.score,signals:match.signals});
+    used.set(String(s.id),(used.get(String(s.id))||0)+qty);need-=qty;
+   }
+   const result={distributionId:String(d.id),distributionNo:String(d.distributionNo||""),irc,quantity:matchNum(d.quantity),already,planned,remaining:need,status:need===0?"suggested-complete":planned.length?"suggested-partial":"unmatched",requiresReview:true};
+   await env.DB.prepare("INSERT OR REPLACE INTO server_match_results(job_id,doc_index,result_json) VALUES(?,?,?)").bind(job.id,i,JSON.stringify(result)).run();
+  }
+  await env.DB.prepare("UPDATE server_match_jobs SET total=?,completed=?,status=?,lease_until=NULL,updated_at=CURRENT_TIMESTAMP,error=NULL WHERE id=?").bind(docs.length,end,end>=docs.length?"completed":"queued",job.id).run();
+ }catch(error){await env.DB.prepare("UPDATE server_match_jobs SET status='failed',error=?,lease_until=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(String(error.message).slice(0,500),job.id).run()}
+}
+
 const TABLES = {
   products: ["irc", "gtin", "name", "model", "manufacturer", "country", "distinction"],
   customers: ["customer_code", "name", "type_id", "customer_type", "province", "city"],
@@ -49,6 +126,7 @@ function decodeBase64Chunk(value) {
 }
 
 export default {
+  async scheduled(event,env,ctx){ctx.waitUntil(processServerMatchJob(env))},
   async fetch(request, env) {
     const cors = corsHeaders(request, env);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
@@ -63,6 +141,32 @@ export default {
     }
 
     const parts = url.pathname.split("/").filter(Boolean);
+
+
+    if (parts[0] === "api" && parts[1] === "server-match-jobs") {
+      try {
+        if(request.method==="POST"&&parts.length===2){
+          const {snapshot,uploadId}=await loadActiveSnapshot(env);
+          if(!Array.isArray(snapshot.imed)||!Array.isArray(snapshot.sepidar)||!Array.isArray(snapshot.virtualInventory))return json({error:"Invalid synced data"},409,cors);
+          const id=crypto.randomUUID();
+          await env.DB.prepare("INSERT INTO server_match_jobs(id,snapshot_upload_id,status) VALUES(?,?,'queued')").bind(id,uploadId).run();
+          return json({job:{id,status:"queued",snapshotUploadId:uploadId},note:"Conservative exact-IRC suggestions only; manual review required"},202,cors);
+        }
+        if(request.method==="GET"&&parts.length===3){
+          const job=await env.DB.prepare("SELECT * FROM server_match_jobs WHERE id=?").bind(parts[2]).first();
+          if(!job)return json({error:"Job not found"},404,cors);
+          return json({job},200,cors);
+        }
+        if(request.method==="GET"&&parts.length===4&&parts[3]==="results"){
+          const job=await env.DB.prepare("SELECT * FROM server_match_jobs WHERE id=?").bind(parts[2]).first();
+          if(!job)return json({error:"Job not found"},404,cors);
+          const offset=Math.max(0,Number(url.searchParams.get("offset"))||0);
+          const rows=await env.DB.prepare("SELECT doc_index,result_json FROM server_match_results WHERE job_id=? AND doc_index>=? ORDER BY doc_index LIMIT 100").bind(parts[2],offset).all();
+          return json({job,results:(rows.results||[]).map(x=>({index:x.doc_index,...JSON.parse(x.result_json)}))},200,cors);
+        }
+        return json({error:"Method not allowed"},405,cors);
+      }catch(error){return json({error:"Server match job failed",detail:error.message},500,cors)}
+    }
 
     // Full application snapshot: only switch the active pointer after a complete upload.
     if (parts[0] === "api" && parts[1] === "state") {
