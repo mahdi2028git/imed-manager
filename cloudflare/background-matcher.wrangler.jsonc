@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "imed-background-matcher",
+  "main": "background-matcher.js",
+  "compatibility_date": "2025-11-01",
+  "triggers": { "crons": ["12 * * * *"] },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "imed-manager-db",
+    "database_id": "f0b49851-7dc3-425d-9d00-13469ed55ead"
+  }]
+}
